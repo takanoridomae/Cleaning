@@ -8,6 +8,25 @@
         content: " *";
         color: red;
     }
+    
+    #parse-note-btn {
+        min-width: 80px;
+        font-size: 0.875rem;
+        line-height: 1.2;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+    
+    #parse-note-btn:hover {
+        background-color: #0056b3;
+        border-color: #004085;
+        color: white;
+    }
+    
+    .input-group .form-control {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
 </style>
 
 <div class="row mb-4">
@@ -84,7 +103,13 @@
                     
                     <div class="mb-3">
                         <label for="note" class="form-label">備考</label>
-                        <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+                        <div class="input-group">
+                            <textarea class="form-control" id="note" name="note" rows="5" placeholder="テキストデータを貼り付けてください"></textarea>
+                            <button type="button" class="btn btn-outline-primary" id="parse-note-btn" title="備考欄からデータを読み取って自動入力">
+                                <i class="bi bi-search"></i><br>読み取り
+                            </button>
+                        </div>
+                        <div class="form-text">テキストデータを貼り付けて「読み取り」ボタンを押すと、お客様名・住所・郵便番号を自動入力します</div>
                     </div>
                 </div>
             </div>
@@ -366,6 +391,213 @@ document.addEventListener('DOMContentLoaded', function() {
         
         e.target.value = value;
     });
+    
+    // 備考欄テキスト解析機能
+    const noteInput = document.getElementById('note');
+    const parseNoteBtn = document.getElementById('parse-note-btn');
+    const nameInput = document.getElementById('name');
+    const customerSelect = document.getElementById('customer_id');
+    
+    // テキスト解析ボタンクリック時の処理
+    parseNoteBtn.addEventListener('click', function() {
+        const noteText = noteInput.value.trim();
+        
+        if (!noteText) {
+            alert('備考欄にテキストデータを入力してください');
+            return;
+        }
+        
+        // テキストデータを解析
+        const parsedData = parseNoteText(noteText);
+        
+        // どんな場合でも必ずお客様選択を「一般」に設定
+        for (let option of customerSelect.options) {
+            if (option.text === '一般') {
+                customerSelect.value = option.value;
+                break;
+            }
+        }
+        
+        // どんな場合でも必ず物件名を設定
+        if (parsedData.customerName && parsedData.customerName !== '一般') {
+            nameInput.value = parsedData.customerName + '様　自宅';
+        } else {
+            nameInput.value = '一般様　自宅';
+        }
+        
+        // 郵便番号・住所があれば設定
+        if (parsedData.postalCode) {
+            postalCodeInput.value = parsedData.postalCode;
+        }
+        
+        if (parsedData.address) {
+            addressInput.value = parsedData.address;
+        }
+        
+        // 備考欄をクリーンアップ（抽出した情報を削除）
+        noteInput.value = parsedData.cleanedNote;
+        
+        // 成功メッセージ
+        let message = '以下の情報を自動入力しました：\n';
+        message += '• お客様: 一般\n';
+        if (parsedData.customerName && parsedData.customerName !== '一般') {
+            message += `• 物件名: ${parsedData.customerName}様　自宅\n`;
+        } else {
+            message += '• 物件名: 一般様　自宅\n';
+        }
+        if (parsedData.postalCode) message += `• 郵便番号: ${parsedData.postalCode}\n`;
+        if (parsedData.address) message += `• 住所: ${parsedData.address}\n`;
+        message += '\n備考欄から不要な情報は削除され、電話番号のみが残りました。';
+        
+        alert(message);
+    });
+    
+    // テキストデータを解析する関数
+    function parseNoteText(text) {
+        const result = {
+            customerName: '',
+            postalCode: '',
+            address: '',
+            cleanedNote: ''
+        };
+        
+        // 改行で分割して行ごとに処理
+        const lines = text.split(/\r?\n/);
+        const remainingLines = []; // 残す行のリスト
+        
+        for (let line of lines) {
+            line = line.trim();
+            let shouldRemove = false; // この行を削除するかどうか
+            
+            // お客様名の抽出（フルネーム対応）
+            if (!result.customerName) {
+                // パターン1: 1行目の6列目から開始されるお客様名（実際のデータ形式）- 優先処理
+                if (line.startsWith('お客様名')) {
+                    // 「お客様名　中馬孝司さん」の形式 - 6列目（インデックス5）から名前開始
+                    if (line.length > 5) {
+                        const namePart = line.substring(5).trim(); // 6列目以降を取得
+                        // フルネーム抽出（「さん」「様」まで含めて取得後に除去）
+                        let nameMatch = namePart.match(/([一-龯ひらがなカタカナA-Za-z\s　]+?)(?:[様さ]|$)/);
+                        if (nameMatch) {
+                            let name = nameMatch[1].trim();
+                            // 空白文字を除去してフルネームにする
+                            name = name.replace(/[\s　]+/g, '');
+                            if (name.length >= 2) {
+                                result.customerName = name;
+                                shouldRemove = true;
+                            }
+                        }
+                    }
+                }
+                
+                // パターン2: 「田中太郎様」「田中太郎さん」のような形式
+                if (!result.customerName && !shouldRemove) {
+                    let nameMatch = line.match(/([一-龯ひらがなカタカナA-Za-z\s　]+?)[様さ]/);
+                    if (nameMatch) {
+                        let name = nameMatch[1].trim();
+                        // 空白文字を除去してフルネームにする
+                        name = name.replace(/[\s　]+/g, '');
+                        result.customerName = name;
+                        shouldRemove = true;
+                    }
+                }
+                
+                // パターン3: 従来の「お客様名：田中太郎」形式
+                if (!result.customerName && !shouldRemove) {
+                    nameMatch = line.match(/(?:お客様名|顧客名|氏名|名前)[\s　]*[：:][\s　]*([^\s　：:]+)/);
+                    if (nameMatch) {
+                        let name = nameMatch[1].trim();
+                        // 「様」「さん」が含まれている場合は除去
+                        name = name.replace(/[様さ]$/, '');
+                        // 2文字以上で、ラベル部分が含まれていない場合のみ採用
+                        if (name.length >= 2 && !/(?:お客様名|顧客名|氏名|名前)/.test(name)) {
+                            result.customerName = name;
+                            shouldRemove = true;
+                        }
+                    }
+                }
+                
+                // パターン4: 「田中　太郎」のような姓名が分かれている形式（日本人名の可能性が高い行）
+                if (!result.customerName && !shouldRemove) {
+                    nameMatch = line.match(/^([一-龯]{1,4})\s+([一-龯ひらがなカタカナ]{1,6})$/);
+                    if (nameMatch) {
+                        result.customerName = nameMatch[1] + nameMatch[2];
+                        shouldRemove = true;
+                    }
+                }
+            }
+            
+            // 郵便番号の抽出（〒123-4567 または 123-4567 の形式）
+            if (!result.postalCode && !shouldRemove) {
+                const postalMatch = line.match(/(?:〒\s*)?(\d{3}-?\d{4})/);
+                if (postalMatch) {
+                    let postal = postalMatch[1];
+                    // ハイフンがない場合は追加
+                    if (!postal.includes('-') && postal.length === 7) {
+                        postal = postal.slice(0, 3) + '-' + postal.slice(3);
+                    }
+                    result.postalCode = postal;
+                    // 郵便番号のみの行の場合は削除
+                    if (/^\s*(?:〒\s*)?\d{3}-?\d{4}\s*$/.test(line)) {
+                        shouldRemove = true;
+                    }
+                }
+            }
+            
+            // 住所の抽出
+            if (!result.address && !shouldRemove) {
+                // パターン1: 「住所：東京都新宿区...」のような形式
+                let addressMatch = line.match(/住所[\s　]*[：:][\s　]*(?:〒\s*\d{3}-?\d{4}[\s　]*)?(.+)/);
+                if (addressMatch) {
+                    result.address = addressMatch[1].trim();
+                    shouldRemove = true;
+                }
+                
+                // パターン2: 都道府県で始まる行を住所として認識
+                if (!result.address) {
+                    addressMatch = line.match(/((?:北海道|(?:青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|東京|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|京都|大阪|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)(?:都|道|府|県)).+)/);
+                    if (addressMatch) {
+                        // 郵便番号部分を除去
+                        let address = addressMatch[1];
+                        address = address.replace(/(?:〒\s*)?\d{3}-?\d{4}\s*/, '');
+                        result.address = address.trim();
+                        shouldRemove = true;
+                    }
+                }
+                
+                // パターン3: 市区町村で始まる可能性のある行（都道府県が前の行にある場合）
+                if (!result.address && !shouldRemove) {
+                    const cityMatch = line.match(/([市区町村郡].+)/);
+                    if (cityMatch) {
+                        result.address = cityMatch[1].trim();
+                        shouldRemove = true;
+                    }
+                }
+            }
+            
+            // 削除対象外の行は保持する
+            if (!shouldRemove && line) { // 空行は除外
+                // 訪問日時とカレンダーデータも削除対象とする
+                if (line.startsWith('訪問日時') || line.startsWith('カレンダー')) {
+                    shouldRemove = true;
+                }
+                
+                if (!shouldRemove) {
+                    remainingLines.push(line);
+                }
+            }
+        }
+        
+        // 備考欄のクリーンアップ（抽出した情報以外を残す）
+        result.cleanedNote = remainingLines.join('\n');
+        
+        // お客様名が抽出できない場合は「一般」を設定
+        if (!result.customerName) {
+            result.customerName = '一般';
+        }
+        
+        return result;
+    }
 });
 </script>
 {% endblock %} 
