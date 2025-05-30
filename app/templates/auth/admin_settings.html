@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}管理者設定{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-gear-fill me-2"></i>管理者設定
+                </h1>
+                <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ダッシュボードに戻る
+                </a>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person-gear me-2"></i>アカウント情報の変更
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 現在の情報表示 -->
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-info-circle me-1"></i>現在の設定
+                                </h6>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>ユーザー名:</strong></div>
+                                    <div class="col-sm-8">{{ user.username }}</div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>表示名:</strong></div>
+                                    <div class="col-sm-8">{{ user.name or '未設定' }}</div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>メールアドレス:</strong></div>
+                                    <div class="col-sm-8">{{ user.email }}</div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>最終ログイン:</strong></div>
+                                    <div class="col-sm-8">
+                                        {% if user.last_login %}
+                                            {{ user.last_login.strftime('%Y年%m月%d日 %H:%M') }}
+                                        {% else %}
+                                            未記録
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form method="post" id="adminSettingsForm">
+                                <!-- 現在のパスワード確認 -->
+                                <div class="mb-3">
+                                    <label for="current_password" class="form-label">
+                                        <i class="bi bi-shield-lock me-1"></i>現在のパスワード
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="current_password" 
+                                           name="current_password" 
+                                           required
+                                           placeholder="変更を行うには現在のパスワードを入力してください">
+                                    <div class="form-text">セキュリティのため、変更には現在のパスワードが必要です。</div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- 新しいユーザー名 -->
+                                <div class="mb-3">
+                                    <label for="new_username" class="form-label">
+                                        <i class="bi bi-person me-1"></i>新しいユーザー名
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="new_username" 
+                                           name="new_username" 
+                                           value="{{ user.username }}"
+                                           minlength="3"
+                                           placeholder="3文字以上で入力してください">
+                                    <div class="form-text">ログイン時に使用するユーザー名です。</div>
+                                </div>
+
+                                <!-- 新しい表示名 -->
+                                <div class="mb-3">
+                                    <label for="new_name" class="form-label">
+                                        <i class="bi bi-card-text me-1"></i>表示名
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="new_name" 
+                                           name="new_name" 
+                                           value="{{ user.name or '' }}"
+                                           placeholder="画面に表示される名前">
+                                    <div class="form-text">システム内で表示される名前です。</div>
+                                </div>
+
+                                <!-- 新しいメールアドレス -->
+                                <div class="mb-3">
+                                    <label for="new_email" class="form-label">
+                                        <i class="bi bi-envelope me-1"></i>メールアドレス
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="new_email" 
+                                           name="new_email" 
+                                           value="{{ user.email }}"
+                                           placeholder="example@domain.com">
+                                    <div class="form-text">通知やパスワードリセットに使用されます。</div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- パスワード変更セクション -->
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="changePassword" 
+                                               onchange="togglePasswordFields()">
+                                        <label class="form-check-label" for="changePassword">
+                                            <i class="bi bi-key me-1"></i>パスワードも変更する
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="passwordFields" style="display: none;">
+                                    <!-- 新しいパスワード -->
+                                    <div class="mb-3">
+                                        <label for="new_password" class="form-label">
+                                            <i class="bi bi-lock me-1"></i>新しいパスワード
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="new_password" 
+                                               name="new_password" 
+                                               minlength="6"
+                                               placeholder="6文字以上で入力してください">
+                                        <div class="form-text">セキュリティのため、6文字以上で設定してください。</div>
+                                    </div>
+
+                                    <!-- パスワード確認 -->
+                                    <div class="mb-3">
+                                        <label for="confirm_password" class="form-label">
+                                            <i class="bi bi-lock-fill me-1"></i>パスワード確認
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="confirm_password" 
+                                               name="confirm_password" 
+                                               placeholder="新しいパスワードを再入力してください">
+                                        <div class="form-text">確認のため、同じパスワードを入力してください。</div>
+                                    </div>
+                                </div>
+
+                                <!-- 送信ボタン -->
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-check-circle me-2"></i>設定を更新
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- セキュリティ注意事項 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>セキュリティに関する注意事項
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li>パスワードは定期的に変更することをお勧めします</li>
+                                <li>他人に推測されやすいパスワードは避けてください</li>
+                                <li>ユーザー名やメールアドレスの変更後は、ログインに新しい情報を使用してください</li>
+                                <li>設定変更後は、セキュリティのため再ログインが必要な場合があります</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePasswordFields() {
+    const checkbox = document.getElementById('changePassword');
+    const passwordFields = document.getElementById('passwordFields');
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    if (checkbox.checked) {
+        passwordFields.style.display = 'block';
+        newPassword.required = true;
+        confirmPassword.required = true;
+    } else {
+        passwordFields.style.display = 'none';
+        newPassword.required = false;
+        confirmPassword.required = false;
+        newPassword.value = '';
+        confirmPassword.value = '';
+    }
+}
+
+// フォーム送信時のバリデーション
+document.getElementById('adminSettingsForm').addEventListener('submit', function(e) {
+    const changePassword = document.getElementById('changePassword').checked;
+    
+    if (changePassword) {
+        const newPassword = document.getElementById('new_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('パスワードと確認用パスワードが一致しません。');
+            return false;
+        }
+        
+        if (newPassword.length < 6) {
+            e.preventDefault();
+            alert('パスワードは6文字以上で入力してください。');
+            return false;
+        }
+    }
+});
+</script>
+{% endblock %} 

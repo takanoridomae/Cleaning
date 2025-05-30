@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}お客様詳細 - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h2">お客様詳細</h1>
+  <div>
+    <a href="{{ url_for('customers.list') }}" class="btn btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left me-1"></i>一覧に戻る
+    </a>
+    <a href="{{ url_for('customers.edit', id=customer.id) }}" class="btn btn-primary">
+      <i class="bi bi-pencil me-1"></i>編集
+    </a>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">基本情報</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-borderless">
+          <tbody>
+            <tr>
+              <th scope="row" style="width: 35%;">お客様名</th>
+              <td>{{ customer.name }}</td>
+            </tr>
+            <tr>
+              <th scope="row">会社名</th>
+              <td>{{ customer.company_name or '未設定' }}</td>
+            </tr>
+            <tr>
+              <th scope="row">メールアドレス</th>
+              <td>{{ customer.email or '未設定' }}</td>
+            </tr>
+            <tr>
+              <th scope="row">電話番号</th>
+              <td>{{ customer.phone or '未設定' }}</td>
+            </tr>
+            <tr>
+              <th scope="row">郵便番号</th>
+              <td>{{ customer.postal_code or '未設定' }}</td>
+            </tr>
+            <tr>
+              <th scope="row">住所</th>
+              <td>{{ customer.address or '未設定' }}</td>
+            </tr>
+            <tr>
+              <th scope="row">備考</th>
+              <td>{{ customer.note or '未設定' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">物件一覧</h5>
+        <a href="{{ url_for('properties.create') }}" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>新規物件登録
+        </a>
+      </div>
+      <div class="card-body">
+        {% if customer.properties %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>物件名</th>
+                  <th>住所</th>
+                  <th>種別</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for property in customer.properties %}
+                <tr>
+                  <td>{{ property.name }}</td>
+                  <td>{{ property.address }}</td>
+                  <td>{{ property.property_type }}</td>
+                  <td>
+                    <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-3">
+            <i class="bi bi-building fs-1 text-muted"></i>
+            <p class="text-muted mt-2">このお客様に登録されている物件はありません。</p>
+            <a href="{{ url_for('properties.create') }}" class="btn btn-primary mt-2">
+              <i class="bi bi-plus-circle me-1"></i>新規物件登録
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between mt-4">
+  <a href="#" class="btn btn-outline-danger" 
+     onclick="if(confirm('このお客様を削除してもよろしいですか？この操作は元に戻せません。')) { 
+      window.location.href='{{ url_for('customers.delete', id=customer.id) }}'; 
+     } return false;">
+    <i class="bi bi-trash me-1"></i>このお客様を削除
+  </a>
+</div>
+{% endblock %} 

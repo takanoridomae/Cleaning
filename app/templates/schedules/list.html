@@ -1,0 +1,742 @@
+{% extends "base.html" %}
+
+{% block title %}スケジュール管理{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">スケジュール管理</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item active" aria-current="page">スケジュール管理</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- 操作ボタンとフィルター -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <a href="{{ url_for('schedules.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus"></i> 新規スケジュール作成
+        </a>
+    </div>
+    <div class="col-md-6 text-end">
+        <!-- 表示切替ボタン -->
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('schedules.list', view='month', year=current_year, month=current_month, status=status_filter) }}" 
+               class="btn btn-outline-primary {{ 'active' if view_type == 'month' else '' }}">月表示</a>
+            <a href="{{ url_for('schedules.list', view='week', status=status_filter) }}" 
+               class="btn btn-outline-primary {{ 'active' if view_type == 'week' else '' }}">週表示</a>
+            <a href="{{ url_for('schedules.list', view='list', year=current_year, month=current_month, status=status_filter) }}" 
+               class="btn btn-outline-primary {{ 'active' if view_type == 'list' else '' }}">リスト表示</a>
+        </div>
+        
+        <!-- ステータスフィルター -->
+        <div class="btn-group ms-2" role="group">
+            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='all') }}" 
+               class="btn btn-outline-secondary {{ 'active' if status_filter == 'all' else '' }}">全て</a>
+            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='pending') }}" 
+               class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' else '' }}">未完了</a>
+            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='completed') }}" 
+               class="btn btn-outline-success {{ 'active' if status_filter == 'completed' else '' }}">完了</a>
+        </div>
+    </div>
+</div>
+
+{% if view_type == 'month' %}
+<!-- 月表示 -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <a href="{{ url_for('schedules.list', view='month', year=prev_year, month=prev_month, status=status_filter) }}" 
+               class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-chevron-left"></i> 前月
+            </a>
+        </div>
+        <div class="text-center">
+            <h5 class="mb-0">{{ current_year }}年{{ current_month }}月</h5>
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i> スケジュールをドラッグ&ドロップで他の日付に移動できます
+            </small>
+        </div>
+        <div>
+            <a href="{{ url_for('schedules.list', view='month', year=next_year, month=next_month, status=status_filter) }}" 
+               class="btn btn-outline-primary btn-sm">
+                次月 <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <!-- カレンダー表示 -->
+        <div id="calendar-container">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center">日</th>
+                        <th class="text-center">月</th>
+                        <th class="text-center">火</th>
+                        <th class="text-center">水</th>
+                        <th class="text-center">木</th>
+                        <th class="text-center">金</th>
+                        <th class="text-center">土</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-body">
+                    <!-- JavaScriptで動的に生成 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif view_type == 'week' %}
+<!-- 週表示 -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <a href="{{ url_for('schedules.list', view='week', week_start=prev_week_start.strftime('%Y-%m-%d'), status=status_filter) }}" 
+               class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-chevron-left"></i> 前週
+            </a>
+        </div>
+        <div class="text-center">
+            <h5 class="mb-0">週表示: {{ current_date.strftime('%Y年%m月%d日') }} - {{ end_date.strftime('%Y年%m月%d日') }}</h5>
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i> スケジュールをドラッグ&ドロップで他の日付に移動できます
+            </small>
+        </div>
+        <div>
+            <a href="{{ url_for('schedules.list', view='week', week_start=next_week_start.strftime('%Y-%m-%d'), status=status_filter) }}" 
+               class="btn btn-outline-primary btn-sm">
+                次週 <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <!-- 7日間カラム表示 -->
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        {% for date in week_dates %}
+                        <th class="text-center week-column">
+                            <div class="fw-bold">
+                                {% if date.weekday() == 0 %}月
+                                {% elif date.weekday() == 1 %}火
+                                {% elif date.weekday() == 2 %}水
+                                {% elif date.weekday() == 3 %}木
+                                {% elif date.weekday() == 4 %}金
+                                {% elif date.weekday() == 5 %}土
+                                {% else %}日
+                                {% endif %}
+                            </div>
+                            <div class="small text-muted">
+                                {{ date.strftime('%m/%d') }}
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for date in week_dates %}
+                        <td class="week-column drop-zone" 
+                            style="vertical-align: top; height: 400px; padding: 8px;"
+                            data-date="{{ date.strftime('%Y-%m-%d') }}">
+                            <div class="week-day-content">
+                                {% for schedule in week_data[date] %}
+                                <div class="schedule-item mb-2 p-2 rounded border-start border-3 
+                                    {{ 'border-warning bg-warning-subtle' if schedule.status == 'pending' 
+                                    else 'border-success bg-success-subtle' if schedule.status == 'completed' 
+                                    else 'border-secondary bg-secondary-subtle' }}"
+                                    style="cursor: move;"
+                                    data-schedule-id="{{ schedule.id }}"
+                                    draggable="true">
+                                    
+                                    <div class="fw-bold text-truncate small">
+                                        {{ schedule.title }}
+                                    </div>
+                                    
+                                    {% if not schedule.all_day %}
+                                    <div class="small text-muted">
+                                        {{ schedule.start_datetime.strftime('%H:%M') }}
+                                        {% if schedule.end_datetime.date() == schedule.start_datetime.date() %}
+                                        - {{ schedule.end_datetime.strftime('%H:%M') }}
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="small text-muted">終日</div>
+                                    {% endif %}
+                                    
+                                    {% if schedule.customer %}
+                                    <div class="small text-muted text-truncate">
+                                        <i class="bi bi-person"></i> {{ schedule.customer.name }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if schedule.schedule_property %}
+                                    <div class="small text-muted text-truncate">
+                                        <i class="bi bi-building"></i> {{ schedule.schedule_property.name }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mt-1">
+                                        <span class="badge {{ 'bg-warning' if schedule.status == 'pending' else 'bg-success' if schedule.status == 'completed' else 'bg-secondary' }} badge-sm">
+                                            {% if schedule.status == 'pending' %}未完了
+                                            {% elif schedule.status == 'completed' %}完了
+                                            {% else %}{{ schedule.status }}
+                                            {% endif %}
+                                        </span>
+                                        
+                                        {% if schedule.priority in ['high', 'urgent'] %}
+                                        <span class="badge {{ 'bg-danger' if schedule.priority == 'urgent' else 'bg-warning' }} badge-sm ms-1">
+                                            {% if schedule.priority == 'urgent' %}緊急
+                                            {% elif schedule.priority == 'high' %}高
+                                            {% endif %}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                {% if week_data[date]|length == 0 %}
+                                <div class="text-muted text-center small" style="margin-top: 50px;">
+                                    予定なし
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- リスト表示 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">スケジュール一覧</h5>
+    </div>
+    <div class="card-body">
+        {% if schedules %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>タイトル</th>
+                        <th>ステータス</th>
+                        <th>優先度</th>
+                        <th>顧客</th>
+                        <th>物件</th>
+                        <th>関連報告書</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                    <tr>
+                        <td>
+                            {% if schedule.all_day %}
+                            {{ schedule.start_datetime.strftime('%Y/%m/%d') }}
+                            <small class="text-muted">(終日)</small>
+                            {% else %}
+                            {{ schedule.start_datetime.strftime('%Y/%m/%d %H:%M') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('schedules.view', id=schedule.id) }}" class="text-decoration-none">
+                                {{ schedule.title }}
+                            </a>
+                            {% if schedule.description %}
+                            <br><small class="text-muted">{{ schedule.description[:50] }}...</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {{ 'bg-warning' if schedule.status == 'pending' else 'bg-success' if schedule.status == 'completed' else 'bg-secondary' }}">
+                                {{ schedule.status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {{ 'bg-danger' if schedule.priority == 'urgent' else 'bg-warning' if schedule.priority == 'high' else 'bg-secondary' }}">
+                                {{ schedule.priority_display }}
+                            </span>
+                        </td>
+                        <td>{{ schedule.customer.name if schedule.customer else '-' }}</td>
+                        <td>{{ schedule.schedule_property.name if schedule.schedule_property else '-' }}</td>
+                        <td>
+                            {% if schedule.report %}
+                            <a href="{{ url_for('reports.view', id=schedule.report.id) }}" class="btn btn-sm btn-outline-primary">
+                                報告書 #{{ schedule.report.id }}
+                            </a>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('schedules.edit', id=schedule.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if schedule.status == 'pending' %}
+                                <form method="POST" action="{{ url_for('schedules.complete', id=schedule.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('このスケジュールを完了しますか？')">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>表示するスケジュールがありません。
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* 週表示用のスタイル */
+.week-column {
+    width: 14.28%;
+    min-width: 120px;
+}
+
+.week-day-content {
+    min-height: 350px;
+}
+
+.schedule-item {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.schedule-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.schedule-item.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+}
+
+.drop-zone {
+    transition: background-color 0.2s ease;
+}
+
+.drop-zone.drag-over {
+    background-color: #e3f2fd !important;
+    border: 2px dashed #2196F3 !important;
+}
+
+.badge-sm {
+    font-size: 0.65rem;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .week-column {
+        min-width: 100px;
+        font-size: 0.75rem;
+    }
+    
+    .schedule-item {
+        padding: 0.25rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .week-day-content {
+        min-height: 250px;
+    }
+}
+
+@media (max-width: 576px) {
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .week-column {
+        min-width: 80px;
+        font-size: 0.7rem;
+    }
+    
+    .schedule-item .small {
+        font-size: 0.6rem !important;
+    }
+}
+
+/* 月表示用のスタイル */
+.calendar-cell.drop-zone {
+    transition: background-color 0.2s ease, border 0.2s ease;
+    border: 1px solid #dee2e6;
+}
+
+.calendar-cell.drop-zone.drag-over {
+    background-color: #e3f2fd !important;
+    border: 2px dashed #2196F3 !important;
+}
+
+.schedule-event {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.schedule-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.schedule-event.dragging {
+    opacity: 0.5;
+    transform: rotate(3deg);
+}
+</style>
+
+<script>
+// 月表示用のJavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    {% if view_type == 'month' %}
+    generateCalendar({{ current_year }}, {{ current_month }});
+    {% endif %}
+    
+    {% if view_type == 'week' %}
+    // 週表示のスケジュールアイテムクリックイベント
+    document.querySelectorAll('.schedule-item[data-schedule-id]').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            // ドラッグ中でない場合のみクリックイベントを処理
+            if (!item.classList.contains('dragging')) {
+                const scheduleId = this.getAttribute('data-schedule-id');
+                window.location.href = '{{ url_for("schedules.view", id=0) }}'.replace('0', scheduleId);
+            }
+        });
+    });
+    
+    // ドラッグ&ドロップ機能の初期化
+    initializeDragAndDrop();
+    {% endif %}
+});
+
+function generateCalendar(year, month) {
+    const firstDay = new Date(year, month - 1, 1).getDay(); // 月の最初の曜日 (0=日曜日)
+    const daysInMonth = new Date(year, month, 0).getDate(); // 月の日数
+    
+    const calendarBody = document.getElementById('calendar-body');
+    calendarBody.innerHTML = '';
+    
+    let date = 1;
+    
+    // カレンダーの行を生成（最大6週）
+    for (let week = 0; week < 6; week++) {
+        const row = document.createElement('tr');
+        
+        // 1週間の各日を生成
+        for (let day = 0; day < 7; day++) {
+            const cell = document.createElement('td');
+            cell.style.width = '14.28%';
+            cell.style.height = '120px';
+            cell.style.verticalAlign = 'top';
+            cell.style.padding = '5px';
+            
+            if ((week === 0 && day < firstDay) || date > daysInMonth) {
+                // 空のセル
+                cell.innerHTML = '';
+            } else {
+                // 日付セル（ドロップゾーンとして設定）
+                const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(date).padStart(2, '0');
+                cell.className = 'calendar-cell drop-zone';
+                cell.setAttribute('data-date', dateStr);
+                cell.innerHTML = '<div class="fw-bold mb-1">' + date + '</div>' +
+                    '<div class="schedule-events" data-date="' + dateStr + '">' +
+                    '<!-- スケジュールはAJAXで取得 -->' +
+                    '</div>';
+                
+                // 今日の日付をハイライト
+                const today = new Date();
+                if (year === today.getFullYear() && month === today.getMonth() + 1 && date === today.getDate()) {
+                    cell.style.backgroundColor = '#e3f2fd';
+                }
+                
+                date++;
+            }
+            
+            row.appendChild(cell);
+        }
+        
+        calendarBody.appendChild(row);
+        
+        // すべての日付を表示したら終了
+        if (date > daysInMonth) {
+            break;
+        }
+    }
+    
+    // スケジュールデータを取得して表示
+    loadScheduleEvents(year, month);
+}
+
+function loadScheduleEvents(year, month) {
+    const startDate = year + '-' + String(month).padStart(2, '0') + '-01';
+    const daysInMonth = new Date(year, month, 0).getDate(); // 月の最終日を取得
+    const endDate = year + '-' + String(month).padStart(2, '0') + '-' + String(daysInMonth).padStart(2, '0');
+    
+    fetch('{{ url_for('schedules.api_events') }}?start=' + startDate + '&end=' + endDate + '&status={{ status_filter }}')
+        .then(response => response.json())
+        .then(events => {
+            events.forEach(event => {
+                const eventDate = event.start.split('T')[0];
+                const eventContainer = document.querySelector('[data-date="' + eventDate + '"]');
+                
+                if (eventContainer) {
+                    const eventElement = document.createElement('div');
+                    eventElement.className = 'schedule-event mb-1 p-1 rounded';
+                    eventElement.style.fontSize = '0.75rem';
+                    eventElement.style.backgroundColor = event.backgroundColor + '40';
+                    eventElement.style.borderLeft = '3px solid ' + event.backgroundColor;
+                    eventElement.style.cursor = 'move';
+                    
+                    // ドラッグ&ドロップ属性を設定
+                    eventElement.setAttribute('draggable', 'true');
+                    eventElement.setAttribute('data-schedule-id', event.id);
+                    
+                    const timeStr = event.allDay ? '' : new Date(event.start).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+                    const titleDiv = '<div class="fw-bold text-truncate">' + event.title + '</div>';
+                    const timeDiv = timeStr ? '<small class="text-muted">' + timeStr + '</small>' : '';
+                    eventElement.innerHTML = titleDiv + timeDiv;
+                    
+                    // クリックイベント（ドラッグ中でない場合のみ）
+                    eventElement.addEventListener('click', function(e) {
+                        if (!this.classList.contains('dragging')) {
+                            window.location.href = '{{ url_for('schedules.view', id=0) }}'.replace('0', event.id);
+                        }
+                    });
+                    
+                    eventContainer.appendChild(eventElement);
+                }
+            });
+            
+            // 月表示用のドラッグ&ドロップ機能を初期化
+            initializeMonthDragAndDrop();
+        })
+        .catch(error => console.error('Error loading schedule events:', error));
+}
+
+{% if view_type == 'week' %}
+function initializeDragAndDrop() {
+    let draggedElement = null;
+    let dragStartDate = null;
+    
+    // スケジュールアイテムのドラッグイベント
+    document.querySelectorAll('.schedule-item[draggable="true"]').forEach(function(item) {
+        item.addEventListener('dragstart', function(e) {
+            draggedElement = this;
+            dragStartDate = this.closest('.drop-zone').getAttribute('data-date');
+            this.classList.add('dragging');
+            
+            // ドラッグデータを設定
+            e.dataTransfer.setData('text/plain', this.getAttribute('data-schedule-id'));
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+            this.classList.remove('dragging');
+            draggedElement = null;
+            dragStartDate = null;
+            
+            // 全てのドロップゾーンからハイライトを削除
+            document.querySelectorAll('.drop-zone').forEach(function(zone) {
+                zone.classList.remove('drag-over');
+            });
+        });
+    });
+    
+    // ドロップゾーンのイベント
+    document.querySelectorAll('.drop-zone').forEach(function(zone) {
+        zone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        
+        zone.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        
+        zone.addEventListener('dragleave', function(e) {
+            // マウスが完全にゾーンを出た場合のみハイライトを削除
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                this.classList.remove('drag-over');
+            }
+        });
+        
+        zone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const scheduleId = e.dataTransfer.getData('text/plain');
+            const newDate = this.getAttribute('data-date');
+            
+            // 同じ日付にドロップした場合は何もしない
+            if (dragStartDate === newDate) {
+                return;
+            }
+            
+            // スケジュール移動APIを呼び出し
+            moveSchedule(scheduleId, newDate);
+        });
+    });
+}
+{% endif %}
+
+function initializeMonthDragAndDrop() {
+    let draggedElement = null;
+    let dragStartDate = null;
+    
+    // スケジュールイベントのドラッグイベント
+    document.querySelectorAll('.schedule-event[draggable="true"]').forEach(function(item) {
+        item.addEventListener('dragstart', function(e) {
+            draggedElement = this;
+            // 月表示の場合は、親のカレンダーセルから日付を取得
+            const calendarCell = this.closest('td.calendar-cell');
+            if (calendarCell) {
+                dragStartDate = calendarCell.getAttribute('data-date');
+            } else {
+                // フォールバック：schedule-eventsコンテナから日付を取得
+                const scheduleContainer = this.parentElement;
+                dragStartDate = scheduleContainer.getAttribute('data-date');
+            }
+            this.classList.add('dragging');
+            
+            console.log('ドラッグ開始:', dragStartDate); // デバッグ用
+            
+            // ドラッグデータを設定
+            e.dataTransfer.setData('text/plain', this.getAttribute('data-schedule-id'));
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+            this.classList.remove('dragging');
+            draggedElement = null;
+            dragStartDate = null;
+            
+            // 全てのドロップゾーンからハイライトを削除
+            document.querySelectorAll('.drop-zone').forEach(function(zone) {
+                zone.classList.remove('drag-over');
+            });
+        });
+    });
+    
+    // カレンダーセル（ドロップゾーン）のイベント
+    document.querySelectorAll('.calendar-cell.drop-zone').forEach(function(zone) {
+        zone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        
+        zone.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        
+        zone.addEventListener('dragleave', function(e) {
+            // マウスが完全にゾーンを出た場合のみハイライトを削除
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                this.classList.remove('drag-over');
+            }
+        });
+        
+        zone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const scheduleId = e.dataTransfer.getData('text/plain');
+            const newDate = this.getAttribute('data-date');
+            
+            console.log('ドロップ:', dragStartDate, '->', newDate); // デバッグ用
+            
+            // 同じ日付にドロップした場合は何もしない
+            if (dragStartDate === newDate) {
+                console.log('同じ日付なのでスキップ');
+                return;
+            }
+            
+            // スケジュール移動APIを呼び出し
+            moveSchedule(scheduleId, newDate);
+        });
+    });
+    
+    console.log('月表示ドラッグ&ドロップを初期化しました。ドロップゾーン数:', document.querySelectorAll('.calendar-cell.drop-zone').length);
+}
+
+function moveSchedule(scheduleId, newDate) {
+    // 確認ダイアログ
+    if (!confirm('このスケジュールを移動しますか？\n関連する報告書の作業日も同時に変更されます。')) {
+        return;
+    }
+    
+    // ローディング表示
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.innerHTML = '<div class="text-center"><i class="bi bi-arrow-clockwise"></i> 移動中...</div>';
+    loadingOverlay.className = 'alert alert-info position-fixed top-50 start-50 translate-middle';
+    loadingOverlay.style.zIndex = '9999';
+    document.body.appendChild(loadingOverlay);
+    
+    fetch('/schedules/api/move', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            schedule_id: scheduleId,
+            new_date: newDate
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.body.removeChild(loadingOverlay);
+        
+        if (data.error) {
+            alert('エラー: ' + data.error);
+        } else {
+            // 成功メッセージを表示
+            const successMessage = document.createElement('div');
+            successMessage.innerHTML = '<div class="text-center"><i class="bi bi-check-circle text-success"></i> ' + data.message + '</div>';
+            successMessage.className = 'alert alert-success position-fixed top-50 start-50 translate-middle';
+            successMessage.style.zIndex = '9999';
+            document.body.appendChild(successMessage);
+            
+            // 1秒後にページをリロード
+            setTimeout(function() {
+                window.location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        document.body.removeChild(loadingOverlay);
+        console.error('Error:', error);
+        alert('スケジュールの移動中にエラーが発生しました');
+    });
+}
+</script>
+{% endblock %} 

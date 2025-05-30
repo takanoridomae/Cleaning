@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block title %}報告書一覧{% endblock %}
+
+{% block extra_css %}
+<style>
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.sortable-header:hover {
+    background-color: #f8f9fa;
+}
+
+.sort-icon {
+    margin-left: 5px;
+    font-size: 0.8em;
+    opacity: 0.5;
+}
+
+.sort-icon.active {
+    opacity: 1;
+}
+
+.search-form {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+}
+
+.table-container {
+    background-color: white;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.status-filter-tabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0;
+}
+
+.pagination-info {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>報告書一覧</h2>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('reports.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 新規作成
+            </a>
+            <a href="{{ url_for('reports.work_items') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-gear"></i> 作業項目管理
+            </a>
+        </div>
+    </div>
+
+    <!-- 検索フォーム -->
+    <div class="search-form">
+        <form method="GET" action="{{ url_for('reports.list') }}" class="row g-3">
+            <div class="col-md-9">
+                <label for="search" class="form-label">検索</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ current_search }}" 
+                       placeholder="顧客名、物件名、作業住所、備考、報告日、作業日で検索...">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-search"></i> 検索
+                </button>
+                <a href="{{ url_for('reports.list') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> リセット
+                </a>
+            </div>
+            <!-- 現在のソート状態を保持 -->
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+            <input type="hidden" name="order" value="{{ current_order }}">
+        </form>
+    </div>
+
+    <!-- ステータスタブ -->
+    <div class="card">
+        <div class="card-header status-filter-tabs">
+            <ul class="nav nav-pills card-header-pills">
+                <li class="nav-item">
+                    <a class="nav-link {% if not current_status %}active{% endif %}" 
+                       href="{{ url_for('reports.list', search=current_search, sort=current_sort, order=current_order) }}">
+                        全て
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if current_status == 'pending' %}active{% endif %}" 
+                       href="{{ url_for('reports.list', status='pending', search=current_search, sort=current_sort, order=current_order) }}">
+                        未完了
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if current_status == 'completed' %}active{% endif %}" 
+                       href="{{ url_for('reports.list', status='completed', search=current_search, sort=current_sort, order=current_order) }}">
+                        完了
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body">
+            {% if reports %}
+                <!-- 検索結果情報 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="pagination-info">
+                        {{ pagination.total }}件中 {{ (pagination.page - 1) * pagination.per_page + 1 }}〜{{ pagination.page * pagination.per_page if pagination.page * pagination.per_page <= pagination.total else pagination.total }}件を表示
+                        {% if current_search %}
+                            （「{{ current_search }}」で検索）
+                        {% endif %}
+                    </div>
+                    <div>
+                        <small class="text-muted">
+                            ヘッダーをクリックしてソート | 検索対象：顧客名、物件名、作業住所、備考、報告日、作業日
+                        </small>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="sortable-header" onclick="sortTable('id')">
+                                    ID
+                                    <i class="bi bi-arrow-up-down sort-icon {% if current_sort == 'id' %}active{% endif %}"></i>
+                                    {% if current_sort == 'id' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                </th>
+                                <th class="sortable-header" onclick="sortTable('date')">
+                                    日付
+                                    {% if current_sort == 'date' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
+                                <th class="sortable-header" onclick="sortTable('customer')">
+                                    顧客
+                                    {% if current_sort == 'customer' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
+                                <th class="sortable-header" onclick="sortTable('property')">
+                                    物件
+                                    {% if current_sort == 'property' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
+                                <th class="sortable-header" onclick="sortTable('status')">
+                                    状態
+                                    {% if current_sort == 'status' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
+                                <th>作業内容</th>
+                                <th>写真</th>
+                                <th class="sortable-header" onclick="sortTable('updated_at')">
+                                    更新日
+                                    {% if current_sort == 'updated_at' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in reports %}
+                            <tr>
+                                <td><strong>{{ report.id }}</strong></td>
+                                <td>{{ report.date.strftime('%Y-%m-%d') if report.date else '-' }}</td>
+                                <td>{{ report.property.customer.name if report.property and report.property.customer else '-' }}</td>
+                                <td>{{ report.property.name if report.property else '-' }}</td>
+                                <td>
+                                    {% if report.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">未完了</span>
+                                    {% elif report.status == 'completed' %}
+                                        <span class="badge bg-success">完了</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ report.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ report.work_details|length if report.work_details else 0 }}件</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ report.photos|length if report.photos else 0 }}枚</span>
+                                </td>
+                                <td>{{ report.updated_at.strftime('%Y-%m-%d %H:%M') if report.updated_at else '-' }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('reports.view', id=report.id) }}" 
+                                           class="btn btn-outline-primary" title="詳細表示">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('reports.edit', id=report.id) }}" 
+                                           class="btn btn-outline-secondary" title="編集">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('reports.download_pdf', id=report.id) }}" 
+                                           class="btn btn-outline-success" target="_blank" title="PDF表示">
+                                            <i class="bi bi-file-earmark-pdf"></i>
+                                        </a>
+                                        <a href="{{ url_for('reports.download_pdf', id=report.id, save=1) }}" 
+                                           class="btn btn-outline-info" title="PDF保存">
+                                            <i class="bi bi-save"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ページネーション -->
+                {% if pagination.pages > 1 %}
+                <nav aria-label="報告書一覧ページネーション">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('reports.list', page=pagination.prev_num, status=current_status, search=current_search, sort=current_sort, order=current_order) }}">
+                                    <i class="bi bi-chevron-left"></i> 前へ
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('reports.list', page=page_num, status=current_status, search=current_search, sort=current_sort, order=current_order) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('reports.list', page=pagination.next_num, status=current_status, search=current_search, sort=current_sort, order=current_order) }}">
+                                    次へ <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    {% if current_search %}
+                        「{{ current_search }}」に該当する報告書が見つかりませんでした。
+                    {% else %}
+                        報告書がありません。
+                    {% endif %}
+                    <div class="mt-2">
+                        <a href="{{ url_for('reports.create') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 新規作成
+                        </a>
+                        {% if current_search %}
+                            <a href="{{ url_for('reports.list') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise"></i> 検索をクリア
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function sortTable(column) {
+    const currentSort = '{{ current_sort }}';
+    const currentOrder = '{{ current_order }}';
+    
+    let newOrder = 'desc';
+    if (currentSort === column && currentOrder === 'desc') {
+        newOrder = 'asc';
+    }
+    
+    const url = new URL(window.location);
+    url.searchParams.set('sort', column);
+    url.searchParams.set('order', newOrder);
+    url.searchParams.set('page', '1'); // ソート時は1ページ目に戻る
+    
+    window.location.href = url.toString();
+}
+
+// Enterキーでの検索
+document.getElementById('search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        this.form.submit();
+    }
+});
+</script>
+{% endblock %} 

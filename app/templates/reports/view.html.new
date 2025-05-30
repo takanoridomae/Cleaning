@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}報告書詳細{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>報告書詳細</h2>
+        <div>
+            <a href="{{ url_for('reports.edit', id=report.id) }}" class="btn btn-primary">編集</a>
+            <a href="{{ url_for('reports.list') }}" class="btn btn-secondary">一覧へ戻る</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>基本情報</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th style="width: 35%">物件</th>
+                                <td>{{ report.property.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>顧客</th>
+                                <td>{{ report.property.customer.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>作業住所</th>
+                                <td>{{ report.work_address or '未設定' }}</td>
+                            </tr>
+                            <tr>
+                                <th>ステータス</th>
+                                <td>
+                                    {% if report.status == 'pending' %}
+                                        <span class="badge bg-warning">作成中</span>
+                                    {% elif report.status == 'completed' %}
+                                        <span class="badge bg-success">完了</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th style="width: 35%">報告書日付</th>
+                                <td>{{ report.date.strftime('%Y-%m-%d') if report.date }}</td>
+                            </tr>
+                            <tr>
+                                <th>作成日</th>
+                                <td>{{ report.created_at.strftime('%Y-%m-%d') if report.created_at }}</td>
+                            </tr>
+                            <tr>
+                                <th>更新日</th>
+                                <td>{{ report.updated_at.strftime('%Y-%m-%d') if report.updated_at }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if report.note %}
+                <h4 class="mt-4">備考</h4>
+                <div class="card">
+                    <div class="card-body">
+                        {{ report.note|nl2br }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>作業時間 ({{ work_times|length }}件)</h3>
+        </div>
+        <div class="card-body">
+            {% if work_times %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>作業日</th>
+                                <th>開始時間</th>
+                                <th>終了時間</th>
+                                <th>作業時間</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work_time in work_times %}
+                            <tr>
+                                <td>{{ work_time.work_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ work_time.start_time.strftime('%H:%M') }}</td>
+                                <td>{{ work_time.end_time.strftime('%H:%M') }}</td>
+                                <td>
+                                    {% set hours = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) // 60 %}
+                                    {% set minutes = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) % 60 %}
+                                    {{ hours }}時間{% if minutes > 0 %}{{ minutes }}分{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>作業時間の記録がありません</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>作業内容 ({{ work_details|length }}件)</h3>
+        </div>
+        <div class="card-body">
+            {% if work_details %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%">作業項目</th>
+                                <th style="width: 50%">作業内容</th>
+                                <th style="width: 30%">作業確認</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work_detail in work_details %}
+                            <tr>
+                                <td>{{ work_detail.work_item_name }}</td>
+                                <td>{{ work_detail.description|nl2br }}</td>
+                                <td>{{ work_detail.confirmation or '' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>作業内容の記録がありません</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>写真 ({{ photo_pairs|length }}組)</h3>
+        </div>
+        <div class="card-body">
+            {% if photo_pairs %}
+                {% for before, after in photo_pairs %}
+                <div class="row mb-4 photo-pair">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">施工前</div>
+                            <div class="card-body text-center">
+                                {% if before %}
+                                    <img src="{{ url_for('static', filename='uploads/before/' + before.filename) }}" 
+                                         class="img-fluid img-thumbnail" alt="施工前">
+                                    <div class="mt-2">
+                                        {% if before.room_name %}<p>場所: {{ before.room_name }}</p>{% endif %}
+                                        {% if before.caption %}<p>{{ before.caption }}</p>{% endif %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">写真なし</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">施工後</div>
+                            <div class="card-body text-center">
+                                {% if after %}
+                                    <img src="{{ url_for('static', filename='uploads/after/' + after.filename) }}" 
+                                         class="img-fluid img-thumbnail" alt="施工後">
+                                    <div class="mt-2">
+                                        {% if after.room_name %}<p>場所: {{ after.room_name }}</p>{% endif %}
+                                        {% if after.caption %}<p>{{ after.caption }}</p>{% endif %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">写真なし</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>写真が登録されていません</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{{ property.name }} - 物件詳細{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">物件詳細</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ property.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">基本情報</h5>
+                <a href="{{ url_for('properties.edit', id=property.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i> 編集
+                </a>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th style="width: 150px;">物件名</th>
+                            <td>{{ property.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>お客様</th>
+                            <td>
+                                {% if property.customer %}
+                                <a href="{{ url_for('customers.view', id=property.customer.id) }}">{{ property.customer.name }}</a>
+                                {% else %}
+                                未設定
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>住所</th>
+                            <td>
+                                {% if property.postal_code or property.address %}
+                                {% if property.postal_code %}〒{{ property.postal_code }}{% endif %}
+                                {{ property.address or '未設定' }}
+                                {% else %}
+                                未設定
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>受付</th>
+                            <td>{{ property.reception_type or '未設定' }}</td>
+                        </tr>
+                        <tr>
+                            <th>受付明細</th>
+                            <td>{{ property.reception_detail or '未設定' }}</td>
+                        </tr>
+                        <tr>
+                            <th>備考</th>
+                            <td>{{ property.note or '未設定' }}</td>
+                        </tr>
+                        <tr>
+                            <th>登録日時</th>
+                            <td>{{ property.created_at.strftime('%Y年%m月%d日 %H:%M') }}</td>
+                        </tr>
+                        <tr>
+                            <th>最終更新</th>
+                            <td>{{ property.updated_at.strftime('%Y年%m月%d日 %H:%M') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- エアコン情報セクション -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">エアコン情報</h5>
+                <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-plus"></i> 追加
+                </a>
+            </div>
+            <div class="card-body">
+                {% if property.air_conditioners %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>種別</th>
+                                    <th>メーカー</th>
+                                    <th>設置場所</th>
+                                    <th>品番</th>
+                                    <th>金額</th>
+                                    <th>種別</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ac in property.air_conditioners %}
+                                <tr>
+                                    <td>{{ ac.ac_type or '未設定' }}</td>
+                                    <td>{{ ac.manufacturer or '未設定' }}</td>
+                                    <td>{{ ac.location or '未設定' }}</td>
+                                    <td>{{ ac.model_number or '未設定' }}</td>
+                                    <td>{% if ac.total_amount %}{{ "{:,}".format(ac.total_amount) }}円{% else %}未設定{% endif %}</td>
+                                    <td>{{ ac.cleaning_type or '未設定' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('air_conditioners.edit', id=ac.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">エアコン情報が登録されていません。</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('air_conditioners.list_by_property', property_id=property.id) }}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-list"></i> 全てのエアコンを表示
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">関連報告書</h5>
+            </div>
+            <div class="card-body">
+                {% if property.reports %}
+                    <div class="list-group">
+                        {% for report in property.reports %}
+                            <a href="{{ url_for('reports.view', id=report.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">{{ report.date.strftime('%Y年%m月%d日') }}</div>
+                                    <small class="text-muted">{{ report.note[:30] }}{% if report.note|length > 30 %}...{% endif %}</small>
+                                </div>
+                                {% if report.status == 'completed' %}
+                                    <span class="badge bg-success rounded-pill">完了</span>
+                                {% elif report.status == 'pending' %}
+                                    <span class="badge bg-warning rounded-pill">作成中</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">関連する報告書はありません。</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('reports.create') }}" class="btn btn-primary w-100">
+                    <i class="bi bi-file-earmark-plus"></i> 新規報告書作成
+                </a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">アクション</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('properties.edit', id=property.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> 編集
+                    </a>
+                    <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" class="btn btn-outline-success">
+                        <i class="bi bi-plus"></i> エアコン情報追加
+                    </a>
+                    <a href="{{ url_for('reports.create') }}?property_id={{ property.id }}" class="btn btn-outline-success">
+                        <i class="bi bi-file-earmark-plus"></i> 報告書作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

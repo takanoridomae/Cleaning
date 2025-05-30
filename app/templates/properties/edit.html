@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}物件編集 - {{ property.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .form-label.required:after {
+        content: " *";
+        color: red;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">物件編集</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.view', id=property.id) }}">{{ property.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">編集</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<form method="post" id="property-form">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">基本情報</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label required">物件名</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ property.name }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="customer_id" class="form-label required">お客様</label>
+                        <select class="form-select" id="customer_id" name="customer_id" required>
+                            <option value="">選択してください</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" {% if property.customer_id == customer.id %}selected{% endif %}>{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="postal_code" class="form-label">郵便番号</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="postal_code" name="postal_code" placeholder="123-4567" maxlength="8" value="{{ property.postal_code or '' }}">
+                                <button type="button" class="btn btn-outline-secondary" id="postal-search-btn">住所検索</button>
+                            </div>
+                            <div class="form-text">ハイフンあり（例：123-4567）</div>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="address" class="form-label">住所</label>
+                            <input type="text" class="form-control" id="address" name="address" value="{{ property.address or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="reception_type" class="form-label">受付</label>
+                            <select class="form-select" id="reception_type" name="reception_type">
+                                <option value="">選択してください</option>
+                                <option value="LINE" {% if property.reception_type == 'LINE' %}selected{% endif %}>LINE</option>
+                                <option value="電話" {% if property.reception_type == '電話' %}selected{% endif %}>電話</option>
+                                <option value="クラマ" {% if property.reception_type == 'クラマ' %}selected{% endif %}>クラマ</option>
+                                <option value="おうち" {% if property.reception_type == 'おうち' %}selected{% endif %}>おうち</option>
+                                <option value="クラベル" {% if property.reception_type == 'クラベル' %}selected{% endif %}>クラベル</option>
+                                <option value="ホームページ" {% if property.reception_type == 'ホームページ' %}selected{% endif %}>ホームページ</option>
+                                <option value="紹介" {% if property.reception_type == '紹介' %}selected{% endif %}>紹介</option>
+                                <option value="チラシ" {% if property.reception_type == 'チラシ' %}selected{% endif %}>チラシ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="reception_detail" class="form-label">受付明細</label>
+                            <input type="text" class="form-control" id="reception_detail" name="reception_detail" value="{{ property.reception_detail or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="note" class="form-label">備考</label>
+                        <textarea class="form-control" id="note" name="note" rows="3">{{ property.note or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- エアコン情報セクション -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">エアコン情報</h5>
+                    <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-plus"></i> 追加
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if property.air_conditioners %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>種別</th>
+                                        <th>メーカー</th>
+                                        <th>設置場所</th>
+                                        <th>品番</th>
+                                        <th>金額</th>
+                                        <th>種別</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ac in property.air_conditioners %}
+                                    <tr>
+                                        <td>{{ ac.ac_type or '未設定' }}</td>
+                                        <td>{{ ac.manufacturer or '未設定' }}</td>
+                                        <td>{{ ac.location or '未設定' }}</td>
+                                        <td>{{ ac.model_number or '未設定' }}</td>
+                                        <td>{% if ac.total_amount %}{{ "{:,}".format(ac.total_amount) }}円{% else %}未設定{% endif %}</td>
+                                        <td>{{ ac.cleaning_type or '未設定' }}</td>
+                                        <td>
+                                            <a href="{{ url_for('air_conditioners.edit', id=ac.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>エアコン情報が登録されていません。「追加」ボタンからエアコン情報を登録してください。
+                        </div>
+                    {% endif %}
+                </div>
+                {% if property.air_conditioners %}
+                <div class="card-footer">
+                    <a href="{{ url_for('air_conditioners.list_by_property', property_id=property.id) }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-list"></i> 全てのエアコンを表示
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 更新
+                        </button>
+                        <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg"></i> キャンセル
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">ヘルプ</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-0">
+                        物件情報を編集できます。<br>
+                        エアコン情報は「追加」ボタンから追加、各エアコンの編集ボタンから編集できます。<br>
+                        <span class="text-danger">※ 「*」のついた項目は必須入力です。</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 郵便番号検索機能
+    const postalCodeInput = document.getElementById('postal_code');
+    const addressInput = document.getElementById('address');
+    const postalSearchBtn = document.getElementById('postal-search-btn');
+    
+    // 郵便番号から住所を検索する関数
+    function searchAddressByPostalCode() {
+        const postalCode = postalCodeInput.value.replace('-', ''); // ハイフンを除去
+        
+        if (!postalCode || postalCode.length < 7) {
+            alert('郵便番号を正しく入力してください');
+            return;
+        }
+        
+        // 検索中の表示
+        postalSearchBtn.disabled = true;
+        postalSearchBtn.textContent = '検索中...';
+        
+        // 郵便番号検索API（日本郵便のAPIを利用）
+        fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`)
+            .then(response => response.json())
+            .then(data => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                
+                if (data.status === 200 && data.results) {
+                    const result = data.results[0];
+                    // 住所を組み立て（都道府県 + 市区町村 + 町名）
+                    const address = `${result.address1}${result.address2}${result.address3}`;
+                    addressInput.value = address;
+                } else {
+                    alert('該当する住所が見つかりませんでした');
+                }
+            })
+            .catch(error => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                console.error('郵便番号検索エラー:', error);
+                alert('住所検索に失敗しました');
+            });
+    }
+    
+    // 郵便番号検索ボタンクリック時の処理
+    postalSearchBtn.addEventListener('click', searchAddressByPostalCode);
+    
+    // 郵便番号入力欄でEnterキー押下時の処理
+    postalCodeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // フォーム送信を防止
+            searchAddressByPostalCode();
+        }
+    });
+    
+    // 郵便番号入力時に自動でハイフンを追加
+    postalCodeInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // 数字とハイフン以外を除去
+        value = value.replace(/[^\d-]/g, '');
+        
+        // ハイフンの位置を調整
+        if (value.length > 3 && !value.includes('-')) {
+            value = value.slice(0, 3) + '-' + value.slice(3);
+        }
+        
+        // 最大8文字（ハイフン含む）
+        if (value.length > 8) {
+            value = value.slice(0, 8);
+        }
+        
+        e.target.value = value;
+    });
+});
+</script>
+{% endblock %} 

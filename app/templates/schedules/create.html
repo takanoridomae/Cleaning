@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}新規スケジュール作成{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">新規スケジュール作成</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('schedules.list') }}">スケジュール管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">新規作成</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">スケジュール詳細</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="title" class="form-label">タイトル <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="description" class="form-label">説明</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">開始日 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="start_time" class="form-label">開始時刻</label>
+                            <input type="time" class="form-control" id="start_time" name="start_time" value="09:00">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">終了日</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="end_time" class="form-label">終了時刻</label>
+                            <input type="time" class="form-control" id="end_time" name="end_time" value="18:00">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="all_day" name="all_day">
+                                <label class="form-check-label" for="all_day">終日</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="priority" class="form-label">優先度</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="low">低</option>
+                                <option value="normal" selected>標準</option>
+                                <option value="high">高</option>
+                                <option value="urgent">緊急</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="customer_id" class="form-label">関連顧客</label>
+                            <select class="form-select" id="customer_id" name="customer_id">
+                                <option value="">-- 選択してください --</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}">{{ customer.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="property_id" class="form-label">関連物件</label>
+                            <select class="form-select" id="property_id" name="property_id">
+                                <option value="">-- 選択してください --</option>
+                                {% for property in properties %}
+                                <option value="{{ property.id }}" data-customer-id="{{ property.customer_id }}">
+                                    {{ property.customer.name }} - {{ property.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="report_id" class="form-label">関連報告書</label>
+                            <select class="form-select" id="report_id" name="report_id">
+                                <option value="">-- 選択してください --</option>
+                                {% for report in reports %}
+                                <option value="{{ report.id }}" data-customer-id="{{ report.property.customer_id }}" data-property-id="{{ report.property_id }}">
+                                    #{{ report.id }} - {{ report.property.customer.name }} - {{ report.property.name }} ({{ report.date.strftime('%Y/%m/%d') if report.date else '未設定' }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">報告書を選択すると、関連する顧客・物件が自動的に設定されます</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check"></i> 作成
+                                </button>
+                                <a href="{{ url_for('schedules.list') }}" class="btn btn-secondary">
+                                    <i class="bi bi-x"></i> キャンセル
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">ヘルプ</h6>
+            </div>
+            <div class="card-body">
+                <h6>スケジュール作成のヒント</h6>
+                <ul class="small">
+                    <li>タイトルは必須項目です</li>
+                    <li>終日の場合は時刻設定は無視されます</li>
+                    <li>関連顧客・物件を設定すると報告書との連携が可能です</li>
+                    <li>優先度により表示色が変わります</li>
+                </ul>
+                
+                <hr>
+                
+                <h6>優先度の色</h6>
+                <div class="small">
+                    <span class="badge bg-secondary">低</span>
+                    <span class="badge bg-secondary">標準</span>
+                    <span class="badge bg-warning">高</span>
+                    <span class="badge bg-danger">緊急</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const allDayCheckbox = document.getElementById('all_day');
+    const startTime = document.getElementById('start_time');
+    const endTime = document.getElementById('end_time');
+    const startDate = document.getElementById('start_date');
+    const endDate = document.getElementById('end_date');
+    const customerSelect = document.getElementById('customer_id');
+    const propertySelect = document.getElementById('property_id');
+
+    // 終日チェックボックスの処理
+    allDayCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            startTime.disabled = true;
+            endTime.disabled = true;
+            startTime.value = '00:00';
+            endTime.value = '23:59';
+        } else {
+            startTime.disabled = false;
+            endTime.disabled = false;
+            startTime.value = '09:00';
+            endTime.value = '18:00';
+        }
+    });
+
+    // 開始日が変更されたら終了日も同じ日に設定
+    startDate.addEventListener('change', function() {
+        if (!endDate.value) {
+            endDate.value = this.value;
+        }
+    });
+
+    // 顧客選択時に関連物件をフィルタリング
+    customerSelect.addEventListener('change', function() {
+        const selectedCustomerId = this.value;
+        const propertyOptions = propertySelect.querySelectorAll('option');
+        
+        propertyOptions.forEach(option => {
+            if (option.value === '') {
+                option.style.display = 'block';
+            } else {
+                const optionCustomerId = option.getAttribute('data-customer-id');
+                if (!selectedCustomerId || optionCustomerId === selectedCustomerId) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+        });
+        
+        // 現在選択されている物件が非表示になった場合はリセット
+        const currentPropertyOption = propertySelect.querySelector('option:checked');
+        if (currentPropertyOption && currentPropertyOption.style.display === 'none') {
+            propertySelect.value = '';
+        }
+    });
+
+    // 物件選択時に顧客を自動選択
+    propertySelect.addEventListener('change', function() {
+        if (this.value) {
+            const selectedOption = this.querySelector('option:checked');
+            const customerId = selectedOption.getAttribute('data-customer-id');
+            if (customerId) {
+                customerSelect.value = customerId;
+            }
+        }
+    });
+
+    // 報告書選択時に関連する顧客・物件を自動設定
+    const reportSelect = document.getElementById('report_id');
+    reportSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        
+        if (this.value && selectedOption) {
+            const customerId = selectedOption.getAttribute('data-customer-id');
+            const propertyId = selectedOption.getAttribute('data-property-id');
+            
+            // 顧客を自動設定
+            if (customerId) {
+                customerSelect.value = customerId;
+                // 顧客変更イベントを発火して物件フィルタリングを実行
+                customerSelect.dispatchEvent(new Event('change'));
+            }
+            
+            // 物件を自動設定
+            if (propertyId) {
+                propertySelect.value = propertyId;
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

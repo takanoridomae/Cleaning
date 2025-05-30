@@ -1,0 +1,198 @@
+/* ダッシュボード専用スタイル */
+
+.stats-cards .card {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.stats-cards .card:hover {
+  transform: translateY(-5px);
+}
+
+.stats-cards .card-body {
+  padding: 1.5rem;
+}
+
+.stats-cards .card i {
+  opacity: 0.7;
+}
+
+.stats-cards .card a {
+  display: inline-block;
+  margin-top: 10px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* 最近のデータカード */
+.recent-data-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-data-card .card-body {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.recent-data-card .table-responsive {
+  max-height: 300px;
+}
+
+.recent-data-card .table th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 1;
+}
+
+/* クイックアクセスボタン */
+.quick-access-button {
+  height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.quick-access-button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.quick-access-button i {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+/* 最近の活動 */
+.recent-activity {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .stats-cards .card {
+    margin-bottom: 15px;
+  }
+  
+  .stats-cards .card-body {
+    padding: 1rem;
+  }
+  
+  .stats-cards h2 {
+    font-size: 1.5rem;
+  }
+  
+  .quick-access-button {
+    height: 120px;
+    margin-bottom: 15px;
+  }
+  
+  .quick-access-button i {
+    font-size: 2rem;
+  }
+  
+  .table-responsive table {
+    font-size: 0.85rem;
+  }
+  
+  .card-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .card-header h5 {
+    font-size: 1rem;
+  }
+  
+  /* モバイルでの3カラムレイアウト調整 */
+  .row > .col-md-4 {
+    margin-bottom: 1rem;
+  }
+}
+
+/* タブレット対応 */
+@media (min-width: 769px) and (max-width: 991px) {
+  .stats-cards .col-md-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    margin-bottom: 20px;
+  }
+  
+  .quick-access-button {
+    height: 130px;
+  }
+  
+  /* タブレットでの3カラムレイアウト調整 */
+  .row > .col-md-4 {
+    flex: 0 0 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  .recent-data-card .table-responsive {
+    max-height: 250px;
+  }
+}
+
+/* テーブルコンテナのスタイル */
+.table-responsive {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* アニメーション効果 */
+.row, .card {
+  animation: fadeIn 0.6s ease forwards;
+  opacity: 0;
+}
+
+.row:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.row:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.row:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+/* グラフエリア */
+.chart-container {
+  position: relative;
+  height: 300px;
+  margin-bottom: 1rem;
+}
+
+/* ダッシュボード内のバッジ */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.4em 0.65em;
+  font-weight: 500;
+} 

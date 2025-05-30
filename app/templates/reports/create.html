@@ -1,0 +1,831 @@
+{% extends 'base.html' %}
+
+{% block title %}報告書作成{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>報告書作成</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-3">
+                    <label for="property_id" class="form-label">物件</label>
+                    <select class="form-select" id="property_id" name="property_id" required>
+                        <option value="">選択してください</option>
+                        {% for property in properties %}
+                        <option value="{{ property.id }}" data-address="{{ property.address or '' }}" {% if default_property_id and property.id|string == default_property_id|string %}selected{% endif %}>{{ property.customer.name }} - {{ property.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="date" class="form-label">報告書日付</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="work_address" class="form-label">作業住所</label>
+                    <input type="text" class="form-control" id="work_address" name="work_address" value="{{ default_address or '' }}">
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">作業時間</h4>
+                        <button type="button" class="btn btn-sm btn-primary" id="add-work-time">追加</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="work-times-container">
+                            <div class="work-time-entry mb-3 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label">作業日</label>
+                                        <input type="date" class="form-control" name="work_dates[]" required>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label class="form-label">開始時間</label>
+                                        <input type="time" class="form-control" name="start_times[]" required>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label class="form-label">終了時間</label>
+                                        <input type="time" class="form-control" name="end_times[]" required>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end mb-2">
+                                        <button type="button" class="btn btn-danger remove-work-time" disabled>削除</button>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label class="form-label">備考</label>
+                                        <textarea class="form-control" name="work_time_notes[]" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">エアコン情報と作業内容</h4>
+                        <div>
+                            <a href="{{ url_for('reports.work_items') }}" class="btn btn-sm btn-outline-secondary me-2">作業項目管理</a>
+                            <button type="button" class="btn btn-sm btn-primary" id="add-aircon-section">エアコン情報追加</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="aircon-sections-container">
+                            <!-- エアコン情報セクション -->
+                            <div class="aircon-section mb-4 p-3 border rounded">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">エアコン情報</label>
+                                        <select class="form-select aircon-select" name="aircon_section_ids[]">
+                                            <option value="">選択してください</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8 d-flex align-items-end justify-content-between">
+                                        <div class="aircon-info d-none">
+                                            <span class="badge bg-secondary me-2 ac-type"></span>
+                                            <span class="badge bg-info me-2 ac-manufacturer"></span>
+                                            <span class="badge bg-light text-dark me-2 ac-location"></span>
+                                        </div>
+                                        <div>
+                                            <button type="button" class="btn btn-outline-primary btn-sm add-work-detail">作業項目追加</button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-aircon-section" disabled>削除</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 作業内容エントリーコンテナ -->
+                                <div class="work-details-container">
+                                    <div class="work-detail-entry mb-3 p-3 border border-light rounded">
+                                        <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-2">
+                                                <label class="form-label">作業項目</label>
+                                                <select class="form-select work-item-select" name="work_item_ids[]">
+                                                    <option value="">選択してください</option>
+                                                    {% for item in work_items %}
+                                                    <option value="{{ item.id }}">{{ item.name }}</option>
+                                                    {% endfor %}
+                                                    <option value="other">その他（手入力）</option>
+                                                </select>
+                                                <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" placeholder="作業項目を入力" style="display: none;">
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <label class="form-label">作業内容</label>
+                                                <textarea class="form-control" name="descriptions[]" rows="2" required></textarea>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
+                                                    <i class="bi bi-clock-history"></i> 過去のデータから選択
+                                                </button>
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">作業確認</label>
+                                                <div class="d-flex">
+                                                    <input type="text" class="form-control" name="confirmations[]">
+                                                    <button type="button" class="btn btn-danger remove-work-detail ms-1" disabled>削除</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="note" class="form-label">備考</label>
+                    <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('reports.list') }}" class="btn btn-secondary">キャンセル</a>
+                    <button type="submit" class="btn btn-primary">作成</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 過去の作業内容選択モーダル -->
+<div class="modal fade" id="pastDescriptionsModal" tabindex="-1" aria-labelledby="pastDescriptionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pastDescriptionsModalLabel">過去の作業内容から選択</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchPastDescriptions" placeholder="検索キーワードを入力">
+                        <button class="btn btn-outline-secondary" type="button" id="searchPastDescriptionsBtn">検索</button>
+                    </div>
+                </div>
+                <div id="pastDescriptionsList" class="list-group"></div>
+                <div id="noResultsMessage" class="alert alert-info mt-3" style="display: none;">
+                    該当する作業内容が見つかりませんでした。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 物件選択時に住所を自動設定とエアコン情報を取得
+    document.getElementById('property_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const propertyId = this.value;
+        const address = selectedOption.getAttribute('data-address');
+        document.getElementById('work_address').value = address || '';
+        
+        // エアコン情報を取得して各セレクトボックスに設定
+        if (propertyId) {
+            // エアコン情報APIを呼び出し
+            fetch(`/air_conditioners/api/property/${propertyId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // すべてのエアコン選択セレクトボックスを更新
+                    document.querySelectorAll('.aircon-select').forEach(select => {
+                        // 現在の選択値を保持
+                        const currentValue = select.value;
+                        
+                        // セレクトボックスをクリア
+                        select.innerHTML = '<option value="">選択してください</option>';
+                        
+                        // エアコン情報をセレクトボックスに追加
+                        data.air_conditioners.forEach(ac => {
+                            const option = document.createElement('option');
+                            option.value = ac.id;
+                            option.textContent = `${ac.manufacturer || '不明'} ${ac.model_number || '不明'} (${ac.location || '不明'})`;
+                            option.dataset.acType = ac.ac_type || '';
+                            option.dataset.manufacturer = ac.manufacturer || '';
+                            option.dataset.location = ac.location || '';
+                            option.dataset.modelNumber = ac.model_number || '';
+                            select.appendChild(option);
+                            
+                            // 元の値を保持
+                            if (currentValue == ac.id) {
+                                option.selected = true;
+                            }
+                        });
+                        
+                        // 変更イベントを発火させて、初期状態を設定
+                        select.dispatchEvent(new Event('change'));
+                    });
+                })
+                .catch(error => console.error('エアコン情報の取得に失敗しました:', error));
+        } else {
+            // 物件が選択されていない場合、エアコン選択をクリア
+            document.querySelectorAll('.aircon-select').forEach(select => {
+                select.innerHTML = '<option value="">選択してください</option>';
+                // 変更イベントを発火
+                select.dispatchEvent(new Event('change'));
+            });
+        }
+    });
+    
+    // エアコン選択時の処理
+    function handleAirconSelectChange(select) {
+        const airconSection = select.closest('.aircon-section');
+        const airconInfo = airconSection.querySelector('.aircon-info');
+        const acTypeSpan = airconInfo.querySelector('.ac-type');
+        const acManufacturerSpan = airconInfo.querySelector('.ac-manufacturer');
+        const acLocationSpan = airconInfo.querySelector('.ac-location');
+        
+        // 選択されたエアコン情報を取得
+        if (select.value) {
+            const selectedOption = select.options[select.selectedIndex];
+            
+            // エアコン情報を表示
+            acTypeSpan.textContent = selectedOption.dataset.acType || '';
+            acManufacturerSpan.textContent = selectedOption.dataset.manufacturer || '';
+            acLocationSpan.textContent = selectedOption.dataset.location || '';
+            airconInfo.classList.remove('d-none');
+            
+            // このセクション内の全ての作業内容エントリのエアコンIDを設定
+            airconSection.querySelectorAll('.work-detail-ac-id').forEach(hiddenInput => {
+                hiddenInput.value = select.value;
+                console.log(`エアコンセレクト変更: セクション内のhiddenInput値を${select.value}に設定`);
+            });
+        } else {
+            // エアコン情報を非表示
+            airconInfo.classList.add('d-none');
+            
+            // エアコンIDをクリア
+            airconSection.querySelectorAll('.work-detail-ac-id').forEach(hiddenInput => {
+                hiddenInput.value = '';
+                console.log(`エアコンセレクト変更: セクション内のhiddenInput値をクリア`);
+            });
+        }
+    }
+    
+    // 初期表示時に選択済みの物件の住所を設定
+    document.addEventListener('DOMContentLoaded', function() {
+        // 報告書日付に本日の日付を自動設定
+        const dateInput = document.getElementById('date');
+        if (!dateInput.value) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayString = `${year}-${month}-${day}`;
+            dateInput.value = todayString;
+        }
+        
+        // 初期表示時の作業日フィールドにも本日の日付を自動設定
+        const initialWorkDateInput = document.querySelector('input[name="work_dates[]"]');
+        if (initialWorkDateInput && !initialWorkDateInput.value) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayString = `${year}-${month}-${day}`;
+            initialWorkDateInput.value = todayString;
+        }
+        
+        const propertySelect = document.getElementById('property_id');
+        if (propertySelect.selectedIndex > 0) {
+            const selectedOption = propertySelect.options[propertySelect.selectedIndex];
+            const address = selectedOption.getAttribute('data-address');
+            // 現在の住所が空の場合のみ設定
+            const workAddressInput = document.getElementById('work_address');
+            if (!workAddressInput.value) {
+                workAddressInput.value = address || '';
+            }
+            
+            // 物件が選択済みの場合、エアコン情報も取得
+            propertySelect.dispatchEvent(new Event('change'));
+        }
+        
+        // エアコン選択セレクトボックスにイベントリスナーを追加
+        document.querySelectorAll('.aircon-select').forEach(select => {
+            select.addEventListener('change', function() {
+                handleAirconSelectChange(this);
+            });
+        });
+        
+        // 作業項目選択セレクトボックスにイベントリスナーを追加
+        document.querySelectorAll('.work-item-select').forEach(select => {
+            select.addEventListener('change', function() {
+                handleWorkItemSelectChange(this);
+            });
+        });
+        
+        // 作業項目追加ボタンにイベントリスナーを追加
+        document.querySelectorAll('.add-work-detail').forEach(button => {
+            button.addEventListener('click', function() {
+                addWorkDetail(this);
+            });
+        });
+        
+        // 削除ボタンにイベントリスナーを追加
+        document.querySelectorAll('.remove-work-detail:not([disabled])').forEach(button => {
+            button.addEventListener('click', function() {
+                removeWorkDetail(this);
+            });
+        });
+        
+        document.querySelectorAll('.remove-aircon-section:not([disabled])').forEach(button => {
+            button.addEventListener('click', function() {
+                removeAirconSection(this);
+            });
+        });
+        
+        updateRemoveButtons();
+        
+        // 過去の作業内容選択ボタンにイベントリスナーを追加
+        document.querySelectorAll('.show-past-descriptions').forEach(button => {
+            button.addEventListener('click', function(e) {
+                // クリックされたボタンに関連する作業内容テキストエリアを保存
+                window.currentDescriptionTextarea = this.previousElementSibling;
+                
+                // 作業項目IDを取得（もし選択されていれば）
+                const workItemSelect = this.closest('.work-detail-entry').querySelector('.work-item-select');
+                const workItemId = workItemSelect ? workItemSelect.value : '';
+                
+                // 既存のモーダル関連要素をクリーンアップ
+                cleanupModal();
+                
+                // 過去の作業内容を取得する
+                fetchPastDescriptions('', workItemId);
+                
+                // モーダルを表示
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: true,
+                    keyboard: true
+                });
+                modal.show();
+                
+                // デフォルトの動作を停止
+                e.preventDefault();
+            });
+        });
+        
+        // 閉じるボタンにイベントリスナーを追加
+        document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('モーダル閉じるボタンがクリックされました');
+                
+                // モーダル要素を取得
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                
+                // Bootstrapモーダルインスタンスを取得し閉じる
+                const bsModal = bootstrap.Modal.getInstance(modalElement);
+                if (bsModal) {
+                    bsModal.hide();
+                    console.log('モーダルを非表示にしました');
+                }
+                
+                // 完全にクリーンアップ（タイミング調整）
+                setTimeout(() => {
+                    cleanupModal();
+                    console.log('クリーンアップを完了しました');
+                }, 300);
+            });
+        });
+        
+        // 検索ボタンにイベントリスナーを追加
+        document.getElementById('searchPastDescriptionsBtn').addEventListener('click', function() {
+            const searchTerm = document.getElementById('searchPastDescriptions').value;
+            const workItemSelect = window.currentDescriptionTextarea.closest('.work-detail-entry').querySelector('.work-item-select');
+            const workItemId = workItemSelect ? workItemSelect.value : '';
+            fetchPastDescriptions(searchTerm, workItemId);
+        });
+        
+        // 検索入力欄でEnterキーを押した場合も検索実行
+        document.getElementById('searchPastDescriptions').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('searchPastDescriptionsBtn').click();
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // 作業時間の追加
+    document.getElementById('add-work-time').addEventListener('click', function() {
+        const container = document.getElementById('work-times-container');
+        const entries = container.querySelectorAll('.work-time-entry');
+        
+        // 既存の要素をクローンして値をクリア
+        const newEntry = entries[0].cloneNode(true);
+        newEntry.querySelectorAll('input, textarea').forEach(input => input.value = '');
+        
+        // 新しい作業日フィールドに本日の日付を自動設定
+        const workDateInput = newEntry.querySelector('input[name="work_dates[]"]');
+        if (workDateInput) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayString = `${year}-${month}-${day}`;
+            workDateInput.value = todayString;
+        }
+        
+        // 削除ボタンを有効化
+        const removeButton = newEntry.querySelector('.remove-work-time');
+        removeButton.disabled = false;
+        removeButton.addEventListener('click', function() {
+            container.removeChild(newEntry);
+            updateRemoveButtons();
+        });
+        
+        container.appendChild(newEntry);
+        updateRemoveButtons();
+    });
+    
+    // エアコン情報セクションの追加
+    document.getElementById('add-aircon-section').addEventListener('click', function() {
+        const container = document.getElementById('aircon-sections-container');
+        const sections = container.querySelectorAll('.aircon-section');
+        
+        // 既存のセクションをクローン
+        const newSection = sections[0].cloneNode(true);
+        
+        // エアコン選択をリセット
+        const airconSelect = newSection.querySelector('.aircon-select');
+        // 選択値のデータセットを保持するために、オプションのクローンを作成
+        const optionsHtml = document.querySelector('.aircon-select').innerHTML;
+        airconSelect.innerHTML = optionsHtml;
+        airconSelect.value = '';
+        
+        // エアコン情報の表示をリセット
+        const airconInfo = newSection.querySelector('.aircon-info');
+        airconInfo.classList.add('d-none');
+        
+        // 作業内容をクリア（最初の1つだけ残す）
+        const workDetailsContainer = newSection.querySelector('.work-details-container');
+        const workDetails = workDetailsContainer.querySelectorAll('.work-detail-entry');
+        
+        // 最初の作業内容以外を削除
+        for (let i = 1; i < workDetails.length; i++) {
+            workDetailsContainer.removeChild(workDetails[i]);
+        }
+        
+        // 残した作業内容をリセット
+        const firstWorkDetail = workDetailsContainer.querySelector('.work-detail-entry');
+        firstWorkDetail.querySelectorAll('input, textarea, select').forEach(input => {
+            if (input.classList.contains('work-detail-ac-id')) {
+                input.value = airconSelect.value;
+            } else if (input.type !== 'button') {
+                input.value = '';
+            }
+        });
+        
+        // その他入力欄を隠す
+        const workItemText = firstWorkDetail.querySelector('.work-item-text');
+        workItemText.style.display = 'none';
+        
+        // ボタンのイベントハンドラを設定
+        const addWorkDetailButton = newSection.querySelector('.add-work-detail');
+        addWorkDetailButton.addEventListener('click', function() {
+            addWorkDetail(this);
+        });
+        
+        // 削除ボタンを有効化
+        const removeButton = newSection.querySelector('.remove-aircon-section');
+        removeButton.disabled = false;
+        removeButton.addEventListener('click', function() {
+            removeAirconSection(this);
+        });
+        
+        // 作業内容の削除ボタンにイベントリスナーを追加
+        newSection.querySelectorAll('.remove-work-detail').forEach(button => {
+            button.disabled = true; // 最初は1つしかないので無効化
+            button.addEventListener('click', function() {
+                removeWorkDetail(this);
+            });
+        });
+        
+        // エアコン選択にイベントリスナーを追加
+        airconSelect.addEventListener('change', function() {
+            handleAirconSelectChange(this);
+        });
+        
+        // 作業項目選択にイベントリスナーを追加
+        newSection.querySelectorAll('.work-item-select').forEach(select => {
+            select.addEventListener('change', function() {
+                handleWorkItemSelectChange(this);
+            });
+        });
+        
+        // 過去のデータから選択ボタンのイベントリスナーを追加
+        newSection.querySelectorAll('.show-past-descriptions').forEach(button => {
+            button.addEventListener('click', function(e) {
+                console.log('新しいセクション内の「過去のデータから選択」ボタンがクリックされました');
+                
+                // クリックされたボタンに関連する作業内容テキストエリアを保存
+                window.currentDescriptionTextarea = this.previousElementSibling;
+                console.log('作業内容テキストエリア参照を設定:', window.currentDescriptionTextarea);
+                
+                // 作業項目IDを取得（もし選択されていれば）
+                const workItemSelect = this.closest('.work-detail-entry').querySelector('.work-item-select');
+                const workItemId = workItemSelect ? workItemSelect.value : '';
+                console.log(`選択された作業項目ID: ${workItemId}`);
+                
+                // 既存のモーダル関連要素をクリーンアップ
+                cleanupModal();
+                
+                // 過去の作業内容を取得する
+                fetchPastDescriptions('', workItemId);
+                
+                // モーダルを表示
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: true,
+                    keyboard: true
+                });
+                modal.show();
+                
+                // デフォルトの動作を停止
+                e.preventDefault();
+            });
+        });
+        
+        // コンテナに追加
+        container.appendChild(newSection);
+        updateRemoveButtons();
+    });
+    
+    // 作業項目の追加
+    function addWorkDetail(button) {
+        const airconSection = button.closest('.aircon-section');
+        const airconSelect = airconSection.querySelector('.aircon-select');
+        const container = airconSection.querySelector('.work-details-container');
+        const entries = container.querySelectorAll('.work-detail-entry');
+        
+        // 既存の要素をクローンして値をクリア
+        const newEntry = entries[0].cloneNode(true);
+        newEntry.querySelectorAll('input, textarea, select').forEach(input => {
+            if (input.classList.contains('work-detail-ac-id')) {
+                input.value = airconSelect.value;
+            } else if (input.type !== 'button') {
+                input.value = '';
+            }
+        });
+        
+        // その他入力欄を隠す
+        const workItemText = newEntry.querySelector('.work-item-text');
+        workItemText.style.display = 'none';
+        
+        // セレクトボックスにイベントリスナーを追加
+        const workItemSelect = newEntry.querySelector('.work-item-select');
+        workItemSelect.addEventListener('change', function() {
+            handleWorkItemSelectChange(this);
+        });
+        
+        // 削除ボタンを有効化
+        const removeButton = newEntry.querySelector('.remove-work-detail');
+        removeButton.disabled = false;
+        removeButton.addEventListener('click', function() {
+            removeWorkDetail(this);
+        });
+        
+        // 過去のデータから選択ボタンにイベントリスナーを追加
+        const pastDescButton = newEntry.querySelector('.show-past-descriptions');
+        if (pastDescButton) {
+            pastDescButton.addEventListener('click', function(e) {
+                console.log('新規追加された作業内容の「過去のデータから選択」ボタンがクリックされました');
+                
+                // クリックされたボタンに関連する作業内容テキストエリアを保存
+                window.currentDescriptionTextarea = this.previousElementSibling;
+                console.log('作業内容テキストエリア参照を設定:', window.currentDescriptionTextarea);
+                
+                // 作業項目IDを取得（もし選択されていれば）
+                const workItemSelect = this.closest('.work-detail-entry').querySelector('.work-item-select');
+                const workItemId = workItemSelect ? workItemSelect.value : '';
+                console.log(`選択された作業項目ID: ${workItemId}`);
+                
+                // 既存のモーダル関連要素をクリーンアップ
+                cleanupModal();
+                
+                // 過去の作業内容を取得する
+                fetchPastDescriptions('', workItemId);
+                
+                // モーダルを表示
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: true,
+                    keyboard: true
+                });
+                modal.show();
+                
+                // デフォルトの動作を停止
+                e.preventDefault();
+            });
+            
+            console.log('「過去のデータから選択」ボタンにイベントリスナーを追加しました');
+        }
+        
+        container.appendChild(newEntry);
+        updateRemoveButtons();
+    }
+    
+    // 作業項目の削除
+    function removeWorkDetail(button) {
+        const entry = button.closest('.work-detail-entry');
+        const container = entry.parentNode;
+        container.removeChild(entry);
+        updateRemoveButtons();
+    }
+    
+    // エアコンセクションの削除
+    function removeAirconSection(button) {
+        const section = button.closest('.aircon-section');
+        const container = section.parentNode;
+        container.removeChild(section);
+        updateRemoveButtons();
+    }
+    
+    // 削除ボタンの状態更新
+    function updateRemoveButtons() {
+        // 作業時間の削除ボタン
+        const workTimeEntries = document.querySelectorAll('.work-time-entry');
+        const workTimeButtons = document.querySelectorAll('.remove-work-time');
+        
+        if (workTimeEntries.length === 1) {
+            workTimeButtons[0].disabled = true;
+        } else {
+            workTimeButtons.forEach(button => button.disabled = false);
+        }
+        
+        // エアコンセクションの削除ボタン
+        const airconSections = document.querySelectorAll('.aircon-section');
+        const airconButtons = document.querySelectorAll('.remove-aircon-section');
+        
+        if (airconSections.length === 1) {
+            airconButtons[0].disabled = true;
+        } else {
+            airconButtons.forEach(button => button.disabled = false);
+        }
+        
+        // 各エアコンセクション内の作業内容の削除ボタン
+        airconSections.forEach(section => {
+            const workDetails = section.querySelectorAll('.work-detail-entry');
+            const workDetailButtons = section.querySelectorAll('.remove-work-detail');
+            
+            if (workDetails.length === 1) {
+                workDetailButtons[0].disabled = true;
+            } else {
+                workDetailButtons.forEach(button => button.disabled = false);
+            }
+        });
+    }
+    
+    // 作業項目選択時の処理
+    function handleWorkItemSelectChange(selectElement) {
+        const parentRow = selectElement.closest('.work-detail-entry');
+        const textInput = parentRow.querySelector('.work-item-text');
+        
+        if (selectElement.value === 'other') {
+            textInput.style.display = 'block';
+            textInput.required = true;
+        } else {
+            textInput.style.display = 'none';
+            textInput.required = false;
+            textInput.value = '';
+        }
+    }
+    
+    // 過去の作業内容を取得する関数
+    function fetchPastDescriptions(searchTerm, workItemId) {
+        const url = `/reports/api/past_descriptions?term=${encodeURIComponent(searchTerm || '')}&work_item_id=${encodeURIComponent(workItemId || '')}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const listContainer = document.getElementById('pastDescriptionsList');
+                const noResultsMessage = document.getElementById('noResultsMessage');
+                
+                // リストをクリア
+                listContainer.innerHTML = '';
+                
+                if (data.length > 0) {
+                    // 結果がある場合はリストに表示
+                    data.forEach(item => {
+                        const listItem = document.createElement('button');
+                        listItem.className = 'list-group-item list-group-item-action';
+                        listItem.textContent = item.text;
+                        listItem.addEventListener('click', function() {
+                            console.log(`選択された作業内容: ${item.text}`);
+                            // 選択された作業内容をテキストエリアに設定
+                            if (window.currentDescriptionTextarea) {
+                                window.currentDescriptionTextarea.value = item.text;
+                                console.log('作業内容を設定しました');
+                                
+                                // モーダルを完全に閉じる
+                                const modalElement = document.getElementById('pastDescriptionsModal');
+                                
+                                // Bootstrapモーダルインスタンスを取得し閉じる
+                                const bsModal = bootstrap.Modal.getInstance(modalElement);
+                                if (bsModal) {
+                                    bsModal.hide();
+                                    console.log('モーダルを非表示にしました');
+                                }
+                                
+                                // バックドロップと関連要素を完全に削除（タイミング調整）
+                                setTimeout(() => {
+                                    cleanupModal();
+                                    console.log('クリーンアップを完了しました');
+                                }, 300);
+                            } else {
+                                console.error('作業内容テキストエリアが見つかりません');
+                            }
+                        });
+                        listContainer.appendChild(listItem);
+                    });
+                    noResultsMessage.style.display = 'none';
+                } else {
+                    // 結果がない場合はメッセージを表示
+                    noResultsMessage.style.display = 'block';
+                }
+            })
+            .catch(error => console.error('過去の作業内容の取得に失敗しました:', error));
+    }
+    
+    // モーダル関連の要素を完全にクリーンアップする関数
+    function cleanupModal() {
+        console.log('モーダルのクリーンアップを実行します');
+        
+        // バックドロップ要素を削除
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            console.log('バックドロップ要素を削除しています');
+            backdrop.remove();
+        });
+        
+        // モーダル要素のスタイルをリセット
+        const modalElement = document.getElementById('pastDescriptionsModal');
+        if (modalElement) {
+            console.log('モーダル要素のスタイルをリセットしています');
+            modalElement.style.display = 'none';
+            modalElement.classList.remove('show');
+            modalElement.setAttribute('aria-hidden', 'true');
+            modalElement.removeAttribute('aria-modal');
+            modalElement.removeAttribute('role');
+        }
+        
+        // bodyのスタイルをリセット
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // 追加: すべてのスクロール関連スタイルをリセット
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.paddingRight = '';
+    }
+
+    // フォーム送信前に確認
+    document.querySelector('form').addEventListener('submit', function(e) {
+        console.log('フォーム送信前の処理を実行');
+        
+        // エアコン選択の同期を確認
+        document.querySelectorAll('.aircon-section').forEach(section => {
+            const airconSelect = section.querySelector('.aircon-select');
+            const workDetails = section.querySelectorAll('.work-detail-entry');
+            
+            if (airconSelect && airconSelect.value) {
+                // エアコンが選択されている場合、すべての作業内容エントリにそのエアコンIDを設定
+                workDetails.forEach(entry => {
+                    const hiddenInput = entry.querySelector('.work-detail-ac-id');
+                    if (hiddenInput) {
+                        hiddenInput.value = airconSelect.value;
+                        console.log(`フォーム送信前: エアコンID ${airconSelect.value} を hidden に設定`);
+                    }
+                });
+            }
+        });
+        
+        // 作業項目のバリデーション
+        let isValid = true;
+        document.querySelectorAll('.work-item-select').forEach(select => {
+            if (select.value === 'other') {
+                const textInput = select.parentNode.querySelector('.work-item-text');
+                if (!textInput.value.trim()) {
+                    alert('「その他」を選択した場合は、作業項目を入力してください');
+                    e.preventDefault();
+                    isValid = false;
+                    return false;
+                }
+            }
+        });
+        
+        if (isValid) {
+            // フォームデータをログ出力（デバッグ用）
+            const formData = new FormData(this);
+            console.log('フォーム送信データ:');
+            for (let pair of formData.entries()) {
+                if (pair[0] === 'air_conditioner_ids[]') {
+                    console.log('  ' + pair[0] + ': ' + pair[1]);
+                }
+            }
+        }
+    });
+</script>
+{% endblock %} 

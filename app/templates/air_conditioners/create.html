@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}エアコン情報登録 - {{ property.name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">エアコン情報登録</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.view', id=property.id) }}">{{ property.name }}</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('air_conditioners.list_by_property', property_id=property.id) }}">エアコン一覧</a></li>
+                <li class="breadcrumb-item active" aria-current="page">新規登録</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">エアコン情報登録フォーム</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    <div class="mb-3">
+                        <label for="ac_type" class="form-label">エアコン種別</label>
+                        <input type="text" class="form-control" id="ac_type" name="ac_type" placeholder="壁掛け、天井埋込み等" autocomplete="on">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="manufacturer" class="form-label">メーカー</label>
+                        <input type="text" class="form-control" id="manufacturer" name="manufacturer" placeholder="ダイキン、パナソニック等" autocomplete="on">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="location" class="form-label"><strong>設置場所</strong></label>
+                        <input type="text" class="form-control" id="location" name="location" placeholder="リビング、寝室、事務所等" autocomplete="on">
+                        <div class="form-text">設置場所を入力してください（例：リビング、寝室）</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="model_number" class="form-label">品番</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="model_number" name="model_number" placeholder="S36XTES-W等">
+                            <button type="button" class="btn btn-outline-info" id="model-search-btn" title="品番をWebで調べる">
+                                <i class="bi bi-search"></i> Web検索
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="quantity" class="form-label">台数</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" value="1" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="unit_price" class="form-label">単価（円）</label>
+                            <input type="number" class="form-control" id="unit_price" name="unit_price" placeholder="10000" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="total_amount" class="form-label">合計金額（円）</label>
+                            <input type="number" class="form-control" id="total_amount" name="total_amount" placeholder="10000" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cleaning_type" class="form-label">クリーニング種別</label>
+                        <input type="text" class="form-control" id="cleaning_type" name="cleaning_type" placeholder="通常クリーニング、分解クリーニング等">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="note" class="form-label">備考</label>
+                        <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('air_conditioners.list_by_property', property_id=property.id) }}" class="btn btn-secondary me-md-2">キャンセル</a>
+                        <button type="submit" class="btn btn-primary">登録</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">物件情報</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">物件名</div>
+                    <div class="col-md-8">{{ property.name }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">お客様</div>
+                    <div class="col-md-8">
+                        <a href="{{ url_for('customers.view', id=property.customer_id) }}">
+                            {{ property.customer.name }}
+                        </a>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">住所</div>
+                    <div class="col-md-8">{{ property.address or '未設定' }}</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid">
+                    <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-building"></i> 物件詳細に戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">ヒント</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>すべての情報の入力は任意です。</li>
+                    <li>「単価」に金額を入力し「台数」を設定すると、自動的に「合計金額」が計算されます（JavaScript実装が必要）。</li>
+                    <li>または、直接「合計金額」を入力することもできます。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 単価と台数から合計金額を自動計算するスクリプト
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityInput = document.getElementById('quantity');
+    const unitPriceInput = document.getElementById('unit_price');
+    const totalAmountInput = document.getElementById('total_amount');
+    
+    function calculateTotal() {
+        const quantity = parseInt(quantityInput.value) || 0;
+        const unitPrice = parseInt(unitPriceInput.value) || 0;
+        
+        if (quantity > 0 && unitPrice > 0) {
+            totalAmountInput.value = quantity * unitPrice;
+        }
+    }
+    
+    quantityInput.addEventListener('input', calculateTotal);
+    unitPriceInput.addEventListener('input', calculateTotal);
+    
+    // 品番Web検索機能
+    const modelSearchBtn = document.getElementById('model-search-btn');
+    const modelNumberInput = document.getElementById('model_number');
+    const manufacturerInput = document.getElementById('manufacturer');
+    
+    modelSearchBtn.addEventListener('click', function() {
+        const modelNumber = modelNumberInput.value.trim();
+        const manufacturer = manufacturerInput.value.trim();
+        
+        let searchQuery = '';
+        if (modelNumber) {
+            // 品番が入力されている場合
+            if (manufacturer) {
+                searchQuery = `${manufacturer} ${modelNumber}`;
+            } else {
+                searchQuery = `${modelNumber}`;
+            }
+        } else {
+            alert('品番を入力してください');
+            return;
+        }
+        
+        // Google検索を新しいタブで開く
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+        window.open(searchUrl, '_blank');
+    });
+});
+</script>
+{% endblock %} 

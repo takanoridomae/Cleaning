@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}報告書詳細{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>報告書詳細</h2>
+    </div>
+    
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <a href="{{ url_for('reports.list') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 一覧に戻る
+            </a>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('reports.download_pdf', id=report.id) }}" class="btn btn-success" target="_blank" title="PDFをブラウザで表示・ダウンロードします">
+                <i class="bi bi-file-earmark-pdf"></i> PDF出力（閲覧用）
+            </a>
+            <a href="{{ url_for('reports.download_pdf', id=report.id, save=1) }}" class="btn btn-info" title="PDFをサーバー上に保存します（ダウンロードはされません）">
+                <i class="bi bi-save"></i> PDF保存（ファイル保存のみ）
+            </a>
+            <a href="{{ url_for('reports.edit', id=report.id) }}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> 編集
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash"></i> 削除
+            </button>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>基本情報</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th style="width: 35%">物件</th>
+                                <td>{{ report.property.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>顧客</th>
+                                <td>{{ report.property.customer.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>作業住所</th>
+                                <td>{{ report.work_address or '未設定' }}</td>
+                            </tr>
+                            <tr>
+                                <th>ステータス</th>
+                                <td>
+                                    {% if report.status == 'pending' %}
+                                        <span class="badge bg-warning">作成中</span>
+                                    {% elif report.status == 'completed' %}
+                                        <span class="badge bg-success">完了</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th style="width: 35%">報告書日付</th>
+                                <td>{{ report.date.strftime('%Y-%m-%d') if report.date }}</td>
+                            </tr>
+                            <tr>
+                                <th>作成日</th>
+                                <td>{{ report.created_at.strftime('%Y-%m-%d') if report.created_at }}</td>
+                            </tr>
+                            <tr>
+                                <th>更新日</th>
+                                <td>{{ report.updated_at.strftime('%Y-%m-%d') if report.updated_at }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if report.note %}
+                <h4 class="mt-4">備考</h4>
+                <div class="card">
+                    <div class="card-body">
+                        {{ report.note|nl2br }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>作業時間 ({{ work_times|length }}件)</h3>
+        </div>
+        <div class="card-body">
+            {% if work_times %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>作業日</th>
+                                <th>開始時間</th>
+                                <th>終了時間</th>
+                                <th>作業時間</th>
+                                <th>備考</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work_time in work_times %}
+                            <tr>
+                                <td>{{ work_time.work_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ work_time.start_time.strftime('%H:%M') }}</td>
+                                <td>{{ work_time.end_time.strftime('%H:%M') }}</td>
+                                <td>
+                                    {% set hours = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) // 60 %}
+                                    {% set minutes = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) % 60 %}
+                                    {{ hours }}時間{% if minutes > 0 %}{{ minutes }}分{% endif %}
+                                </td>
+                                <td>{{ work_time.note or '' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>作業時間の記録がありません</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>作業内容 ({{ work_details|length }}件)</h3>
+        </div>
+        <div class="card-body">
+            {% if work_details %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%">エアコン情報</th>
+                                <th style="width: 15%">作業項目</th>
+                                <th style="width: 40%">作業内容</th>
+                                <th style="width: 25%">作業確認</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for work_detail in work_details %}
+                            <tr>
+                                <td>
+                                    {% if work_detail.air_conditioner %}
+                                        {{ work_detail.air_conditioner.manufacturer or '不明' }} 
+                                        {{ work_detail.air_conditioner.model_number or '不明' }}
+                                        ({{ work_detail.air_conditioner.location or '不明' }})
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ work_detail.work_item_name }}</td>
+                                <td>{{ work_detail.description|nl2br }}</td>
+                                <td>{{ work_detail.confirmation or '' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>作業内容の記録がありません</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>写真 ({{ photo_pairs|length }}組)</h3>
+        </div>
+        <div class="card-body">
+            {% if photo_pairs %}
+                <div class="row mt-4">
+                    {% for before_photo, after_photo in photo_pairs %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>写真 #{{ loop.index }}</h5>
+                                    {% if before_photo and before_photo.room_name %}
+                                        <small class="text-muted">場所: {{ before_photo.room_name }}</small>
+                                    {% elif after_photo and after_photo.room_name %}
+                                        <small class="text-muted">場所: {{ after_photo.room_name }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body p-2">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <h6 class="text-center">施工前</h6>
+                                            {% if before_photo %}
+                                                <div class="image-container">
+                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                    {% if before_photo.filepath %}
+                                                        <img src="/uploads/{{ before_photo.filepath }}" class="img-fluid img-thumbnail" alt="{{ before_photo.caption }}">
+                                                    {% else %}
+                                                        <img src="/uploads/before/{{ before_photo.filename }}" class="img-fluid img-thumbnail" alt="{{ before_photo.caption }}">
+                                                    {% endif %}
+                                                    {% if before_photo.caption %}
+                                                        <div class="caption">
+                                                            <small>{{ before_photo.caption }}</small>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% else %}
+                                                <div class="no-image text-center">
+                                                    <p>施工前の写真なし</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-6">
+                                            <h6 class="text-center">施工後</h6>
+                                            {% if after_photo %}
+                                                <div class="image-container">
+                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                    {% if after_photo.filepath %}
+                                                        <img src="/uploads/{{ after_photo.filepath }}" class="img-fluid img-thumbnail" alt="{{ after_photo.caption }}">
+                                                    {% else %}
+                                                        <img src="/uploads/after/{{ after_photo.filename }}" class="img-fluid img-thumbnail" alt="{{ after_photo.caption }}">
+                                                    {% endif %}
+                                                    {% if after_photo.caption %}
+                                                        <div class="caption">
+                                                            <small>{{ after_photo.caption }}</small>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% else %}
+                                                <div class="no-image text-center">
+                                                    <p>施工後の写真なし</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if before_photo and before_photo.air_conditioner %}
+                                                <small class="text-muted">エアコン: {{ before_photo.air_conditioner.manufacturer }} {{ before_photo.air_conditioner.model_number }} ({{ before_photo.air_conditioner.location }})</small>
+                                            {% elif after_photo and after_photo.air_conditioner %}
+                                                <small class="text-muted">エアコン: {{ after_photo.air_conditioner.manufacturer }} {{ after_photo.air_conditioner.model_number }} ({{ after_photo.air_conditioner.location }})</small>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            {% if before_photo and before_photo.work_item %}
+                                                <small class="text-muted">作業項目: {{ before_photo.work_item.name }}</small>
+                                            {% elif after_photo and after_photo.work_item %}
+                                                <small class="text-muted">作業項目: {{ after_photo.work_item.name }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>写真が登録されていません</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 削除確認モーダル -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">削除確認</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>報告書 #{{ report.id }} を削除しますか？</p>
+                    <p class="text-danger fw-bold">この操作は取り消せません。報告書に関連するすべてのデータ（作業時間、作業内容、写真など）も削除されます。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <form action="{{ url_for('reports.delete_report', id=report.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">削除する</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

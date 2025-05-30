@@ -1,0 +1,88 @@
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 仮想環境
+venv/
+ENV/
+env/
+.env
+
+# Flaskインスタンス
+instance/
+instance/aircon_report.db
+
+# アップロードファイル
+uploads/*
+!uploads/before/
+!uploads/after/
+!uploads/thumbnails/
+uploads/before/*
+uploads/after/*
+uploads/thumbnails/*
+!uploads/before/.gitkeep
+!uploads/after/.gitkeep
+!uploads/thumbnails/.gitkeep
+
+# データベース
+*.db
+*.sqlite
+*.sqlite3
+
+# バックアップファイル（削除対象外バックアップも除外する場合）
+# db_backups/
+
+# 一時的なスクリプト結果ファイル
+scripts/development/*.json
+scripts/development/*.csv
+scripts/development/*.txt
+
+# ログファイル
+*.log
+
+# IDEとエディタ
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# Windowsファイル
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOSファイル
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# テスト関連
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/ 

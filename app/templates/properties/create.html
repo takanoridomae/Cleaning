@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}新規物件登録{% endblock %}
+
+{% block content %}
+<style>
+    .form-label.required:after {
+        content: " *";
+        color: red;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">新規物件登録</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item active" aria-current="page">新規登録</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<form method="post" id="property-form">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">基本情報</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label required">物件名</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="customer_id" class="form-label required">お客様</label>
+                        <select class="form-select" id="customer_id" name="customer_id" required>
+                            <option value="">選択してください</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="postal_code" class="form-label">郵便番号</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="postal_code" name="postal_code" placeholder="123-4567" maxlength="8">
+                                <button type="button" class="btn btn-outline-secondary" id="postal-search-btn">住所検索</button>
+                            </div>
+                            <div class="form-text">ハイフンあり（例：123-4567）</div>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="address" class="form-label">住所</label>
+                            <input type="text" class="form-control" id="address" name="address">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="reception_type" class="form-label">受付</label>
+                            <select class="form-select" id="reception_type" name="reception_type">
+                                <option value="">選択してください</option>
+                                <option value="LINE">LINE</option>
+                                <option value="電話">電話</option>
+                                <option value="クラマ">クラマ</option>
+                                <option value="おうち">おうち</option>
+                                <option value="クラベル">クラベル</option>
+                                <option value="ホームページ">ホームページ</option>
+                                <option value="紹介">紹介</option>
+                                <option value="チラシ">チラシ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="reception_detail" class="form-label">受付明細</label>
+                            <input type="text" class="form-control" id="reception_detail" name="reception_detail">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="note" class="form-label">備考</label>
+                        <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- エアコン情報セクション -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">エアコン情報</h5>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="add-aircon-btn">
+                        <i class="bi bi-plus"></i> 追加
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="aircon-container">
+                        <!-- エアコン情報入力フォームがここに動的に追加されます -->
+                    </div>
+                    <div id="no-aircon-message" class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>エアコン情報を追加するには「追加」ボタンをクリックしてください。
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 登録
+                        </button>
+                        <a href="{{ url_for('properties.list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg"></i> キャンセル
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">ヘルプ</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-0">
+                        物件情報と共にエアコン情報も登録できます。<br>
+                        物件登録後も、詳細画面からエアコン情報を追加・編集できます。<br>
+                        <span class="text-danger">※ 「*」のついた項目は必須入力です。</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- エアコン情報入力フォームのテンプレート -->
+<template id="aircon-template">
+    <div class="aircon-form card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+            <h6 class="mb-0">エアコン情報 #<span class="aircon-num"></span></h6>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-aircon-btn">
+                <i class="bi bi-trash"></i> 削除
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">エアコン種別</label>
+                    <input type="text" class="form-control" name="ac_types[]" placeholder="壁掛け、天井埋込み等">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">クリーニング種別</label>
+                    <input type="text" class="form-control" name="cleaning_types[]" placeholder="通常クリーニング、分解クリーニング等">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">メーカー</label>
+                    <input type="text" class="form-control" name="manufacturers[]" placeholder="ダイキン、パナソニック等">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">品番</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control model-number-input" name="model_numbers[]" placeholder="S36XTES-W等">
+                        <button type="button" class="btn btn-outline-info model-search-btn" title="品番をWebで調べる">
+                            <i class="bi bi-search"></i> Web検索
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label"><strong>設置場所</strong></label>
+                    <input type="text" class="form-control" name="locations[]" placeholder="リビング、寝室、事務所等">
+                    <div class="form-text">設置場所を入力してください（例：リビング、寝室、事務所）</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">台数</label>
+                    <input type="number" class="form-control quantity" name="quantities[]" value="1" min="1">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">単価（円）</label>
+                    <input type="number" class="form-control unit-price" name="unit_prices[]" placeholder="10000" min="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">金額（円）</label>
+                    <input type="number" class="form-control total-amount" name="total_amounts[]" placeholder="10000" min="0">
+                </div>
+            </div>
+            <div class="mb-0">
+                <label class="form-label">備考</label>
+                <textarea class="form-control" name="ac_notes[]" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM要素
+    const airconContainer = document.getElementById('aircon-container');
+    const noAirconMessage = document.getElementById('no-aircon-message');
+    const addAirconBtn = document.getElementById('add-aircon-btn');
+    const airconTemplate = document.getElementById('aircon-template');
+    
+    // エアコン情報追加カウンター
+    let airconCounter = 0;
+    
+    // エアコン情報フォーム追加
+    function addAirconForm() {
+        // テンプレートクローン
+        const clone = document.importNode(airconTemplate.content, true);
+        
+        // エアコン番号設定
+        airconCounter++;
+        clone.querySelector('.aircon-num').textContent = airconCounter;
+        
+        // 削除ボタンにイベントリスナー追加
+        clone.querySelector('.remove-aircon-btn').addEventListener('click', function(e) {
+            const airconForm = e.target.closest('.aircon-form');
+            airconForm.remove();
+            
+            // エアコンフォームがすべて削除された場合、メッセージを表示
+            if (airconContainer.children.length === 0) {
+                noAirconMessage.style.display = 'block';
+            }
+            
+            // 残っているエアコンフォームの番号を振り直す
+            updateAirconNumbers();
+        });
+        
+        // 単価と台数から合計金額を自動計算
+        const quantityInput = clone.querySelector('.quantity');
+        const unitPriceInput = clone.querySelector('.unit-price');
+        const totalAmountInput = clone.querySelector('.total-amount');
+        
+        function calculateTotal() {
+            const quantity = parseInt(quantityInput.value) || 0;
+            const unitPrice = parseInt(unitPriceInput.value) || 0;
+            
+            if (quantity > 0 && unitPrice > 0) {
+                totalAmountInput.value = quantity * unitPrice;
+            }
+        }
+        
+        quantityInput.addEventListener('input', calculateTotal);
+        unitPriceInput.addEventListener('input', calculateTotal);
+        
+        // 品番Web検索機能
+        const modelSearchBtn = clone.querySelector('.model-search-btn');
+        const modelNumberInput = clone.querySelector('.model-number-input');
+        const manufacturerInput = clone.querySelector('input[name="manufacturers[]"]');
+        
+        modelSearchBtn.addEventListener('click', function() {
+            const modelNumber = modelNumberInput.value.trim();
+            const manufacturer = manufacturerInput.value.trim();
+            
+            let searchQuery = '';
+            if (modelNumber) {
+                // 品番が入力されている場合
+                if (manufacturer) {
+                    searchQuery = `${manufacturer} ${modelNumber}`;
+                } else {
+                    searchQuery = `${modelNumber}`;
+                }
+            } else {
+                alert('品番を入力してください');
+                return;
+            }
+            
+            // Google検索を新しいタブで開く
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+            window.open(searchUrl, '_blank');
+        });
+        
+        // フォームを追加
+        airconContainer.appendChild(clone);
+        
+        // メッセージを非表示
+        noAirconMessage.style.display = 'none';
+    }
+    
+    // エアコン番号の振り直し
+    function updateAirconNumbers() {
+        const airconForms = airconContainer.querySelectorAll('.aircon-form');
+        airconForms.forEach((form, index) => {
+            form.querySelector('.aircon-num').textContent = index + 1;
+        });
+        airconCounter = airconForms.length;
+    }
+    
+    // 追加ボタンにイベントリスナー追加
+    addAirconBtn.addEventListener('click', addAirconForm);
+    
+    // 郵便番号検索機能
+    const postalCodeInput = document.getElementById('postal_code');
+    const addressInput = document.getElementById('address');
+    const postalSearchBtn = document.getElementById('postal-search-btn');
+    
+    // 郵便番号から住所を検索する関数
+    function searchAddressByPostalCode() {
+        const postalCode = postalCodeInput.value.replace('-', ''); // ハイフンを除去
+        
+        if (!postalCode || postalCode.length < 7) {
+            alert('郵便番号を正しく入力してください');
+            return;
+        }
+        
+        // 検索中の表示
+        postalSearchBtn.disabled = true;
+        postalSearchBtn.textContent = '検索中...';
+        
+        // 郵便番号検索API（日本郵便のAPIを利用）
+        fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`)
+            .then(response => response.json())
+            .then(data => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                
+                if (data.status === 200 && data.results) {
+                    const result = data.results[0];
+                    // 住所を組み立て（都道府県 + 市区町村 + 町名）
+                    const address = `${result.address1}${result.address2}${result.address3}`;
+                    addressInput.value = address;
+                } else {
+                    alert('該当する住所が見つかりませんでした');
+                }
+            })
+            .catch(error => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                console.error('郵便番号検索エラー:', error);
+                alert('住所検索に失敗しました');
+            });
+    }
+    
+    // 郵便番号検索ボタンクリック時の処理
+    postalSearchBtn.addEventListener('click', searchAddressByPostalCode);
+    
+    // 郵便番号入力時に自動でハイフンを追加
+    postalCodeInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // 数字とハイフン以外を除去
+        value = value.replace(/[^\d-]/g, '');
+        
+        // ハイフンの位置を調整
+        if (value.length > 3 && !value.includes('-')) {
+            value = value.slice(0, 3) + '-' + value.slice(3);
+        }
+        
+        // 最大8文字（ハイフン含む）
+        if (value.length > 8) {
+            value = value.slice(0, 8);
+        }
+        
+        e.target.value = value;
+    });
+});
+</script>
+{% endblock %} 

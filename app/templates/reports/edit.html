@@ -1,0 +1,1763 @@
+{% extends 'base.html' %}
+
+{% block title %}報告書編集{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>報告書編集 #{{ report.id }}</h2>
+    
+    <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if not active_tab %}active{% endif %}" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab">基本情報</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'times' %}active{% endif %}" id="times-tab" data-bs-toggle="tab" data-bs-target="#times" type="button" role="tab">作業時間</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'details' %}active{% endif %}" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">作業内容</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'photos' %}active{% endif %}" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab">写真</button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="reportTabsContent">
+        <!-- 基本情報タブ -->
+        <div class="tab-pane fade {% if not active_tab %}show active{% endif %}" id="info" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h3>基本情報</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" name="update_report" value="1">
+                        <input type="hidden" name="current_tab" value="info">
+                        
+                        <div class="mb-3">
+                            <label for="property_id" class="form-label">物件</label>
+                            <select class="form-select" id="property_id" name="property_id" required>
+                                <option value="">選択してください</option>
+                                {% for property in properties %}
+                                <option value="{{ property.id }}" data-address="{{ property.address or '' }}" {% if property.id == report.property_id %}selected{% endif %}>
+                                    {{ property.customer.name }} - {{ property.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="date" class="form-label">報告書日付</label>
+                            <input type="date" class="form-control" id="date" name="date" value="{{ report.date.isoformat() if report.date else '' }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="work_address" class="form-label">作業住所</label>
+                            <input type="text" class="form-control" id="work_address" name="work_address" value="{{ report.work_address or default_address or '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="note" class="form-label">備考</label>
+                            <textarea class="form-control" id="note" name="note" rows="3">{{ report.note or '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="status" class="form-label">ステータス</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="pending" {% if report.status == 'pending' %}selected{% endif %}>作成中</option>
+                                <option value="completed" {% if report.status == 'completed' %}selected{% endif %}>完了</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('reports.view', id=report.id) }}" class="btn btn-secondary">キャンセル</a>
+                            <button type="submit" class="btn btn-primary">更新</button>
+                        </div>
+                        
+                        <!-- 作業時間のIDを維持するためのhidden fields -->
+                        {% for work_time in work_times %}
+                        <input type="hidden" name="work_time_ids[]" value="{{ work_time.id }}">
+                        <input type="hidden" name="work_dates[]" value="{{ work_time.work_date.isoformat() }}">
+                        <input type="hidden" name="start_times[]" value="{{ work_time.start_time.strftime('%H:%M') }}">
+                        <input type="hidden" name="end_times[]" value="{{ work_time.end_time.strftime('%H:%M') }}">
+                        <input type="hidden" name="work_time_notes[]" value="{{ work_time.note or '' }}">
+                        {% endfor %}
+                        
+                        <!-- 作業内容のIDを維持するためのhidden fields -->
+                        {% for work_detail in work_details %}
+                        <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
+                        <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
+                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
+                        <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
+                        <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
+                        <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
+                        {% endfor %}
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 作業時間タブ -->
+        <div class="tab-pane fade {% if active_tab == 'times' %}show active{% endif %}" id="times" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>作業時間</h3>
+                    <button type="button" class="btn btn-primary" id="add-work-time">追加</button>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" name="update_report" value="1">
+                        <input type="hidden" name="current_tab" value="times">
+                        <input type="hidden" name="property_id" value="{{ report.property_id }}">
+                        <input type="hidden" name="date" value="{{ report.date.isoformat() if report.date else '' }}">
+                        <input type="hidden" name="work_address" value="{{ report.work_address or '' }}">
+                        <input type="hidden" name="note" value="{{ report.note or '' }}">
+                        <input type="hidden" name="status" value="{{ report.status or 'pending' }}">
+                        
+                        <!-- 作業内容のIDを維持するためのhidden fields -->
+                        {% for work_detail in work_details %}
+                        <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
+                        <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
+                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
+                        <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
+                        <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
+                        <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
+                        {% endfor %}
+                        
+                        <div id="work-times-container">
+                            {% if work_times %}
+                                {% for work_time in work_times %}
+                                <div class="work-time-entry mb-3 p-3 border rounded">
+                                    <input type="hidden" name="work_time_ids[]" value="{{ work_time.id }}">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label">作業日</label>
+                                            <input type="date" class="form-control" name="work_dates[]" value="{{ work_time.work_date.isoformat() }}" required>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">開始時間</label>
+                                            <input type="time" class="form-control" name="start_times[]" value="{{ work_time.start_time.strftime('%H:%M') }}" required>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">終了時間</label>
+                                            <input type="time" class="form-control" name="end_times[]" value="{{ work_time.end_time.strftime('%H:%M') }}" required>
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end mb-2">
+                                            <button type="button" class="btn btn-danger remove-work-time" {% if loop.index == 1 and work_times|length == 1 %}disabled{% endif %}>削除</button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label class="form-label">備考</label>
+                                            <textarea class="form-control" name="work_time_notes[]" rows="2">{{ work_time.note or '' }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="work-time-entry mb-3 p-3 border rounded">
+                                    <input type="hidden" name="work_time_ids[]" value="">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label">作業日</label>
+                                            <input type="date" class="form-control" name="work_dates[]" required>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">開始時間</label>
+                                            <input type="time" class="form-control" name="start_times[]" required>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">終了時間</label>
+                                            <input type="time" class="form-control" name="end_times[]" required>
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end mb-2">
+                                            <button type="button" class="btn btn-danger remove-work-time" disabled>削除</button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label class="form-label">備考</label>
+                                            <textarea class="form-control" name="work_time_notes[]" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 作業内容タブ -->
+        <div class="tab-pane fade {% if active_tab == 'details' %}show active{% endif %}" id="details" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>作業内容</h3>
+                    <div>
+                        <a href="{{ url_for('reports.work_items') }}" class="btn btn-outline-secondary me-2">作業項目管理</a>
+                        <button type="button" class="btn btn-primary" id="add-work-detail">追加</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" name="update_report" value="1">
+                        <input type="hidden" name="current_tab" value="details">
+                        <input type="hidden" name="property_id" value="{{ report.property_id }}">
+                        <input type="hidden" name="date" value="{{ report.date.isoformat() if report.date else '' }}">
+                        <input type="hidden" name="work_address" value="{{ report.work_address or '' }}">
+                        <input type="hidden" name="note" value="{{ report.note or '' }}">
+                        <input type="hidden" name="status" value="{{ report.status or 'pending' }}">
+                        
+                        <!-- 作業時間のIDを維持するためのhidden fields -->
+                        {% for work_time in work_times %}
+                        <input type="hidden" name="work_time_ids[]" value="{{ work_time.id }}">
+                        <input type="hidden" name="work_dates[]" value="{{ work_time.work_date.isoformat() }}">
+                        <input type="hidden" name="start_times[]" value="{{ work_time.start_time.strftime('%H:%M') }}">
+                        <input type="hidden" name="end_times[]" value="{{ work_time.end_time.strftime('%H:%M') }}">
+                        <input type="hidden" name="work_time_notes[]" value="{{ work_time.note or '' }}">
+                        {% endfor %}
+                        
+                        <!-- 作業内容のIDを維持するためのhidden fields -->
+                        {% for work_detail in work_details %}
+                        <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
+                        <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
+                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
+                        <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
+                        <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
+                        <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
+                        {% endfor %}
+                        
+                        <div id="work-details-container">
+                            {% if work_details %}
+                                {% for work_detail in work_details %}
+                                <div class="work-detail-entry mb-3 p-3 border rounded">
+                                    <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
+                                    <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="{{ work_detail.air_conditioner_id or '' }}">
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">エアコン情報</label>
+                                            <select class="form-select air-conditioner-select" name="dummy_select_aircon">
+                                                <option value="">選択してください</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">作業項目</label>
+                                            <select class="form-select work-item-select" name="work_item_ids[]">
+                                                <option value="">選択してください</option>
+                                                {% for item in work_items %}
+                                                <option value="{{ item.id }}" {% if work_detail.work_item_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+                                                {% endfor %}
+                                                <option value="other" {% if not work_detail.work_item_id and work_detail.work_item_text %}selected{% endif %}>その他（手入力）</option>
+                                            </select>
+                                            <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" 
+                                                   placeholder="作業項目を入力" 
+                                                   value="{{ work_detail.work_item_text or '' }}" 
+                                                   style="display: {% if not work_detail.work_item_id and work_detail.work_item_text %}block{% else %}none{% endif %};">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label">作業内容</label>
+                                            <textarea class="form-control" name="descriptions[]" rows="2" required>{{ work_detail.description }}</textarea>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
+                                                <i class="bi bi-clock-history"></i> 過去のデータから選択
+                                            </button>
+                                        </div>
+                                        <div class="col-md-2 mb-2">
+                                            <label class="form-label">作業確認</label>
+                                            <div class="d-flex">
+                                                <input type="text" class="form-control" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
+                                                <button type="button" class="btn btn-danger remove-work-detail ms-1" {% if loop.index == 1 and work_details|length == 1 %}disabled{% endif %}>削除</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="work-detail-entry mb-3 p-3 border rounded">
+                                    <input type="hidden" name="work_detail_ids[]" value="">
+                                    <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="">
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">エアコン情報</label>
+                                            <select class="form-select air-conditioner-select" name="dummy_select_aircon">
+                                                <option value="">選択してください</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <label class="form-label">作業項目</label>
+                                            <select class="form-select work-item-select" name="work_item_ids[]">
+                                                <option value="">選択してください</option>
+                                                {% for item in work_items %}
+                                                <option value="{{ item.id }}">{{ item.name }}</option>
+                                                {% endfor %}
+                                                <option value="other">その他（手入力）</option>
+                                            </select>
+                                            <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" placeholder="作業項目を入力" style="display: none;">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label">作業内容</label>
+                                            <textarea class="form-control" name="descriptions[]" rows="2" required></textarea>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
+                                                <i class="bi bi-clock-history"></i> 過去のデータから選択
+                                            </button>
+                                        </div>
+                                        <div class="col-md-2 mb-2">
+                                            <label class="form-label">作業確認</label>
+                                            <div class="d-flex">
+                                                <input type="text" class="form-control" name="confirmations[]">
+                                                <button type="button" class="btn btn-danger remove-work-detail ms-1" disabled>削除</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 写真タブ -->
+        <div class="tab-pane fade {% if active_tab == 'photos' %}show active{% endif %}" id="photos" role="tabpanel">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>写真アップロード</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" name="upload_photo">
+                        <input type="hidden" name="upload_photo" value="1">
+                        <input type="hidden" name="current_tab" value="photos">
+                        
+                        <div class="mb-3">
+                            <label for="photo_type" class="form-label">写真タイプ</label>
+                            <select class="form-select" id="photo_type" name="photo_type" required>
+                                <option value="before" {% if last_photo_type == 'before' %}selected{% endif %}>施工前</option>
+                                <option value="after" {% if last_photo_type == 'after' %}selected{% endif %}>施工後</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="room_name" class="form-label">撮影場所（部屋名等）</label>
+                            <input type="text" class="form-control" id="room_name" name="room_name">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="air_conditioner_id" class="form-label">エアコン</label>
+                            <select class="form-select" id="air_conditioner_id" name="air_conditioner_id">
+                                <option value="">選択してください</option>
+                                <!-- 既存のエアコン選択肢がJavaScriptで追加されます -->
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="work_item_id" class="form-label">作業項目</label>
+                            <select class="form-select" id="work_item_id" name="work_item_id">
+                                <option value="">選択してください</option>
+                                {% for item in work_items %}
+                                <option value="{{ item.id }}" {% if last_work_item_id and last_work_item_id == item.id|int %}selected{% endif %}>{{ item.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="photos" class="form-label">写真</label>
+                            <input class="form-control" type="file" id="photos" name="photos" multiple>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="caption" class="form-label">キャプション</label>
+                            <input type="text" class="form-control" id="caption" name="caption">
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" id="photo-upload-button" class="btn btn-primary">アップロード</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="row" id="photos-container">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>施工前 ({{ before_photos|length }}枚)</h3>
+                        </div>
+                        <div class="card-body">
+                            {% if uploaded_photos and before_photos %}
+                                <div class="alert alert-success">
+                                    施工前写真を{{ before_photos|length }}枚アップロードしました
+                                </div>
+                                <div class="row">
+                                    {% for photo in before_photos %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                            {% if photo.filepath %}
+                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% else %}
+                                                <img src="/uploads/before/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% endif %}
+                                            <div class="card-body">
+                                                <p class="card-text">
+                                                    {% if photo.room_name %}場所: {{ photo.room_name }}<br>{% endif %}
+                                                    {% if photo.caption %}{{ photo.caption }}{% endif %}
+                                                </p>
+                                                <div class="d-grid gap-2">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editPhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-pencil"></i> 編集
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#deletePhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-trash"></i> 削除
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真編集モーダル -->
+                                                <div class="modal fade" id="editPhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真情報の編集</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form method="post" action="{{ url_for('reports.edit_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <div class="text-center mb-3">
+                                                                        <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                        {% if photo.filepath %}
+                                                                            <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% else %}
+                                                                            <img src="/uploads/before/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="room_name{{ photo.id }}" class="form-label">撮影場所（部屋名等）</label>
+                                                                        <input type="text" class="form-control" id="room_name{{ photo.id }}" name="room_name" value="{{ photo.room_name or '' }}">
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="caption{{ photo.id }}" class="form-label">キャプション</label>
+                                                                        <input type="text" class="form-control" id="caption{{ photo.id }}" name="caption" value="{{ photo.caption or '' }}">
+                                                                    </div>
+                                                                    <div class="d-grid gap-2">
+                                                                        <button type="submit" class="btn btn-primary">更新する</button>
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真削除確認モーダル -->
+                                                <div class="modal fade" id="deletePhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真削除の確認</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p>この写真を削除してもよろしいですか？</p>
+                                                                <p>この操作は取り消せません。</p>
+                                                                <div class="text-center">
+                                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                    {% if photo.filepath %}
+                                                                        <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% else %}
+                                                                        <img src="/uploads/before/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                <form method="post" action="{{ url_for('reports.delete_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <button type="submit" class="btn btn-danger">削除する</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="d-grid mt-3">
+                                    <a href="{{ url_for('reports.edit', id=report.id) }}" class="btn btn-outline-primary">
+                                        すべての写真を表示
+                                    </a>
+                                </div>
+                            {% elif before_photos %}
+                                <div class="row">
+                                    {% for photo in before_photos %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                            {% if photo.filepath %}
+                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% else %}
+                                                <img src="/uploads/before/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% endif %}
+                                            <div class="card-body">
+                                                <p class="card-text">
+                                                    {% if photo.room_name %}場所: {{ photo.room_name }}<br>{% endif %}
+                                                    {% if photo.caption %}{{ photo.caption }}{% endif %}
+                                                </p>
+                                                <div class="d-grid gap-2">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editPhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-pencil"></i> 編集
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#deletePhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-trash"></i> 削除
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真編集モーダル -->
+                                                <div class="modal fade" id="editPhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真情報の編集</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form method="post" action="{{ url_for('reports.edit_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <div class="text-center mb-3">
+                                                                        <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                        {% if photo.filepath %}
+                                                                            <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% else %}
+                                                                            <img src="/uploads/before/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="room_name{{ photo.id }}" class="form-label">撮影場所（部屋名等）</label>
+                                                                        <input type="text" class="form-control" id="room_name{{ photo.id }}" name="room_name" value="{{ photo.room_name or '' }}">
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="caption{{ photo.id }}" class="form-label">キャプション</label>
+                                                                        <input type="text" class="form-control" id="caption{{ photo.id }}" name="caption" value="{{ photo.caption or '' }}">
+                                                                    </div>
+                                                                    <div class="d-grid gap-2">
+                                                                        <button type="submit" class="btn btn-primary">更新する</button>
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真削除確認モーダル -->
+                                                <div class="modal fade" id="deletePhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真削除の確認</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p>この写真を削除してもよろしいですか？</p>
+                                                                <p>この操作は取り消せません。</p>
+                                                                <div class="text-center">
+                                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                    {% if photo.filepath %}
+                                                                        <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% else %}
+                                                                        <img src="/uploads/before/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                <form method="post" action="{{ url_for('reports.delete_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <button type="submit" class="btn btn-danger">削除する</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p>施工前の写真はまだありません</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>施工後 ({{ after_photos|length }}枚)</h3>
+                        </div>
+                        <div class="card-body">
+                            {% if uploaded_photos and after_photos %}
+                                <div class="alert alert-success">
+                                    施工後写真を{{ after_photos|length }}枚アップロードしました
+                                </div>
+                                <div class="row">
+                                    {% for photo in after_photos %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                            {% if photo.filepath %}
+                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% else %}
+                                                <img src="/uploads/after/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% endif %}
+                                            <div class="card-body">
+                                                <p class="card-text">
+                                                    {% if photo.room_name %}場所: {{ photo.room_name }}<br>{% endif %}
+                                                    {% if photo.caption %}{{ photo.caption }}{% endif %}
+                                                </p>
+                                                <div class="d-grid gap-2">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editPhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-pencil"></i> 編集
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#deletePhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-trash"></i> 削除
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真編集モーダル -->
+                                                <div class="modal fade" id="editPhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真情報の編集</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form method="post" action="{{ url_for('reports.edit_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <div class="text-center mb-3">
+                                                                        <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                        {% if photo.filepath %}
+                                                                            <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% else %}
+                                                                            <img src="/uploads/after/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="room_name{{ photo.id }}" class="form-label">撮影場所（部屋名等）</label>
+                                                                        <input type="text" class="form-control" id="room_name{{ photo.id }}" name="room_name" value="{{ photo.room_name or '' }}">
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="caption{{ photo.id }}" class="form-label">キャプション</label>
+                                                                        <input type="text" class="form-control" id="caption{{ photo.id }}" name="caption" value="{{ photo.caption or '' }}">
+                                                                    </div>
+                                                                    <div class="d-grid gap-2">
+                                                                        <button type="submit" class="btn btn-primary">更新する</button>
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真削除確認モーダル -->
+                                                <div class="modal fade" id="deletePhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真削除の確認</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p>この写真を削除してもよろしいですか？</p>
+                                                                <p>この操作は取り消せません。</p>
+                                                                <div class="text-center">
+                                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                    {% if photo.filepath %}
+                                                                        <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% else %}
+                                                                        <img src="/uploads/after/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                <form method="post" action="{{ url_for('reports.delete_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <button type="submit" class="btn btn-danger">削除する</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="d-grid mt-3">
+                                    <a href="{{ url_for('reports.edit', id=report.id) }}" class="btn btn-outline-primary">
+                                        すべての写真を表示
+                                    </a>
+                                </div>
+                            {% elif after_photos %}
+                                <div class="row">
+                                    {% for photo in after_photos %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                            {% if photo.filepath %}
+                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% else %}
+                                                <img src="/uploads/after/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                            {% endif %}
+                                            <div class="card-body">
+                                                <p class="card-text">
+                                                    {% if photo.room_name %}場所: {{ photo.room_name }}<br>{% endif %}
+                                                    {% if photo.caption %}{{ photo.caption }}{% endif %}
+                                                </p>
+                                                <div class="d-grid gap-2">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editPhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-pencil"></i> 編集
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#deletePhotoModal{{ photo.id }}">
+                                                            <i class="bi bi-trash"></i> 削除
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真編集モーダル -->
+                                                <div class="modal fade" id="editPhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真情報の編集</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form method="post" action="{{ url_for('reports.edit_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <div class="text-center mb-3">
+                                                                        <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                        {% if photo.filepath %}
+                                                                            <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% else %}
+                                                                            <img src="/uploads/after/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="room_name{{ photo.id }}" class="form-label">撮影場所（部屋名等）</label>
+                                                                        <input type="text" class="form-control" id="room_name{{ photo.id }}" name="room_name" value="{{ photo.room_name or '' }}">
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="caption{{ photo.id }}" class="form-label">キャプション</label>
+                                                                        <input type="text" class="form-control" id="caption{{ photo.id }}" name="caption" value="{{ photo.caption or '' }}">
+                                                                    </div>
+                                                                    <div class="d-grid gap-2">
+                                                                        <button type="submit" class="btn btn-primary">更新する</button>
+                                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 写真削除確認モーダル -->
+                                                <div class="modal fade" id="deletePhotoModal{{ photo.id }}" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">写真削除の確認</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p>この写真を削除してもよろしいですか？</p>
+                                                                <p>この操作は取り消せません。</p>
+                                                                <div class="text-center">
+                                                                    <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
+                                                                    {% if photo.filepath %}
+                                                                        <img src="/uploads/{{ photo.filepath }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% else %}
+                                                                        <img src="/uploads/after/{{ photo.filename }}" class="img-fluid img-thumbnail mb-2" style="max-height: 200px;" alt="{{ photo.caption }}">
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                <form method="post" action="{{ url_for('reports.delete_photo', report_id=report.id, photo_id=photo.id) }}">
+                                                                    <input type="hidden" name="current_tab" value="photos">
+                                                                    <button type="submit" class="btn btn-danger">削除する</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p>施工後の写真はまだありません</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 過去の作業内容選択モーダル -->
+<div class="modal fade" id="pastDescriptionsModal" tabindex="-1" aria-labelledby="pastDescriptionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pastDescriptionsModalLabel">過去の作業内容から選択</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchPastDescriptions" placeholder="検索キーワードを入力">
+                        <button class="btn btn-outline-secondary" type="button" id="searchPastDescriptionsBtn">検索</button>
+                    </div>
+                </div>
+                <div id="pastDescriptionsList" class="list-group"></div>
+                <div id="noResultsMessage" class="alert alert-info mt-3" style="display: none;">
+                    該当する作業内容が見つかりませんでした。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // エアコン情報を更新する関数
+    function updateAirConditioners() {
+        const propertyId = document.getElementById('property_id').value;
+        if (!propertyId) return;
+
+        // 作業詳細タブのエアコン選択セレクトボックスを更新
+        fetch(`/reports/api/properties/${propertyId}/air_conditioners`)
+            .then(response => response.json())
+            .then(data => {
+                // すべてのエアコン選択セレクトボックスを更新
+                document.querySelectorAll('.air-conditioner-select').forEach((select, index) => {
+                    // 現在の選択値を保持
+                    const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+                    const currentValue = hiddenInput ? hiddenInput.value : '';
+                    
+                    console.log(`エアコン情報更新: 行${index+1}の現在の値=${currentValue}`);
+                    
+                    // セレクトボックスをクリア
+                    select.innerHTML = '<option value="">選択してください</option>';
+                    
+                    // エアコン情報をセレクトボックスに追加
+                    if (data.air_conditioners && data.air_conditioners.length > 0) {
+                        data.air_conditioners.forEach(ac => {
+                            const option = document.createElement('option');
+                            option.value = ac.id;
+                            option.textContent = `${ac.manufacturer || '不明'} ${ac.model_number || '不明'} (${ac.location || '不明'})`;
+                            select.appendChild(option);
+                            
+                            // 元の値を保持
+                            if (currentValue && currentValue == ac.id) {
+                                option.selected = true;
+                                console.log(`エアコン情報更新: ${ac.id}を選択状態に設定`);
+                            }
+                        });
+                    } else {
+                        console.log("エアコン情報がありません");
+                    }
+                    
+                    // hiddenのinputと同期
+                    select.addEventListener('change', function() {
+                        const hiddenInput = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+                        if (hiddenInput) {
+                            hiddenInput.value = this.value;
+                            console.log(`エアコン選択変更: セレクトボックス値=${this.value}, hidden値=${hiddenInput.value}`);
+                        }
+                    });
+                    
+                    // 初期値を同期
+                    if (select.value) {
+                        if (hiddenInput) {
+                            hiddenInput.value = select.value;
+                            console.log(`エアコン情報初期化: hidden値を${select.value}に設定`);
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('エアコン情報の取得に失敗しました:', error));
+    }
+
+    // 物件選択時に住所を自動設定とエアコン情報を取得
+    document.getElementById('property_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const propertyId = this.value;
+        const address = selectedOption.getAttribute('data-address');
+        document.getElementById('work_address').value = address || '';
+        
+        // エアコン情報を取得して各セレクトボックスに設定
+        if (propertyId) {
+            // 作業詳細タブのエアコン選択ボックスを更新
+            updateAirConditioners();
+            
+            // 写真タブのエアコン選択ボックスも更新
+            const photoAcSelect = document.getElementById('air_conditioner_id');
+            if (photoAcSelect) {
+                // エアコン情報をAPIから取得
+                fetch(`/reports/api/properties/${propertyId}/air_conditioners`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 選択肢をクリア（最初の「選択してください」オプションは残す）
+                        while (photoAcSelect.options.length > 1) {
+                            photoAcSelect.remove(1);
+                        }
+                        
+                        // APIから取得したエアコン情報を選択肢に追加
+                        if (data.air_conditioners && data.air_conditioners.length > 0) {
+                            data.air_conditioners.forEach(ac => {
+                                const option = document.createElement('option');
+                                option.value = ac.id;
+                                
+                                // エアコン情報を整形して表示名を作成
+                                let acInfo = '';
+                                if (ac.manufacturer) acInfo += ac.manufacturer + ' ';
+                                if (ac.model_number) acInfo += ac.model_number + ' ';
+                                if (ac.location) acInfo += `(${ac.location})`;
+                                if (!acInfo) acInfo = `エアコン ID: ${ac.id}`;
+                                
+                                option.text = acInfo;
+                                
+                                // 前回選択したエアコンIDをログ出力
+                                console.log("選択すべきエアコンID: {{ last_air_conditioner_id|default('None') }}");
+                                
+                                // 前回選択したエアコンを選択状態にする
+                                {% if last_air_conditioner_id is not none %}
+                                const lastAcId = {{ last_air_conditioner_id }};
+                                console.log(`比較: エアコン ${ac.id} と 前回のID ${lastAcId}`);
+                                if (parseInt(ac.id) == parseInt(lastAcId)) {
+                                    option.selected = true;
+                                    console.log(`☆エアコン ${ac.id} を選択状態にしました（ID: ${lastAcId}）`);
+                                }
+                                {% endif %}
+                                
+                                photoAcSelect.add(option);
+                            });
+                        } else {
+                            console.log("エアコン情報がありません");
+                        }
+                        
+                        console.log(`エアコン選択肢を更新しました。選択候補: {{ last_air_conditioner_id|default(0) }}`);
+                    })
+                    .catch(error => {
+                        console.error('エアコン情報の取得に失敗しました:', error);
+                    });
+            }
+        } else {
+            // 物件が選択されていない場合はエアコン選択をクリア
+            document.querySelectorAll('.air-conditioner-select').forEach(select => {
+                select.innerHTML = '<option value="">選択してください</option>';
+                const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+                if (hiddenInput) {
+                    hiddenInput.value = '';
+                }
+            });
+            
+            // 写真タブのエアコン選択ボックスもクリア
+            const photoAcSelect = document.getElementById('air_conditioner_id');
+            if (photoAcSelect) {
+                photoAcSelect.innerHTML = '<option value="">選択してください</option>';
+            }
+        }
+    });
+
+    // 作業時間の追加
+    document.getElementById('add-work-time').addEventListener('click', function() {
+        const container = document.getElementById('work-times-container');
+        const entries = container.querySelectorAll('.work-time-entry');
+        
+        // 既存の要素をクローンして値をクリア
+        const newEntry = entries[0].cloneNode(true);
+        newEntry.querySelectorAll('input, textarea').forEach(input => {
+            if (input.name === 'work_time_ids[]') {
+                input.value = '';
+            } else if (input.type !== 'hidden') {
+                input.value = '';
+            }
+        });
+        
+        // 削除ボタンを有効化
+        const removeButton = newEntry.querySelector('.remove-work-time');
+        removeButton.disabled = false;
+        removeButton.addEventListener('click', function() {
+            container.removeChild(newEntry);
+            updateRemoveButtons('work-time-entry', 'remove-work-time');
+        });
+        
+        container.appendChild(newEntry);
+        updateRemoveButtons('work-time-entry', 'remove-work-time');
+    });
+    
+    // 作業内容の追加
+    document.getElementById('add-work-detail').addEventListener('click', function() {
+        const container = document.getElementById('work-details-container');
+        const entries = container.querySelectorAll('.work-detail-entry');
+        
+        // 既存の要素をクローンして値をクリア
+        const newEntry = entries[0].cloneNode(true);
+        
+        // 全てのフォーム要素の値をクリア
+        newEntry.querySelectorAll('input, textarea, select').forEach(input => {
+            if (input.type !== 'button') {
+                input.value = '';
+            }
+        });
+        
+        // IDをクリア
+        newEntry.querySelector('input[name="work_detail_ids[]"]').value = '';
+        
+        // hidden フィールドを明示的にクリア
+        const hiddenAcId = newEntry.querySelector('.work-detail-ac-id');
+        if (hiddenAcId) {
+            hiddenAcId.value = '';
+        }
+        
+        // その他入力欄を隠す
+        const workItemText = newEntry.querySelector('.work-item-text');
+        workItemText.style.display = 'none';
+        
+        // セレクトボックスにイベントリスナーを追加
+        const workItemSelect = newEntry.querySelector('.work-item-select');
+        workItemSelect.addEventListener('change', function() {
+            handleWorkItemSelectChange(this);
+        });
+        
+        // エアコン選択セレクトボックスにイベントリスナーを追加
+        const acSelect = newEntry.querySelector('.air-conditioner-select');
+        
+        // イベントリスナーをクリアしてコピー
+        const newSelect = acSelect.cloneNode(true);
+        acSelect.replaceWith(newSelect);
+        
+        // 新しいイベントリスナーを追加
+        newSelect.addEventListener('change', function() {
+            const hiddenAcId = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+            if (hiddenAcId) {
+                hiddenAcId.value = this.value;
+                console.log(`エアコン選択変更: セレクト値=${this.value}, 隠しフィールド値=${hiddenAcId.value}`);
+            }
+        });
+        
+        // 物件が選択されている場合、エアコン情報を設定
+        const propertyId = document.getElementById('property_id').value;
+        if (propertyId) {
+            const allAcSelects = document.querySelectorAll('.air-conditioner-select');
+            if (allAcSelects.length > 0 && allAcSelects[0].options.length > 1) {
+                // 既存のエアコンセレクトボックスからオプションをコピー
+                newSelect.innerHTML = allAcSelects[0].innerHTML;
+                // 値をクリア（「選択してください」を選択状態にする）
+                newSelect.value = '';
+            }
+        }
+        
+        // 削除ボタンを有効化
+        const removeButton = newEntry.querySelector('.remove-work-detail');
+        removeButton.disabled = false;
+        removeButton.addEventListener('click', function() {
+            container.removeChild(newEntry);
+            updateRemoveButtons('work-detail-entry', 'remove-work-detail');
+        });
+
+        // 「過去のデータから選択」ボタンにイベントリスナーを追加
+        const pastDescButton = newEntry.querySelector('.show-past-descriptions');
+        if (pastDescButton) {
+            // データ属性をリセット
+            pastDescButton.removeAttribute('data-initialized');
+            
+            // 明示的にイベントリスナーを追加
+            pastDescButton.addEventListener('click', function(e) {
+                console.log('新規追加された作業内容の「過去のデータから選択」ボタンがクリックされました');
+                
+                // クリックされたボタンに関連する作業内容テキストエリアを保存
+                window.currentDescriptionTextarea = this.previousElementSibling;
+                console.log('作業内容テキストエリア参照を設定:', window.currentDescriptionTextarea);
+                
+                // 作業項目IDを取得（もし選択されていれば）
+                const workItemSelect = this.closest('.work-detail-entry').querySelector('.work-item-select');
+                const workItemId = workItemSelect ? workItemSelect.value : '';
+                console.log(`選択された作業項目ID: ${workItemId}`);
+                
+                // 既存のモーダル関連要素をクリーンアップ
+                cleanupModal();
+                
+                // 過去の作業内容を取得する
+                fetchPastDescriptions('', workItemId);
+                
+                // モーダルを表示
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                
+                // デフォルトの動作を停止
+                e.preventDefault();
+            });
+            
+            console.log('「過去のデータから選択」ボタンにイベントリスナーを追加しました');
+        } else {
+            console.error('「過去のデータから選択」ボタンが見つかりません');
+        }
+        
+        container.appendChild(newEntry);
+        updateRemoveButtons('work-detail-entry', 'remove-work-detail');
+    });
+    
+    // 削除ボタンの状態更新
+    function updateRemoveButtons(entryClass, buttonClass) {
+        const entries = document.querySelectorAll('.' + entryClass);
+        const buttons = document.querySelectorAll('.' + buttonClass);
+        
+        if (entries.length === 1) {
+            buttons[0].disabled = true;
+        } else {
+            buttons.forEach(button => button.disabled = false);
+        }
+    }
+    
+    // 作業項目選択時の処理
+    function handleWorkItemSelectChange(selectElement) {
+        const parentRow = selectElement.closest('.work-detail-entry');
+        const textInput = parentRow.querySelector('.work-item-text');
+        
+        if (selectElement.value === 'other') {
+            textInput.style.display = 'block';
+            textInput.required = true;
+        } else {
+            textInput.style.display = 'none';
+            textInput.required = false;
+            textInput.value = '';
+        }
+    }
+
+    // 初期化時にエアコン情報も取得
+    document.addEventListener('DOMContentLoaded', function() {
+        // 物件選択済みの場合はエアコン情報も取得
+        const propertySelect = document.getElementById('property_id');
+        if (propertySelect.value) {
+            propertySelect.dispatchEvent(new Event('change'));
+        }
+        
+        // 既存の削除ボタンにイベントリスナーを追加
+        document.querySelectorAll('.remove-work-time:not([disabled])').forEach(button => {
+            button.addEventListener('click', function() {
+                const entry = this.closest('.work-time-entry');
+                entry.parentNode.removeChild(entry);
+                updateRemoveButtons('work-time-entry', 'remove-work-time');
+            });
+        });
+        
+        document.querySelectorAll('.remove-work-detail:not([disabled])').forEach(button => {
+            button.addEventListener('click', function() {
+                const entry = this.closest('.work-detail-entry');
+                entry.parentNode.removeChild(entry);
+                updateRemoveButtons('work-detail-entry', 'remove-work-detail');
+            });
+        });
+        
+        // 作業項目選択欄にイベントリスナーを追加
+        document.querySelectorAll('.work-item-select').forEach(select => {
+            select.addEventListener('change', function() {
+                handleWorkItemSelectChange(this);
+            });
+        });
+        
+        // エアコン選択セレクトボックスにイベントリスナーを追加
+        document.querySelectorAll('.air-conditioner-select').forEach(select => {
+            // イベントリスナーをクリアしてコピー
+            const newSelect = select.cloneNode(true);
+            select.replaceWith(newSelect);
+            
+            // 新しいイベントリスナーを追加
+            newSelect.addEventListener('change', function() {
+                const hiddenAcId = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+                if (hiddenAcId) {
+                    hiddenAcId.value = this.value;
+                    console.log(`エアコン選択変更: セレクト値=${this.value}, hidden値=${hiddenAcId.value}`);
+                }
+            });
+            
+            // 初期値を同期
+            const hiddenAcId = newSelect.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+            if (hiddenAcId && newSelect.value) {
+                hiddenAcId.value = newSelect.value;
+                console.log(`初期化時のエアコン同期: hidden値を${newSelect.value}に設定`);
+            }
+        });
+        
+        // フォーム送信前に全てのエアコン選択とhidden inputの同期を確認
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                // エアコン選択の同期を確認
+                document.querySelectorAll('.air-conditioner-select').forEach(select => {
+                    const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
+                    if (hiddenInput && select.value) {
+                        hiddenInput.value = select.value;
+                        console.log(`フォーム送信前の同期: エアコンID=${select.value}をhidden値に設定`);
+                    }
+                });
+
+                // 作業項目データの同期（修正追加）
+                document.querySelectorAll('.work-item-select').forEach(select => {
+                    const parentEntry = select.closest('.work-detail-entry');
+                    const workItemInput = parentEntry.querySelector('input[name="work_item_ids[]"]');
+                    
+                    // 該当するinputがない場合は、hidden inputとして追加する
+                    if (!workItemInput && select.value) {
+                        const workItemHidden = document.createElement('input');
+                        workItemHidden.type = 'hidden';
+                        workItemHidden.name = 'work_item_ids[]';
+                        workItemHidden.value = select.value;
+                        parentEntry.appendChild(workItemHidden);
+                        console.log(`フォーム送信前: 作業項目ID=${select.value}を新規追加`);
+                    }
+
+                    // 「その他」が選択されている場合、テキスト入力欄の値を確保
+                    if (select.value === 'other') {
+                        const textInput = parentEntry.querySelector('.work-item-text');
+                        const textHidden = parentEntry.querySelector('input[name="work_item_texts[]"]');
+                        
+                        // テキスト入力欄のhidden inputがない場合は作成
+                        if (!textHidden && textInput && textInput.value) {
+                            const newTextHidden = document.createElement('input');
+                            newTextHidden.type = 'hidden';
+                            newTextHidden.name = 'work_item_texts[]';
+                            newTextHidden.value = textInput.value;
+                            parentEntry.appendChild(newTextHidden);
+                            console.log(`フォーム送信前: その他テキスト="${textInput.value}"を新規追加`);
+                        }
+                    }
+                });
+
+                // 基本情報タブのフォーム送信時、作業項目IDと作業内容を同期（新規追加）
+                if (form.closest('#info')) {
+                    console.log("基本情報タブのフォーム送信を検出");
+                    
+                    // 作業内容タブから作業項目情報を収集
+                    const detailsForm = document.querySelector('#details form');
+                    if (detailsForm) {
+                        console.log("作業内容タブのフォームを検出、データ同期を開始");
+                        
+                        // 既存のhiddenフィールドをクリア
+                        const existingWorkDetailIds = form.querySelectorAll('input[name="work_detail_ids[]"]');
+                        const existingWorkItemIds = form.querySelectorAll('input[name="work_item_ids[]"]');
+                        const existingWorkItemTexts = form.querySelectorAll('input[name="work_item_texts[]"]');
+                        const existingDescriptions = form.querySelectorAll('input[name="descriptions[]"]');
+                        const existingConfirmations = form.querySelectorAll('input[name="confirmations[]"]');
+                        const existingAirConditionerIds = form.querySelectorAll('input[name="air_conditioner_ids[]"]');
+                        
+                        // 既存のフィールドを全て削除
+                        existingWorkDetailIds.forEach(input => input.remove());
+                        existingWorkItemIds.forEach(input => input.remove());
+                        existingWorkItemTexts.forEach(input => input.remove());
+                        existingDescriptions.forEach(input => input.remove());
+                        existingConfirmations.forEach(input => input.remove());
+                        existingAirConditionerIds.forEach(input => input.remove());
+                        
+                        // 作業内容タブから最新の作業項目情報を取得して基本情報タブのフォームに追加
+                        const workDetailEntries = document.querySelectorAll('#details .work-detail-entry');
+                        workDetailEntries.forEach((entry, index) => {
+                            // 作業内容IDを取得
+                            const workDetailIdInput = entry.querySelector('input[name="work_detail_ids[]"]');
+                            if (workDetailIdInput) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_detail_ids[]';
+                                newInput.value = workDetailIdInput.value;
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブに作業内容ID=${workDetailIdInput.value}を追加`);
+                            }
+                            
+                            // エアコンIDを取得
+                            const airConditionerIdInput = entry.querySelector('.work-detail-ac-id');
+                            if (airConditionerIdInput) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'air_conditioner_ids[]';
+                                newInput.value = airConditionerIdInput.value || '';
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブにエアコンID=${airConditionerIdInput.value || ''}を追加`);
+                            }
+                            
+                            // 作業項目IDを取得
+                            const workItemSelect = entry.querySelector('.work-item-select');
+                            if (workItemSelect) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_item_ids[]';
+                                newInput.value = workItemSelect.value === 'other' ? 'other' : workItemSelect.value;
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブに作業項目ID=${workItemSelect.value}を追加`);
+                            }
+                            
+                            // その他テキストを取得
+                            const workItemText = entry.querySelector('.work-item-text');
+                            if (workItemText) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_item_texts[]';
+                                newInput.value = workItemText.style.display !== 'none' ? workItemText.value : '';
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブに作業項目テキスト="${newInput.value}"を追加`);
+                            }
+                            
+                            // 作業内容を取得
+                            const description = entry.querySelector('textarea[name="descriptions[]"]');
+                            if (description) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'descriptions[]';
+                                newInput.value = description.value;
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブに作業内容="${description.value.substring(0, 20)}..."を追加`);
+                            }
+                            
+                            // 作業確認を取得
+                            const confirmation = entry.querySelector('input[name="confirmations[]"]');
+                            if (confirmation) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'confirmations[]';
+                                newInput.value = confirmation.value;
+                                form.appendChild(newInput);
+                                console.log(`基本情報タブに作業確認="${confirmation.value}"を追加`);
+                            }
+                        });
+                        
+                        console.log("基本情報タブへの作業内容データ同期が完了しました");
+                    }
+                }
+                
+                // 作業時間タブのフォーム送信時、作業項目IDと作業内容を同期（新規追加）
+                if (form.closest('#times')) {
+                    console.log("作業時間タブのフォーム送信を検出");
+                    
+                    // 作業内容タブから作業項目情報を収集
+                    const detailsForm = document.querySelector('#details form');
+                    if (detailsForm) {
+                        console.log("作業内容タブのフォームを検出、データ同期を開始");
+                        
+                        // 既存のhiddenフィールドをクリア
+                        const existingWorkDetailIds = form.querySelectorAll('input[name="work_detail_ids[]"]');
+                        const existingWorkItemIds = form.querySelectorAll('input[name="work_item_ids[]"]');
+                        const existingWorkItemTexts = form.querySelectorAll('input[name="work_item_texts[]"]');
+                        const existingDescriptions = form.querySelectorAll('input[name="descriptions[]"]');
+                        const existingConfirmations = form.querySelectorAll('input[name="confirmations[]"]');
+                        const existingAirConditionerIds = form.querySelectorAll('input[name="air_conditioner_ids[]"]');
+                        
+                        // 既存のフィールドを全て削除
+                        existingWorkDetailIds.forEach(input => input.remove());
+                        existingWorkItemIds.forEach(input => input.remove());
+                        existingWorkItemTexts.forEach(input => input.remove());
+                        existingDescriptions.forEach(input => input.remove());
+                        existingConfirmations.forEach(input => input.remove());
+                        existingAirConditionerIds.forEach(input => input.remove());
+                        
+                        // 作業内容タブから最新の作業項目情報を取得して作業時間タブのフォームに追加
+                        const workDetailEntries = document.querySelectorAll('#details .work-detail-entry');
+                        workDetailEntries.forEach((entry, index) => {
+                            // 作業内容IDを取得
+                            const workDetailIdInput = entry.querySelector('input[name="work_detail_ids[]"]');
+                            if (workDetailIdInput) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_detail_ids[]';
+                                newInput.value = workDetailIdInput.value;
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブに作業内容ID=${workDetailIdInput.value}を追加`);
+                            }
+                            
+                            // エアコンIDを取得
+                            const airConditionerIdInput = entry.querySelector('.work-detail-ac-id');
+                            if (airConditionerIdInput) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'air_conditioner_ids[]';
+                                newInput.value = airConditionerIdInput.value || '';
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブにエアコンID=${airConditionerIdInput.value || ''}を追加`);
+                            }
+                            
+                            // 作業項目IDを取得
+                            const workItemSelect = entry.querySelector('.work-item-select');
+                            if (workItemSelect) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_item_ids[]';
+                                newInput.value = workItemSelect.value === 'other' ? 'other' : workItemSelect.value;
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブに作業項目ID=${workItemSelect.value}を追加`);
+                            }
+                            
+                            // その他テキストを取得
+                            const workItemText = entry.querySelector('.work-item-text');
+                            if (workItemText) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'work_item_texts[]';
+                                newInput.value = workItemText.style.display !== 'none' ? workItemText.value : '';
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブに作業項目テキスト="${newInput.value}"を追加`);
+                            }
+                            
+                            // 作業内容を取得
+                            const description = entry.querySelector('textarea[name="descriptions[]"]');
+                            if (description) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'descriptions[]';
+                                newInput.value = description.value;
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブに作業内容="${description.value.substring(0, 20)}..."を追加`);
+                            }
+                            
+                            // 作業確認を取得
+                            const confirmation = entry.querySelector('input[name="confirmations[]"]');
+                            if (confirmation) {
+                                const newInput = document.createElement('input');
+                                newInput.type = 'hidden';
+                                newInput.name = 'confirmations[]';
+                                newInput.value = confirmation.value;
+                                form.appendChild(newInput);
+                                console.log(`作業時間タブに作業確認="${confirmation.value}"を追加`);
+                            }
+                        });
+                        
+                        console.log("作業時間タブへの作業内容データ同期が完了しました");
+                    }
+                }
+            });
+        });
+        
+        // 「作業内容」と「作業時間」タブ切り替え時に、隠しフィールドを更新（修正追加）
+        document.querySelectorAll('#reportTabs button').forEach(tab => {
+            tab.addEventListener('click', function() {
+                if (this.getAttribute('data-bs-target') === '#details' || 
+                    this.getAttribute('data-bs-target') === '#times') {
+                    updateHiddenFields();
+                }
+            });
+        });
+
+        // 隠しフィールドを更新する関数（新規追加）
+        function updateHiddenFields() {
+            // 基本情報タブのフォームから値を取得
+            const infoForm = document.querySelector('#info form');
+            if (!infoForm) return;
+
+            // 現在の作業内容や作業時間フォームを取得
+            const detailsForm = document.querySelector('#details form');
+            const timesForm = document.querySelector('#times form');
+
+            if (detailsForm) {
+                // 基本情報をコピー
+                detailsForm.querySelector('input[name="property_id"]').value = infoForm.querySelector('input[name="property_id"]').value;
+                detailsForm.querySelector('input[name="date"]').value = infoForm.querySelector('input[name="date"]').value;
+                detailsForm.querySelector('input[name="work_address"]').value = infoForm.querySelector('input[name="work_address"]').value;
+                detailsForm.querySelector('input[name="note"]').value = infoForm.querySelector('input[name="note"]').value;
+                detailsForm.querySelector('input[name="status"]').value = infoForm.querySelector('input[name="status"]').value;
+            }
+
+            if (timesForm) {
+                // 基本情報をコピー
+                timesForm.querySelector('input[name="property_id"]').value = infoForm.querySelector('input[name="property_id"]').value;
+                timesForm.querySelector('input[name="date"]').value = infoForm.querySelector('input[name="date"]').value;
+                timesForm.querySelector('input[name="work_address"]').value = infoForm.querySelector('input[name="work_address"]').value;
+                timesForm.querySelector('input[name="note"]').value = infoForm.querySelector('input[name="note"]').value;
+                timesForm.querySelector('input[name="status"]').value = infoForm.querySelector('input[name="status"]').value;
+            }
+        }
+        
+        updateRemoveButtons('work-time-entry', 'remove-work-time');
+        updateRemoveButtons('work-detail-entry', 'remove-work-detail');
+        
+        // 過去の作業内容選択ボタンにイベントリスナーを追加
+        document.querySelectorAll('.show-past-descriptions').forEach(button => {
+            button.addEventListener('click', function(e) {
+                // クリックされたボタンに関連する作業内容テキストエリアを保存
+                window.currentDescriptionTextarea = this.previousElementSibling;
+                console.log('作業内容テキストエリアを保存:', window.currentDescriptionTextarea);
+                
+                // 作業項目IDを取得（もし選択されていれば）
+                const workItemSelect = this.closest('.work-detail-entry').querySelector('.work-item-select');
+                const workItemId = workItemSelect ? workItemSelect.value : '';
+                console.log(`選択された作業項目ID: ${workItemId}`);
+                
+                // 既存のモーダル関連要素をクリーンアップ
+                cleanupModal();
+                
+                // 過去の作業内容を取得する
+                fetchPastDescriptions('', workItemId);
+                
+                // モーダルを表示
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: true,      // 静的でないバックドロップを使用
+                    keyboard: true       // ESCキーでの閉じるを有効化
+                });
+                modal.show();
+                
+                // デフォルトの動作を停止
+                e.preventDefault();
+            });
+        });
+        
+        // 閉じるボタンにイベントリスナーを追加
+        document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('モーダル閉じるボタンがクリックされました');
+                
+                // モーダル要素を取得
+                const modalElement = document.getElementById('pastDescriptionsModal');
+                
+                // Bootstrapモーダルインスタンスを取得し閉じる
+                const bsModal = bootstrap.Modal.getInstance(modalElement);
+                if (bsModal) {
+                    bsModal.hide();
+                    console.log('モーダルを非表示にしました');
+                }
+                
+                // 完全にクリーンアップ（タイミング調整）
+                setTimeout(() => {
+                    cleanupModal();
+                    console.log('クリーンアップを完了しました');
+                }, 300);
+            });
+        });
+        
+        // 検索ボタンにイベントリスナーを追加
+        document.getElementById('searchPastDescriptionsBtn').addEventListener('click', function() {
+            const searchTerm = document.getElementById('searchPastDescriptions').value;
+            const workItemId = '';  // 検索時は作業項目IDによるフィルタリングを無効化
+            fetchPastDescriptions(searchTerm, workItemId);
+        });
+        
+        // 検索入力欄でEnterキーを押した場合も検索実行
+        document.getElementById('searchPastDescriptions').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('searchPastDescriptionsBtn').click();
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // 過去の作業内容を取得する関数
+    function fetchPastDescriptions(searchTerm, workItemId) {
+        const url = `/reports/api/past_descriptions?term=${encodeURIComponent(searchTerm || '')}&work_item_id=${encodeURIComponent(workItemId || '')}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const listContainer = document.getElementById('pastDescriptionsList');
+                const noResultsMessage = document.getElementById('noResultsMessage');
+                
+                // リストをクリア
+                listContainer.innerHTML = '';
+                
+                if (data.length > 0) {
+                    // 結果がある場合はリストに表示
+                    data.forEach(item => {
+                        const listItem = document.createElement('button');
+                        listItem.className = 'list-group-item list-group-item-action';
+                        listItem.textContent = item.text;
+                        listItem.addEventListener('click', function() {
+                            console.log(`選択された作業内容: ${item.text}`);
+                            // 選択された作業内容をテキストエリアに設定
+                            if (window.currentDescriptionTextarea) {
+                                window.currentDescriptionTextarea.value = item.text;
+                                console.log('作業内容を設定しました');
+                                
+                                // モーダルを完全に閉じる
+                                const modalElement = document.getElementById('pastDescriptionsModal');
+                                
+                                // Bootstrapモーダルインスタンスを取得し閉じる
+                                const bsModal = bootstrap.Modal.getInstance(modalElement);
+                                if (bsModal) {
+                                    bsModal.hide();
+                                    console.log('モーダルを非表示にしました');
+                                }
+                                
+                                // バックドロップと関連要素を完全に削除（タイミング調整）
+                                setTimeout(() => {
+                                    cleanupModal();
+                                    console.log('クリーンアップを完了しました');
+                                }, 300);
+                            } else {
+                                console.error('作業内容テキストエリアが見つかりません');
+                            }
+                        });
+                        listContainer.appendChild(listItem);
+                    });
+                    noResultsMessage.style.display = 'none';
+                } else {
+                    // 結果がない場合はメッセージを表示
+                    noResultsMessage.style.display = 'block';
+                }
+            })
+            .catch(error => console.error('過去の作業内容の取得に失敗しました:', error));
+    }
+    
+    // モーダル関連の要素を完全にクリーンアップする関数
+    function cleanupModal() {
+        console.log('モーダルのクリーンアップを実行します');
+        
+        // バックドロップ要素を削除
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            console.log('バックドロップ要素を削除しています');
+            backdrop.remove();
+        });
+        
+        // モーダル要素のスタイルをリセット
+        const modalElement = document.getElementById('pastDescriptionsModal');
+        if (modalElement) {
+            console.log('モーダル要素のスタイルをリセットしています');
+            modalElement.style.display = 'none';
+            modalElement.classList.remove('show');
+            modalElement.setAttribute('aria-hidden', 'true');
+            modalElement.removeAttribute('aria-modal');
+            modalElement.removeAttribute('role');
+        }
+        
+        // bodyのスタイルをリセット
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // 追加: すべてのスクロール関連スタイルをリセット
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.paddingRight = '';
+    }
+
+    // 写真のアップロードフォーム送信時の処理
+    document.addEventListener('DOMContentLoaded', function() {
+        const photoForm = document.querySelector('form[name="upload_photo"]');
+        const photoUploadButton = document.getElementById('photo-upload-button');
+        
+        // エアコン選択肢をロードする関数
+        function initializeAirConditionerSelect() {
+            const airConditionerSelect = document.getElementById('air_conditioner_id');
+            
+            // 物件IDを取得
+            const propertySelect = document.getElementById('property_id');
+            const propertyId = propertySelect ? propertySelect.value : null;
+            
+            if (propertyId && airConditionerSelect) {
+                console.log("エアコン選択肢を初期化します");
+                
+                // APIからエアコン情報を取得
+                fetch(`/reports/api/properties/${propertyId}/air_conditioners`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 選択肢をクリア（最初の「選択してください」オプションは残す）
+                        while (airConditionerSelect.options.length > 1) {
+                            airConditionerSelect.remove(1);
+                        }
+                        
+                        // APIから取得したエアコン情報を選択肢に追加
+                        if (data.air_conditioners && data.air_conditioners.length > 0) {
+                            data.air_conditioners.forEach(ac => {
+                                const option = document.createElement('option');
+                                option.value = ac.id;
+                                
+                                // エアコン情報を整形して表示名を作成
+                                let acInfo = '';
+                                if (ac.manufacturer) acInfo += ac.manufacturer + ' ';
+                                if (ac.model_number) acInfo += ac.model_number + ' ';
+                                if (ac.location) acInfo += `(${ac.location})`;
+                                if (!acInfo) acInfo = `エアコン ID: ${ac.id}`;
+                                
+                                option.text = acInfo;
+                                
+                                // 前回選択したエアコンIDをログ出力
+                                console.log("選択すべきエアコンID: {{ last_air_conditioner_id|default('None') }}");
+                                
+                                // 前回選択したエアコンを選択状態にする
+                                {% if last_air_conditioner_id is not none %}
+                                const lastAcId = {{ last_air_conditioner_id }};
+                                console.log(`比較: エアコン ${ac.id} と 前回のID ${lastAcId}`);
+                                if (parseInt(ac.id) == parseInt(lastAcId)) {
+                                    option.selected = true;
+                                    console.log(`☆エアコン ${ac.id} を選択状態にしました（ID: ${lastAcId}）`);
+                                }
+                                {% endif %}
+                                
+                                airConditionerSelect.add(option);
+                            });
+                        } else {
+                            console.log("エアコン情報がありません");
+                        }
+                        
+                        console.log(`エアコン選択肢を更新しました。選択候補: {{ last_air_conditioner_id|default(0) }}`);
+                    })
+                    .catch(error => console.error('エアコン情報の取得に失敗しました:', error));
+            }
+        }
+        
+        // 初期化時にエアコン選択肢をロード
+        initializeAirConditionerSelect();
+        
+        // 物件選択時にもエアコン選択肢を更新
+        const propertySelect = document.getElementById('property_id');
+        if (propertySelect) {
+            propertySelect.addEventListener('change', function() {
+                initializeAirConditionerSelect();
+            });
+        }
+        
+        if (photoForm && photoUploadButton) {
+            photoForm.addEventListener('submit', function() {
+                // ボタンを無効化して二重送信を防止
+                photoUploadButton.disabled = true;
+                photoUploadButton.textContent = 'アップロード中...';
+            });
+        }
+    });
+</script>
+{% endblock %} 

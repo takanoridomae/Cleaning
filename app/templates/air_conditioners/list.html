@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}エアコン一覧 - {{ property.name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">エアコン一覧</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.view', id=property.id) }}">{{ property.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">エアコン一覧</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ property.name }} - エアコン情報</h5>
+                <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" class="btn btn-sm btn-success">
+                    <i class="bi bi-plus"></i> 新規追加
+                </a>
+            </div>
+            <div class="card-body">
+                {% if air_conditioners %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>種別</th>
+                                    <th>メーカー</th>
+                                    <th>設置場所</th>
+                                    <th>品番</th>
+                                    <th>金額</th>
+                                    <th>種別</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ac in air_conditioners %}
+                                <tr>
+                                    <td>{{ ac.ac_type or '未設定' }}</td>
+                                    <td>{{ ac.manufacturer or '未設定' }}</td>
+                                    <td>{{ ac.location or '未設定' }}</td>
+                                    <td>{{ ac.model_number or '未設定' }}</td>
+                                    <td>{% if ac.total_amount %}{{ "{:,}".format(ac.total_amount) }}円{% else %}未設定{% endif %}</td>
+                                    <td>{{ ac.cleaning_type or '未設定' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('air_conditioners.edit', id=ac.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ ac.id }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- 削除確認モーダル -->
+                                        <div class="modal fade" id="deleteModal{{ ac.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ ac.id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="deleteModalLabel{{ ac.id }}">エアコン情報削除確認</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>以下のエアコン情報を削除しますか？</p>
+                                                        <p><strong>種別:</strong> {{ ac.ac_type or '未設定' }}</p>
+                                                        <p><strong>メーカー:</strong> {{ ac.manufacturer or '未設定' }}</p>
+                                                        <p><strong>品番:</strong> {{ ac.model_number or '未設定' }}</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                        <form action="{{ url_for('air_conditioners.delete', id=ac.id) }}" method="post">
+                                                            <button type="submit" class="btn btn-danger">削除</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>登録されたエアコン情報はありません。
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">物件情報</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">物件名</div>
+                    <div class="col-md-8">{{ property.name }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">お客様</div>
+                    <div class="col-md-8">
+                        <a href="{{ url_for('customers.view', id=property.customer_id) }}">
+                            {{ property.customer.name }}
+                        </a>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold text-muted">住所</div>
+                    <div class="col-md-8">{{ property.address or '未設定' }}</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-building"></i> 物件詳細に戻る
+                    </a>
+                    <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" class="btn btn-outline-success">
+                        <i class="bi bi-plus"></i> エアコン情報追加
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

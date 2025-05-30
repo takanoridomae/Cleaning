@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}ログイン - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white text-center py-3">
+        <h4 class="mb-0">
+          <i class="bi bi-person-lock me-2"></i>
+          ログイン
+        </h4>
+      </div>
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div class="mb-3 d-flex justify-content-center">
+            <div class="logo-container mx-auto" style="width: 120px; height: 120px;">
+              <i class="bi bi-wind fs-1"></i>
+            </div>
+          </div>
+          <h5 class="fw-bold">エアコンクリーニング完了報告書システム</h5>
+          <p class="text-muted small">安心・確実な報告書管理をサポート</p>
+        </div>
+        
+        <form method="post" class="needs-validation" novalidate>
+          <div class="mb-3">
+            <label for="username" class="form-label">ユーザー名</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-person"></i>
+              </span>
+              <input type="text" class="form-control" id="username" name="username" required autofocus>
+              <div class="invalid-feedback">
+                ユーザー名を入力してください。
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-4">
+            <label for="password" class="form-label">パスワード</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-key"></i>
+              </span>
+              <input type="password" class="form-control" id="password" name="password" required>
+              <div class="invalid-feedback">
+                パスワードを入力してください。
+              </div>
+            </div>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary py-2">
+              <i class="bi bi-box-arrow-in-right me-2"></i>
+              ログイン
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer bg-light text-center py-3">
+        <small class="text-muted">問題が発生した場合は管理者にお問い合わせください。</small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

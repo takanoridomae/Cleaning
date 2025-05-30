@@ -1,0 +1,265 @@
+/* メインスタイルシート */
+
+:root {
+  --primary-color: #0d6efd;
+  --secondary-color: #17a2b8;
+  --dark-color: #343a40;
+  --light-color: #f8f9fa;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --success-color: #28a745;
+  --info-color: #17a2b8;
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f5f5;
+  padding-bottom: 50px;
+}
+
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.navbar-brand:hover {
+  transform: translateY(-2px);
+}
+
+/* ロゴ関連スタイル */
+.logo-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--primary-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.logo-container i {
+  color: white;
+  font-size: 1.6rem;
+}
+
+.logo-container:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ログイン画面のロゴ */
+.login-logo {
+  max-height: 140px;
+  width: auto;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease;
+}
+
+.login-logo:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 0.9rem;
+  }
+  
+  .logo-container {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .login-logo {
+    max-height: 120px;
+  }
+}
+
+.page-title {
+  margin-bottom: 20px;
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
+}
+
+.card {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.btn {
+  border-radius: 0.25rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-info:hover,
+.btn-outline-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+table {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+th {
+  font-weight: 600;
+  color: var(--dark-color);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+  border-radius: 0.25rem;
+}
+
+footer {
+  margin-top: 30px;
+  padding: 15px 0;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+/* フォーム関連 */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  font-weight: 500;
+}
+
+.form-text {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* レスポンシブ調整 */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  
+  .table-responsive {
+    font-size: 0.9rem;
+  }
+  
+  .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  h1.page-title {
+    font-size: 1.8rem;
+  }
+  
+  .lead {
+    font-size: 1rem;
+  }
+  
+  .btn-lg {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+  }
+}
+
+/* タブレット対応 */
+@media (min-width: 769px) and (max-width: 992px) {
+  .container {
+    max-width: 95%;
+  }
+}
+
+/* タッチデバイス最適化 */
+@media (hover: none) {
+  .btn, .nav-link, a {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* iOSでフォームズームを防止 */
+  }
+  
+  .form-control {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* ユーティリティクラス */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* アラート */
+.alert {
+  margin-bottom: 20px;
+}
+
+/* ボタン */
+.btn-group-actions {
+  white-space: nowrap;
+}
+
+/* ユーティリティ */
+.bg-light-gray {
+  background-color: #f8f9fa;
+}
+
+.required-label::after {
+  content: "*";
+  color: red;
+  margin-left: 4px;
+}
+
+/* フォーム関連 */
+.form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+  border-color: var(--primary-color);
+} 

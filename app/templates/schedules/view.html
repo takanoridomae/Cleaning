@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}スケジュール詳細 - {{ schedule.title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">スケジュール詳細</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('schedules.list') }}">スケジュール管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">詳細</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ schedule.title }}</h5>
+                <div>
+                    <span class="badge {{ 'bg-warning' if schedule.status == 'pending' else 'bg-success' if schedule.status == 'completed' else 'bg-secondary' }}">
+                        {{ schedule.status_display }}
+                    </span>
+                    <span class="badge {{ 'bg-danger' if schedule.priority == 'urgent' else 'bg-warning' if schedule.priority == 'high' else 'bg-secondary' }} ms-2">
+                        {{ schedule.priority_display }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>説明:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.description %}
+                        {{ schedule.description | nl2br }}
+                        {% else %}
+                        <span class="text-muted">なし</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>開始日時:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.all_day %}
+                        {{ schedule.start_datetime.strftime('%Y年%m月%d日') }}
+                        <span class="badge bg-info ms-2">終日</span>
+                        {% else %}
+                        {{ schedule.start_datetime.strftime('%Y年%m月%d日 %H:%M') }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>終了日時:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.all_day %}
+                        {{ schedule.end_datetime.strftime('%Y年%m月%d日') }}
+                        {% else %}
+                        {{ schedule.end_datetime.strftime('%Y年%m月%d日 %H:%M') }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>関連顧客:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.customer %}
+                        <a href="{{ url_for('customers.view', id=schedule.customer.id) }}" class="text-decoration-none">
+                            {{ schedule.customer.name }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">なし</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>関連物件:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.schedule_property %}
+                        <a href="{{ url_for('properties.view', id=schedule.schedule_property.id) }}" class="text-decoration-none">
+                            {{ schedule.schedule_property.name }}
+                        </a>
+                        {% if schedule.schedule_property.address %}
+                        <br><small class="text-muted">{{ schedule.schedule_property.address }}</small>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">なし</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>関連報告書:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if schedule.report %}
+                        <a href="{{ url_for('reports.view', id=schedule.report.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-text"></i> 報告書 #{{ schedule.report.id }}
+                        </a>
+                        <br><small class="text-muted">{{ schedule.report.date.strftime('%Y年%m月%d日') }} 作成</small>
+                        {% else %}
+                        <span class="text-muted">なし</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>作成日時:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ schedule.created_at.strftime('%Y年%m月%d日 %H:%M') }}
+                        {% if schedule.creator %}
+                        <small class="text-muted">by {{ schedule.creator.username }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if schedule.updated_at != schedule.created_at %}
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>更新日時:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ schedule.updated_at.strftime('%Y年%m月%d日 %H:%M') }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">操作</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('schedules.edit', id=schedule.id) }}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> 編集
+                    </a>
+                    
+                    {% if schedule.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('schedules.complete', id=schedule.id) }}">
+                        <button type="submit" class="btn btn-success w-100" onclick="return confirm('このスケジュールを完了しますか？')">
+                            <i class="bi bi-check"></i> 完了にする
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('schedules.list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> 一覧に戻る
+                    </a>
+                    
+                    <hr>
+                    
+                    <form method="POST" action="{{ url_for('schedules.delete', id=schedule.id) }}" onsubmit="return confirm('このスケジュールを削除しますか？この操作は取り消せません。')">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-trash"></i> 削除
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if schedule.notification_enabled %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">通知設定</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-bell text-primary me-2"></i>
+                    <span>{{ schedule.notification_minutes }}分前に通知</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if schedule.google_calendar_sync %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Googleカレンダー</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-calendar-check text-success me-2"></i>
+                    <span>同期済み</span>
+                </div>
+                {% if schedule.google_calendar_id %}
+                <small class="text-muted d-block mt-1">ID: {{ schedule.google_calendar_id[:20] }}...</small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

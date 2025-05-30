@@ -1,0 +1,69 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+ディレクトリを確認してから作業開始してください
+
+使用しているデーターベースは　aircon_report.db  になります　
+間違えないでください
+
+eacon_report/
+│
+├── instance/                  # インスタンス固有のファイル
+│   └── aircon_report.db       # SQLiteデータベースファイル
+│
+├── app/                       # アプリケーションのメインディレクトリ
+│   ├── __init__.py            # アプリケーション初期化
+│   │
+│   ├── models/                # データベースモデル
+│   │   ├── __init__.py
+│   │   ├── air_conditioner.py # エアコンモデル
+│   │   ├── customer.py        # 顧客モデル
+│   │   ├── photo.py           # 写真モデル
+│   │   ├── property.py        # 物件モデル
+│   │   ├── report.py          # レポートモデル
+│   │   └── user.py            # ユーザーモデル
+│   │
+│   ├── routes/                # ルート定義
+│   │   ├── __init__.py
+│   │   ├── air_conditioners.py # エアコン関連のルート
+│   │   ├── auth.py            # 認証関連のルート
+│   │   ├── customers.py       # 顧客関連のルート
+│   │   ├── main.py            # メインルート
+│   │   ├── properties.py      # 物件関連のルート
+│   │   └── reports.py         # レポート関連のルート
+│   │
+│   ├── templates/             # HTMLテンプレート
+│   │   ├── base.html          # ベーステンプレート
+│   │   ├── index.html         # インデックスページ
+│   │   ├── auth/              # 認証関連のテンプレート
+│   │   ├── air_conditioners/  # エアコン関連のテンプレート
+│   │   ├── customers/         # 顧客関連のテンプレート
+│   │   ├── error/             # エラーページのテンプレート
+│   │   ├── properties/        # 物件関連のテンプレート
+│   │   └── reports/           # レポート関連のテンプレート
+│   │
+│   ├── static/                # 静的ファイル
+│   │   ├── css/               # CSSファイル
+│   │   ├── js/                # JavaScriptファイル
+│   │   ├── img/               # 画像ファイル
+│   │   └── icons/             # アイコンファイル
+│   │
+│   ├── controllers/           # コントローラー
+│   ├── services/              # サービス
+│   └── utils/                 # ユーティリティ
+│
+├── migrations/                # データベースマイグレーション
+├── uploads/                   # アップロードされたファイル
+├── tests/                     # テストコード
+│
+├── add_reception_fields.py    # 受付フィールド追加用マイグレーションスクリプト
+├── check_db.py                # データベース確認スクリプト
+├── check_tables.py            # テーブル確認スクリプト
+├── create_user.py             # ユーザー作成スクリプト
+├── run.py                     # アプリケーション実行スクリプト
+├── run_migration.py           # マイグレーション実行スクリプト
+├── requirements.txt           # 依存パッケージリスト
+
+└── README.md                  # プロジェクト説明書

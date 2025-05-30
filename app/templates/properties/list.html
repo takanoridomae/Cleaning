@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}物件一覧{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-building me-2"></i>物件一覧
+                </h1>
+                <a href="{{ url_for('properties.create') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>新規物件登録
+                </a>
+            </div>
+
+            <!-- 検索フォーム -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="search" 
+                                       value="{{ current_search }}" 
+                                       placeholder="物件名、顧客名、住所、受付種別で検索...">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-search me-1"></i>検索
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('properties.list') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-clockwise me-1"></i>リセット
+                            </a>
+                        </div>
+                        <!-- ソートとページの隠しフィールド -->
+                        <input type="hidden" name="sort" value="{{ current_sort }}">
+                        <input type="hidden" name="order" value="{{ current_order }}">
+                    </form>
+                </div>
+            </div>
+
+            <!-- 検索結果表示 -->
+            {% if current_search %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                「{{ current_search }}」の検索結果: {{ pagination.total }}件
+            </div>
+            {% endif %}
+
+            <!-- 物件一覧テーブル -->
+            <div class="card">
+                <div class="card-body">
+                    {% if properties %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='id', order='desc' if current_sort == 'id' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                ID
+                                                {% if current_sort == 'id' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='name', order='desc' if current_sort == 'name' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                物件名
+                                                {% if current_sort == 'name' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='customer', order='desc' if current_sort == 'customer' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                顧客名
+                                                {% if current_sort == 'customer' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='address', order='desc' if current_sort == 'address' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                住所
+                                                {% if current_sort == 'address' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='reception_type', order='desc' if current_sort == 'reception_type' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                受付種別
+                                                {% if current_sort == 'reception_type' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>エアコン数</th>
+                                        <th>報告書数</th>
+                                        <th>
+                                            <a href="{{ url_for('properties.list', search=current_search, sort='created_at', order='desc' if current_sort == 'created_at' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                登録日
+                                                {% if current_sort == 'created_at' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for property in properties %}
+                                    <tr>
+                                        <td>{{ property.id }}</td>
+                                        <td>
+                                            <a href="{{ url_for('properties.view', id=property.id) }}" class="text-decoration-none">
+                                                {{ property.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('customers.view', id=property.customer_id) }}" class="text-decoration-none">
+                                                {{ property.customer.name }}
+                                            </a>
+                                        </td>
+                                        <td>{{ property.address or '未設定' }}</td>
+                                        <td>
+                                            {% if property.reception_type %}
+                                                <span class="badge bg-primary">{{ property.reception_type }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">未設定</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ property.air_conditioners|length }}</span>
+                                        </td>
+                                        <td>
+                                            {% if property.reports|length > 0 %}
+                                                <span class="badge bg-success">{{ property.reports|length }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ property.created_at.strftime('%Y年%m月%d日') }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('properties.view', id=property.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" 
+                                                   title="詳細">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('properties.edit', id=property.id) }}" 
+                                                   class="btn btn-sm btn-outline-secondary" 
+                                                   title="編集">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="{{ url_for('air_conditioners.create', property_id=property.id) }}" 
+                                                   class="btn btn-sm btn-outline-success" 
+                                                   title="エアコン追加">
+                                                    <i class="bi bi-plus"></i> <i class="bi bi-fan"></i>
+                                                </a>
+                                                {% if property.reports|length == 0 %}
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-danger delete-btn" 
+                                                            title="削除"
+                                                            data-property-id="{{ property.id }}"
+                                                            data-property-name="{{ property.name }}"
+                                                            onclick="confirmDelete('{{ property.id }}', '{{ property.name }}')">
+                                                        <i class="bi bi-trash"></i>
+                                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                                    </button>
+                                                {% else %}
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-secondary" 
+                                                            title="報告書があるため削除不可"
+                                                            disabled>
+                                                        <i class="bi bi-shield-lock"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- ページネーション -->
+                        {% if pagination.pages > 1 %}
+                        <nav aria-label="物件一覧ページネーション" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('properties.list', search=current_search, sort=current_sort, order=current_order, page=pagination.prev_num) }}">
+                                            <i class="bi bi-chevron-left"></i> 前へ
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            <i class="bi bi-chevron-left"></i> 前へ
+                                        </span>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        {{ pagination.page }} / {{ pagination.pages }}
+                                        <small class="text-muted ms-2">({{ pagination.total }}件)</small>
+                                    </span>
+                                </li>
+
+                                {% if pagination.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('properties.list', search=current_search, sort=current_sort, order=current_order, page=pagination.next_num) }}">
+                                            次へ <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            次へ <i class="bi bi-chevron-right"></i>
+                                        </span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            {% if current_search %}
+                                検索条件に一致する物件はありません。
+                            {% else %}
+                                登録されている物件はありません。新規物件を登録してください。
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 削除確認モーダル -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>物件削除の確認
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>以下の物件を削除しますか？</p>
+                <div class="alert alert-warning">
+                    <strong id="deletePropertyName"></strong>
+                </div>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    この操作は取り消せません。物件に関連するエアコン情報もすべて削除されます。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>キャンセル
+                </button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>削除する
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bootstrapが読み込まれるまで待機
+    function waitForBootstrap() {
+        if (typeof bootstrap !== 'undefined') {
+            // グローバルスコープに関数を定義
+            window.confirmDelete = function(propertyId, propertyName) {
+                console.log('confirmDelete関数が呼び出されました:', propertyId, propertyName);
+                
+                const deletePropertyNameElement = document.getElementById('deletePropertyName');
+                const deleteFormElement = document.getElementById('deleteForm');
+                const deleteModalElement = document.getElementById('deleteModal');
+                
+                if (deletePropertyNameElement && deleteFormElement && deleteModalElement) {
+                    deletePropertyNameElement.textContent = propertyName;
+                    deleteFormElement.action = `/properties/${propertyId}/delete`;
+                    
+                    console.log('モーダルを表示します');
+                    const deleteModal = new bootstrap.Modal(deleteModalElement);
+                    deleteModal.show();
+                } else {
+                    console.error('削除モーダルの要素が見つかりません:', {
+                        deletePropertyNameElement: !!deletePropertyNameElement,
+                        deleteFormElement: !!deleteFormElement,
+                        deleteModalElement: !!deleteModalElement
+                    });
+                }
+            };
+            
+            // 削除フォームの送信時にローディング状態を表示
+            const deleteForm = document.getElementById('deleteForm');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function() {
+                    const deleteButton = deleteForm.querySelector('button[type="submit"]');
+                    if (deleteButton) {
+                        deleteButton.disabled = true;
+                        deleteButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>削除中...';
+                    }
+                });
+            }
+            
+            console.log('confirmDelete関数が準備されました');
+        } else {
+            // 100ms後に再試行
+            setTimeout(waitForBootstrap, 100);
+        }
+    }
+    
+    waitForBootstrap();
+});
+</script>
+{% endblock %} 

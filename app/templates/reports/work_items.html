@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}作業項目管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>作業項目管理</h2>
+            <p>作業報告書で使用する作業項目を管理します。</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ referer }}" class="btn btn-secondary">前のページに戻る</a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h3>新規作業項目の登録</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('reports.add_work_item') }}">
+                        <input type="hidden" name="referer" value="{{ referer }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">作業項目名</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">説明</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">登録</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>作業項目一覧</h3>
+                    <span class="badge bg-primary">全{{ items|length }}件</span>
+                </div>
+                <div class="card-body">
+                    {% if items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>作業項目名</th>
+                                        <th>状態</th>
+                                        <th>説明</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                    <tr>
+                                        <td>{{ item.name }}</td>
+                                        <td>
+                                            {% if item.is_active %}
+                                                <span class="badge bg-success">有効</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">無効</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.description or '説明なし' }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        data-bs-toggle="modal" data-bs-target="#editModal{{ item.id }}">
+                                                    編集
+                                                </button>
+                                                <form method="post" action="{{ url_for('reports.toggle_work_item', id=item.id) }}" class="d-inline">
+                                                    <input type="hidden" name="referer" value="{{ referer }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if item.is_active else 'success' }}">
+                                                        {{ '無効化' if item.is_active else '有効化' }}
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        data-bs-toggle="modal" data-bs-target="#deleteModal{{ item.id }}">
+                                                    削除
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- 編集モーダル -->
+                                            <div class="modal fade" id="editModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">作業項目の編集</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <form method="post" action="{{ url_for('reports.edit_work_item', id=item.id) }}">
+                                                            <input type="hidden" name="referer" value="{{ referer }}">
+                                                            <div class="modal-body">
+                                                                <div class="mb-3">
+                                                                    <label for="edit_name{{ item.id }}" class="form-label">作業項目名</label>
+                                                                    <input type="text" class="form-control" id="edit_name{{ item.id }}" 
+                                                                           name="name" value="{{ item.name }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label for="edit_description{{ item.id }}" class="form-label">説明</label>
+                                                                    <textarea class="form-control" id="edit_description{{ item.id }}" 
+                                                                              name="description" rows="3">{{ item.description or '' }}</textarea>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                                <button type="submit" class="btn btn-primary">更新</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 削除確認モーダル -->
+                                            <div class="modal fade" id="deleteModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">作業項目の削除確認</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p>作業項目「{{ item.name }}」を削除しますか？</p>
+                                                            <p class="text-danger">注意: 既に使用されている作業項目は削除できません。</p>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                                                            <form method="post" action="{{ url_for('reports.delete_work_item', id=item.id) }}">
+                                                                <input type="hidden" name="referer" value="{{ referer }}">
+                                                                <button type="submit" class="btn btn-danger">削除</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center py-3">作業項目がまだ登録されていません</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

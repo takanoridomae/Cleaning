@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}新規お客様登録 - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h2">新規お客様登録</h1>
+  <a href="{{ url_for('customers.list') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>一覧に戻る
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post" class="needs-validation" novalidate>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="name" class="form-label">お客様名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="name" name="name" required>
+          <div class="invalid-feedback">
+            お客様名を入力してください
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <label for="company_name" class="form-label">会社名</label>
+          <input type="text" class="form-control" id="company_name" name="company_name">
+        </div>
+        
+        <div class="col-md-6">
+          <label for="phone" class="form-label">電話番号</label>
+          <input type="tel" class="form-control" id="phone" name="phone">
+        </div>
+        
+        <div class="col-md-6">
+          <label for="email" class="form-label">メールアドレス</label>
+          <input type="email" class="form-control" id="email" name="email">
+        </div>
+        
+        <div class="col-md-4">
+          <label for="postal_code" class="form-label">郵便番号</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="postal_code" name="postal_code" placeholder="123-4567" maxlength="8">
+            <button type="button" class="btn btn-outline-secondary" id="postal-search-btn">住所検索</button>
+          </div>
+          <div class="form-text">ハイフンあり（例：123-4567）</div>
+        </div>
+        
+        <div class="col-md-8">
+          <label for="address" class="form-label">住所</label>
+          <input type="text" class="form-control" id="address" name="address">
+        </div>
+        
+        <div class="col-12">
+          <label for="note" class="form-label">備考</label>
+          <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+        </div>
+      </div>
+      
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+        <a href="{{ url_for('customers.list') }}" class="btn btn-outline-secondary me-md-2">キャンセル</a>
+        <button type="submit" class="btn btn-primary">登録する</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 郵便番号検索機能
+    const postalCodeInput = document.getElementById('postal_code');
+    const addressInput = document.getElementById('address');
+    const postalSearchBtn = document.getElementById('postal-search-btn');
+    
+    // 郵便番号から住所を検索する関数
+    function searchAddressByPostalCode() {
+        const postalCode = postalCodeInput.value.replace('-', ''); // ハイフンを除去
+        
+        if (!postalCode || postalCode.length < 7) {
+            alert('郵便番号を正しく入力してください');
+            return;
+        }
+        
+        // 検索中の表示
+        postalSearchBtn.disabled = true;
+        postalSearchBtn.textContent = '検索中...';
+        
+        // 郵便番号検索API（日本郵便のAPIを利用）
+        fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`)
+            .then(response => response.json())
+            .then(data => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                
+                if (data.status === 200 && data.results) {
+                    const result = data.results[0];
+                    // 住所を組み立て（都道府県 + 市区町村 + 町名）
+                    const address = `${result.address1}${result.address2}${result.address3}`;
+                    addressInput.value = address;
+                } else {
+                    alert('該当する住所が見つかりませんでした');
+                }
+            })
+            .catch(error => {
+                postalSearchBtn.disabled = false;
+                postalSearchBtn.textContent = '住所検索';
+                console.error('郵便番号検索エラー:', error);
+                alert('住所検索に失敗しました');
+            });
+    }
+    
+    // 郵便番号検索ボタンクリック時の処理
+    postalSearchBtn.addEventListener('click', searchAddressByPostalCode);
+    
+    // 郵便番号入力欄でEnterキー押下時の処理
+    postalCodeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // フォーム送信を防止
+            searchAddressByPostalCode();
+        }
+    });
+    
+    // 郵便番号入力時に自動でハイフンを追加
+    postalCodeInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // 数字とハイフン以外を除去
+        value = value.replace(/[^\d-]/g, '');
+        
+        // ハイフンの位置を調整
+        if (value.length > 3 && !value.includes('-')) {
+            value = value.slice(0, 3) + '-' + value.slice(3);
+        }
+        
+        // 最大8文字（ハイフン含む）
+        if (value.length > 8) {
+            value = value.slice(0, 8);
+        }
+        
+        e.target.value = value;
+    });
+});
+</script>
+{% endblock %} 

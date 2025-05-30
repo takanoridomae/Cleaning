@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}ホーム - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">エアコンクリーニング完了報告書システム</h1>
+        <p class="lead">作業完了報告書を効率的に管理するためのダッシュボード</p>
+    </div>
+</div>
+
+<div class="row stats-cards mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">お客様数</h6>
+                        <h2 class="mb-0">{{ stats.customer_count }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1"></i>
+                </div>
+                <a href="{{ url_for('customers.list') }}" class="text-white">詳細を表示 &raquo;</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">物件数</h6>
+                        <h2 class="mb-0">{{ stats.property_count }}</h2>
+                    </div>
+                    <i class="bi bi-building fs-1"></i>
+                </div>
+                <a href="{{ url_for('properties.list') }}" class="text-white">詳細を表示 &raquo;</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">報告書数</h6>
+                        <h2 class="mb-0">{{ stats.report_count }}</h2>
+                    </div>
+                    <i class="bi bi-file-text fs-1"></i>
+                </div>
+                <a href="{{ url_for('reports.list') }}" class="text-white">詳細を表示 &raquo;</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">未完了報告書</h6>
+                        <h2 class="mb-0">{{ stats.pending_count }}</h2>
+                    </div>
+                    <i class="bi bi-hourglass-split fs-1"></i>
+                </div>
+                <a href="{{ url_for('reports.list', status='pending') }}" class="text-dark">詳細を表示 &raquo;</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card recent-data-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">最近の報告書</h5>
+                <a href="{{ url_for('reports.list') }}" class="btn btn-sm btn-outline-primary">全て表示</a>
+            </div>
+            <div class="card-body">
+                {% if recent_reports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>物件名</th>
+                                    <th>状態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in recent_reports %}
+                                <tr>
+                                    <td>{{ report.date }}</td>
+                                    <td>{{ report.property.name }}</td>
+                                    <td>
+                                        {% if report.status == 'completed' %}
+                                            <span class="badge bg-success">完了</span>
+                                        {% elif report.status == 'pending' %}
+                                            <span class="badge bg-warning">作成中</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('reports.view', id=report.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">最近の報告書はありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card recent-data-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">最近のお客様</h5>
+                <a href="{{ url_for('customers.list') }}" class="btn btn-sm btn-outline-primary">全て表示</a>
+            </div>
+            <div class="card-body">
+                {% if recent_customers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>お客様名</th>
+                                    <th>物件数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for customer in recent_customers %}
+                                <tr>
+                                    <td>{{ customer.name }}</td>
+                                    <td>{{ customer.properties|length }}</td>
+                                    <td>
+                                        <a href="{{ url_for('customers.view', id=customer.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">お客様情報はありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card recent-data-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">最近の物件</h5>
+                <a href="{{ url_for('properties.list') }}" class="btn btn-sm btn-outline-primary">全て表示</a>
+            </div>
+            <div class="card-body">
+                {% if recent_properties %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>物件名</th>
+                                    <th>お客様名</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for property in recent_properties %}
+                                <tr>
+                                    <td>{{ property.name }}</td>
+                                    <td>{{ property.customer.name }}</td>
+                                    <td>
+                                        <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">物件情報はありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">クイックアクセス</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('customers.create') }}" class="btn btn-lg btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4">
+                            <i class="bi bi-person-plus fs-1 mb-2"></i>
+                            <span>新規お客様登録</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('properties.create') }}" class="btn btn-lg btn-outline-success w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4">
+                            <i class="bi bi-building-add fs-1 mb-2"></i>
+                            <span>新規物件登録</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('reports.create') }}" class="btn btn-lg btn-outline-info w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4">
+                            <i class="bi bi-file-earmark-plus fs-1 mb-2"></i>
+                            <span>新規報告書作成</span>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('reports.list', status='pending') }}" class="btn btn-lg btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4">
+                            <i class="bi bi-hourglass-split fs-1 mb-2"></i>
+                            <span>未完了の報告書</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %} 

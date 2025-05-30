@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}受注明細一覧{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-list-ul me-2"></i>受注明細一覧
+                </h1>
+                <div>
+                    <a href="{{ url_for('reports.order_details_pdf', 
+                        search=current_search, 
+                        start_date=current_start_date, 
+                        end_date=current_end_date,
+                        sort=current_sort,
+                        order=current_order) }}" 
+                       class="btn btn-success me-2">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF出力
+                    </a>
+                    <a href="{{ url_for('reports.list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>報告書一覧に戻る
+                    </a>
+                </div>
+            </div>
+
+            <!-- 検索・期間フィルタフォーム -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">キーワード検索</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="search"
+                                       name="search" 
+                                       value="{{ current_search }}" 
+                                       placeholder="顧客名、物件名、住所、受付種別で検索...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="start_date" class="form-label">開始日</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="start_date"
+                                   name="start_date" 
+                                   value="{{ current_start_date }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_date" class="form-label">終了日</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="end_date"
+                                   name="end_date" 
+                                   value="{{ current_end_date }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="btn-group w-100">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-1"></i>検索
+                                </button>
+                                <a href="{{ url_for('reports.order_details_list') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <!-- ソートとページの隠しフィールド -->
+                        <input type="hidden" name="sort" value="{{ current_sort }}">
+                        <input type="hidden" name="order" value="{{ current_order }}">
+                    </form>
+                </div>
+            </div>
+
+            <!-- 検索結果表示 -->
+            {% if current_search or current_start_date or current_end_date %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                検索条件: 
+                {% if current_search %}「{{ current_search }}」{% endif %}
+                {% if current_start_date %}開始日「{{ current_start_date }}」{% endif %}
+                {% if current_end_date %}終了日「{{ current_end_date }}」{% endif %}
+                の検索結果: {{ pagination.total }}件
+            </div>
+            {% endif %}
+
+            <!-- 受注明細一覧テーブル -->
+            <div class="card">
+                <div class="card-body">
+                    {% if order_details %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="pagination-info">
+                                {{ pagination.total }}件中 {{ (pagination.page - 1) * pagination.per_page + 1 }}〜{{ pagination.page * pagination.per_page if pagination.page * pagination.per_page <= pagination.total else pagination.total }}件を表示
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
+                                                sort='id', 
+                                                order='desc' if current_sort == 'id' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                報告書ID
+                                                {% if current_sort == 'id' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>物件ID</th>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
+                                                sort='customer', 
+                                                order='desc' if current_sort == 'customer' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                顧客名
+                                                {% if current_sort == 'customer' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
+                                                sort='property', 
+                                                order='desc' if current_sort == 'property' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                物件名
+                                                {% if current_sort == 'property' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
+                                                sort='reception_type', 
+                                                order='desc' if current_sort == 'reception_type' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                受付種別
+                                                {% if current_sort == 'reception_type' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>エアコン数</th>
+                                        <th>作業項目数</th>
+                                        <th>金額</th>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
+                                                sort='date', 
+                                                order='desc' if current_sort == 'date' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                報告日
+                                                {% if current_sort == 'date' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detail in order_details %}
+                                    <tr>
+                                        <td>{{ detail.report.id }}</td>
+                                        <td>{{ detail.property.id }}</td>
+                                        <td>
+                                            <a href="{{ url_for('customers.view', id=detail.customer.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ detail.customer.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('properties.view', id=detail.property.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ detail.property.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if detail.property.reception_type %}
+                                                <span class="badge bg-primary">{{ detail.property.reception_type }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">未設定</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ detail.ac_count }}</span>
+                                        </td>
+                                        <td>
+                                            {% if detail.work_detail_count > 0 %}
+                                                <span class="badge bg-warning">{{ detail.work_detail_count }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if detail.total_amount and detail.total_amount > 0 %}
+                                                <span class="text-success fw-bold">¥{{ "{:,}".format(detail.total_amount) }}</span>
+                                            {% else %}
+                                                <span class="text-muted">¥0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ detail.report.date.strftime('%Y年%m月%d日') }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('reports.view', id=detail.report.id) }}" 
+                                                   class="btn btn-sm btn-outline-success" 
+                                                   title="報告書詳細">
+                                                    <i class="bi bi-file-text"></i>
+                                                </a>
+                                                <a href="{{ url_for('properties.view', id=detail.property.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" 
+                                                   title="物件詳細">
+                                                    <i class="bi bi-building"></i>
+                                                </a>
+                                                <a href="{{ url_for('customers.view', id=detail.customer.id) }}" 
+                                                   class="btn btn-sm btn-outline-info" 
+                                                   title="顧客詳細">
+                                                    <i class="bi bi-person"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- ページネーション -->
+                        {% if pagination.pages > 1 %}
+                        <nav aria-label="受注明細一覧ページネーション" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('reports.order_details_list', 
+                                            search=current_search, 
+                                            start_date=current_start_date,
+                                            end_date=current_end_date,
+                                            sort=current_sort, 
+                                            order=current_order, 
+                                            page=pagination.prev_num) }}">
+                                            <i class="bi bi-chevron-left"></i> 前へ
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            <i class="bi bi-chevron-left"></i> 前へ
+                                        </span>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        {{ pagination.page }} / {{ pagination.pages }}
+                                        <small class="text-muted ms-2">({{ pagination.total }}件)</small>
+                                    </span>
+                                </li>
+
+                                {% if pagination.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('reports.order_details_list', 
+                                            search=current_search, 
+                                            start_date=current_start_date,
+                                            end_date=current_end_date,
+                                            sort=current_sort, 
+                                            order=current_order, 
+                                            page=pagination.next_num) }}">
+                                            次へ <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            次へ <i class="bi bi-chevron-right"></i>
+                                        </span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                        <!-- 集計情報 -->
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="card-title">集計情報</h5>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h4 class="text-primary">{{ pagination.total }}</h4>
+                                                    <small class="text-muted">総報告書数</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h4 class="text-warning">
+                                                        {% set total_work_details = order_details|sum(attribute='work_detail_count') %}
+                                                        {{ total_work_details }}
+                                                    </h4>
+                                                    <small class="text-muted">総作業項目数</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h4 class="text-info">
+                                                        {% set unique_properties = order_details|map(attribute='property.id')|list|unique|list|length %}
+                                                        {{ unique_properties }}
+                                                    </h4>
+                                                    <small class="text-muted">対象物件数</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h4 class="text-danger">
+                                                        {% set total_amount = order_details|sum(attribute='total_amount') %}
+                                                        ¥{{ "{:,}".format(total_amount) if total_amount else "0" }}
+                                                    </h4>
+                                                    <small class="text-muted">総金額</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            {% if current_search or current_start_date or current_end_date %}
+                                検索条件に一致する受注明細はありません。
+                            {% else %}
+                                受注明細データはありません。
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enterキーでの検索
+document.getElementById('search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        this.form.submit();
+    }
+});
+
+// 期間選択の連動
+document.getElementById('start_date').addEventListener('change', function() {
+    const startDate = this.value;
+    const endDateInput = document.getElementById('end_date');
+    
+    if (startDate && !endDateInput.value) {
+        // 開始日が選択されて終了日が空の場合は、自動で検索を実行
+        this.form.submit();
+    }
+});
+
+document.getElementById('end_date').addEventListener('change', function() {
+    const endDate = this.value;
+    const startDateInput = document.getElementById('start_date');
+    
+    if (endDate) {
+        // 終了日が選択された場合は、自動で検索を実行
+        this.form.submit();
+    }
+});
+</script>
+{% endblock %} 
