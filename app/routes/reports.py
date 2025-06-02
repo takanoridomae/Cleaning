@@ -260,6 +260,9 @@ def list():
         sort_column = Report.id
     elif sort_by == "date":
         sort_column = Report.date
+    elif sort_by == "work_date":
+        # 作業日でのソート（最初の作業日を基準）
+        sort_column = WorkTime.work_date
     elif sort_by == "customer":
         sort_column = Customer.name
     elif sort_by == "property":
@@ -279,6 +282,17 @@ def list():
     # ページネーション
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     reports = pagination.items
+
+    # 各報告書の作業日情報を取得
+    for report in reports:
+        # その報告書の作業日を取得（日付順）
+        work_times = (
+            WorkTime.query.filter_by(report_id=report.id)
+            .order_by(WorkTime.work_date.asc())
+            .all()
+        )
+        report.work_dates = [wt.work_date for wt in work_times]
+        report.work_times_data = work_times
 
     return render_template(
         "reports/list.html",

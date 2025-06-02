@@ -157,6 +157,18 @@
                                         <i class="bi bi-arrow-up-down sort-icon"></i>
                                     {% endif %}
                                 </th>
+                                <th class="sortable-header" onclick="sortTable('work_date')">
+                                    作業日
+                                    {% if current_sort == 'work_date' %}
+                                        {% if current_order == 'asc' %}
+                                            <i class="bi bi-arrow-up sort-icon active"></i>
+                                        {% else %}
+                                            <i class="bi bi-arrow-down sort-icon active"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-up-down sort-icon"></i>
+                                    {% endif %}
+                                </th>
                                 <th class="sortable-header" onclick="sortTable('customer')">
                                     顧客
                                     {% if current_sort == 'customer' %}
@@ -215,6 +227,16 @@
                             <tr>
                                 <td><strong>{{ report.id }}</strong></td>
                                 <td>{{ report.date.strftime('%Y-%m-%d') if report.date else '-' }}</td>
+                                <td>
+                                    {% if report.work_dates and report.work_dates|length > 0 %}
+                                        {{ report.work_dates[0].strftime('%Y-%m-%d') }}
+                                        {% if report.work_dates|length > 1 %}
+                                            <small class="text-muted">他{{ report.work_dates|length - 1 }}日</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ report.property.customer.name if report.property and report.property.customer else '-' }}</td>
                                 <td>{{ report.property.name if report.property else '-' }}</td>
                                 <td>
