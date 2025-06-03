@@ -7,7 +7,7 @@ from app.models.photo import Photo
 from app.models.work_time import WorkTime
 from app.models.work_detail import WorkDetail
 from app import db
-from app.routes.auth import login_required
+from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
 from sqlalchemy import or_
 import os
 from flask import current_app
@@ -17,6 +17,7 @@ bp = Blueprint("properties", __name__, url_prefix="/properties")
 
 @bp.route("/")
 @login_required
+@view_permission_required
 def list():
     """物件一覧画面表示"""
     # パラメータの取得
@@ -81,6 +82,7 @@ def list():
 
 @bp.route("/<int:id>")
 @login_required
+@view_permission_required
 def view(id):
     """物件詳細画面表示"""
     property = Property.query.get_or_404(id)
@@ -89,6 +91,7 @@ def view(id):
 
 @bp.route("/create", methods=("GET", "POST"))
 @login_required
+@create_permission_required
 def create():
     """新規物件登録"""
     customers = Customer.query.order_by(Customer.name).all()
@@ -179,6 +182,7 @@ def create():
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
 @login_required
+@edit_permission_required
 def edit(id):
     """物件情報編集"""
     property = Property.query.get_or_404(id)
@@ -225,6 +229,7 @@ def edit(id):
 
 @bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@delete_permission_required
 def delete_property(id):
     """物件と関連データの削除"""
     property = Property.query.get_or_404(id)

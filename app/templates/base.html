@@ -99,6 +99,11 @@
                             <ul class="dropdown-menu dropdown-menu-end">
                                 {% if g.user.role == 'admin' %}
                                 <li>
+                                    <a class="dropdown-item" href="{{ url_for('auth.user_list') }}">
+                                        <i class="bi bi-people me-2"></i>ユーザー管理
+                                    </a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" href="{{ url_for('auth.admin_settings') }}">
                                         <i class="bi bi-gear me-2"></i>管理者設定
                                     </a>

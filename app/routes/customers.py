@@ -1,13 +1,16 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from app.models.customer import Customer
+from app.models.property import Property
 from app import db
-from app.routes.auth import login_required
+from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+from sqlalchemy import or_
 
 bp = Blueprint("customers", __name__, url_prefix="/customers")
 
 
 @bp.route("/")
 @login_required
+@view_permission_required
 def list():
     """顧客一覧画面表示"""
     customers = Customer.query.order_by(Customer.created_at.desc()).all()
@@ -16,6 +19,7 @@ def list():
 
 @bp.route("/<int:id>")
 @login_required
+@view_permission_required
 def view(id):
     """顧客詳細画面表示"""
     customer = Customer.query.get_or_404(id)
@@ -24,6 +28,7 @@ def view(id):
 
 @bp.route("/create", methods=("GET", "POST"))
 @login_required
+@create_permission_required
 def create():
     """新規顧客登録"""
     if request.method == "POST":
@@ -64,6 +69,7 @@ def create():
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
 @login_required
+@edit_permission_required
 def edit(id):
     """顧客情報編集"""
     customer = Customer.query.get_or_404(id)
@@ -104,6 +110,7 @@ def edit(id):
 
 @bp.route("/<int:id>/delete")
 @login_required
+@delete_permission_required
 def delete(id):
     """顧客情報削除"""
     customer = Customer.query.get_or_404(id)

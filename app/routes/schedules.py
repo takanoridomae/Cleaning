@@ -4,7 +4,7 @@ from app.models.customer import Customer
 from app.models.property import Property
 from app.models.report import Report
 from app import db
-from app.routes.auth import login_required
+from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
 from sqlalchemy import or_, and_
 from datetime import datetime, date, timedelta
 import calendar
@@ -14,6 +14,7 @@ bp = Blueprint("schedules", __name__, url_prefix="/schedules")
 
 @bp.route("/")
 @login_required
+@view_permission_required
 def list():
     """スケジュール一覧画面表示（月表示）"""
     # パラメータの取得
@@ -119,6 +120,7 @@ def list():
 
 @bp.route("/create", methods=("GET", "POST"))
 @login_required
+@create_permission_required
 def create():
     """新規スケジュール作成"""
     customers = Customer.query.order_by(Customer.name).all()
@@ -208,6 +210,7 @@ def create():
 
 @bp.route("/<int:id>")
 @login_required
+@view_permission_required
 def view(id):
     """スケジュール詳細表示"""
     schedule = Schedule.query.get_or_404(id)
@@ -216,6 +219,7 @@ def view(id):
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
 @login_required
+@edit_permission_required
 def edit(id):
     """スケジュール編集"""
     schedule = Schedule.query.get_or_404(id)
@@ -305,6 +309,7 @@ def edit(id):
 
 @bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@delete_permission_required
 def delete(id):
     """スケジュール削除"""
     schedule = Schedule.query.get_or_404(id)
@@ -322,6 +327,7 @@ def delete(id):
 
 @bp.route("/<int:id>/complete", methods=["POST"])
 @login_required
+@edit_permission_required
 def complete(id):
     """スケジュール完了"""
     schedule = Schedule.query.get_or_404(id)
@@ -338,6 +344,7 @@ def complete(id):
 
 @bp.route("/api/move", methods=["POST"])
 @login_required
+@edit_permission_required
 def move_schedule():
     """ドラッグ&ドロップによるスケジュール移動処理"""
     try:
@@ -428,6 +435,7 @@ def move_schedule():
 
 @bp.route("/api/events")
 @login_required
+@view_permission_required
 def api_events():
     """カレンダー表示用のイベントデータを返すAPI"""
     start_date = request.args.get("start")

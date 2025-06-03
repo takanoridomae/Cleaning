@@ -25,7 +25,7 @@ from sqlalchemy import or_
 import os
 from datetime import datetime, time, date
 from werkzeug.utils import secure_filename
-from app.routes.auth import login_required
+from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
 from app.services.pdf_service import PDFService
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -215,6 +215,7 @@ def sync_schedule_status_with_report(report):
 
 @bp.route("/")
 @login_required
+@view_permission_required
 def list():
     """報告書一覧画面表示"""
     # パラメータの取得
@@ -237,9 +238,9 @@ def list():
     if status:
         query = query.filter(Report.status == status)
 
-    # 検索フィルタ（顧客名、物件名、作業住所、備考、報告日、作業日）
+    # 検索フィルタ（顧客名、物件名、作業住所、備考、報告日、作業日、ステータス）
     if search:
-        search_filter = or_(
+        search_conditions = [
             Customer.name.contains(search),
             Property.name.contains(search),
             Report.work_address.contains(search),
@@ -248,7 +249,22 @@ def list():
             Report.date.cast(db.String).contains(search),
             # 作業日での検索（YYYY-MM-DD形式）
             WorkTime.work_date.cast(db.String).contains(search),
-        )
+            # ステータスでの検索（英語コード）
+            Report.status.contains(search),
+        ]
+        
+        # 日本語ステータス検索
+        search_lower = search.lower()
+        if '未完了' in search_lower:
+            search_conditions.append(Report.status == 'pending')
+        if '完了' in search_lower and '未完了' not in search_lower:
+            search_conditions.append(Report.status == 'completed')
+        if '下書き' in search_lower:
+            search_conditions.append(Report.status == 'draft')
+        if 'キャンセル' in search_lower:
+            search_conditions.append(Report.status == 'cancelled')
+            
+        search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
     # 重複を除去（WorkTimeとのJOINで重複が発生する可能性があるため）
@@ -307,6 +323,7 @@ def list():
 
 @bp.route("/create", methods=("GET", "POST"))
 @login_required
+@create_permission_required
 def create():
     """新規報告書作成"""
     properties = (
@@ -472,6 +489,7 @@ def create():
 
 @bp.route("/<int:id>")
 @login_required
+@view_permission_required
 def view(id):
     """報告書詳細画面表示"""
     report = Report.query.get_or_404(id)
@@ -510,6 +528,7 @@ def view(id):
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
 @login_required
+@edit_permission_required
 def edit(id):
     """報告書編集"""
     report = Report.query.get_or_404(id)
@@ -1145,6 +1164,7 @@ def get_past_descriptions():
 
 @bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@delete_permission_required
 def delete_report(id):
     """報告書と関連データの削除"""
     report = Report.query.get_or_404(id)
@@ -1209,6 +1229,7 @@ def delete_report(id):
 
 @bp.route("/api/properties/<int:property_id>/air_conditioners")
 @login_required
+@view_permission_required
 def api_property_air_conditioners(property_id):
     """物件に紐づくエアコン一覧をJSON形式で返すAPI"""
     # 物件の存在チェック
@@ -1236,6 +1257,7 @@ def api_property_air_conditioners(property_id):
 
 @bp.route("/<int:report_id>/photos/<int:photo_id>/delete", methods=["POST"])
 @login_required
+@delete_permission_required
 def delete_photo(report_id, photo_id):
     """報告書の写真を削除する"""
     # 指定された写真を取得
@@ -1274,6 +1296,7 @@ def delete_photo(report_id, photo_id):
 
 @bp.route("/<int:report_id>/photos/<int:photo_id>/edit", methods=["POST"])
 @login_required
+@edit_permission_required
 def edit_photo(report_id, photo_id):
     """報告書の写真情報（キャプション、撮影場所）を編集する"""
     # 指定された写真を取得
@@ -1309,6 +1332,7 @@ def edit_photo(report_id, photo_id):
 
 @bp.route("/<int:id>/pdf")
 @login_required
+@view_permission_required
 def download_pdf(id):
     """報告書のPDFをダウンロード"""
     report = Report.query.get_or_404(id)
@@ -1387,47 +1411,64 @@ def download_pdf(id):
 
 @bp.route("/order-details")
 @login_required
+@view_permission_required
 def order_details_list():
-    """受注明細一覧画面表示（報告日ベースで時系列表示）"""
+    """受注明細一覧画面表示（作業日ベースで時系列表示）"""
     # パラメータの取得
     search = request.args.get("search", "").strip()
     start_date = request.args.get("start_date", "")
     end_date = request.args.get("end_date", "")
-    sort_by = request.args.get("sort", "date")
+    sort_by = request.args.get("sort", "work_date")
     order = request.args.get("order", "desc")
     page = request.args.get("page", 1, type=int)
     per_page = 20
 
-    # ベースクエリの作成（報告書ベースで作成、報告書のない物件は除外）
+    # ベースクエリの作成（WorkTimeテーブルもJOINして作業日での検索を可能にする）
     query = (
         Report.query.join(Property)
         .join(Customer)
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
+        .outerjoin(WorkTime, Report.id == WorkTime.report_id)
     )
 
     # 検索フィルタ
     if search:
-        search_filter = or_(
+        search_conditions = [
             Customer.name.contains(search),
             Property.name.contains(search),
             Property.reception_type.contains(search),
             Property.reception_detail.contains(search),
             WorkDetail.description.contains(search),
-        )
+            # ステータスでの検索（英語コード）
+            Report.status.contains(search),
+        ]
+        
+        # 日本語ステータス検索
+        search_lower = search.lower()
+        if '未完了' in search_lower:
+            search_conditions.append(Report.status == 'pending')
+        if '完了' in search_lower and '未完了' not in search_lower:
+            search_conditions.append(Report.status == 'completed')
+        if '下書き' in search_lower:
+            search_conditions.append(Report.status == 'draft')
+        if 'キャンセル' in search_lower:
+            search_conditions.append(Report.status == 'cancelled')
+            
+        search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
-    # 期間フィルタ（報告日ベース）
+    # 期間フィルタ（作業日ベース）
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(Report.date >= start_date_obj)
+            query = query.filter(WorkTime.work_date >= start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(Report.date <= end_date_obj)
+            query = query.filter(WorkTime.work_date <= end_date_obj)
         except ValueError:
             pass
 
@@ -1444,12 +1485,14 @@ def order_details_list():
         sort_column = Property.name
     elif sort_by == "reception_type":
         sort_column = Property.reception_type
+    elif sort_by == "work_date":
+        sort_column = WorkTime.work_date
     elif sort_by == "date":
         sort_column = Report.date
     elif sort_by == "created_at":
         sort_column = Report.created_at
     else:
-        sort_column = Report.date
+        sort_column = WorkTime.work_date
 
     if order == "asc":
         query = query.order_by(sort_column.asc())
@@ -1479,6 +1522,14 @@ def order_details_list():
             or 0
         )
 
+        # 作業日情報を取得（日付順）
+        work_times = (
+            WorkTime.query.filter_by(report_id=report.id)
+            .order_by(WorkTime.work_date.asc())
+            .all()
+        )
+        work_dates = [wt.work_date for wt in work_times]
+
         order_details.append(
             {
                 "report": report,
@@ -1487,6 +1538,7 @@ def order_details_list():
                 "work_detail_count": work_detail_count,
                 "ac_count": ac_count,
                 "total_amount": total_amount,
+                "work_dates": work_dates,
             }
         )
 
@@ -1504,13 +1556,14 @@ def order_details_list():
 
 @bp.route("/order-details/pdf")
 @login_required
+@view_permission_required
 def order_details_pdf():
     """受注明細一覧PDF出力"""
     # パラメータの取得（一覧画面と同じフィルタを適用）
     search = request.args.get("search", "").strip()
     start_date = request.args.get("start_date", "")
     end_date = request.args.get("end_date", "")
-    sort_by = request.args.get("sort", "created_at")
+    sort_by = request.args.get("sort", "work_date")
     order = request.args.get("order", "desc")
 
     # データ取得（ページネーションなし）
@@ -1518,30 +1571,46 @@ def order_details_pdf():
         Report.query.join(Property)
         .join(Customer)
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
+        .outerjoin(WorkTime, Report.id == WorkTime.report_id)
     )
 
     # 同じフィルタ条件を適用
     if search:
-        search_filter = or_(
+        search_conditions = [
             Customer.name.contains(search),
             Property.name.contains(search),
             Property.reception_type.contains(search),
             Property.reception_detail.contains(search),
             WorkDetail.description.contains(search),
-        )
+            # ステータスでの検索（英語コード）
+            Report.status.contains(search),
+        ]
+        
+        # 日本語ステータス検索
+        search_lower = search.lower()
+        if '未完了' in search_lower:
+            search_conditions.append(Report.status == 'pending')
+        if '完了' in search_lower and '未完了' not in search_lower:
+            search_conditions.append(Report.status == 'completed')
+        if '下書き' in search_lower:
+            search_conditions.append(Report.status == 'draft')
+        if 'キャンセル' in search_lower:
+            search_conditions.append(Report.status == 'cancelled')
+            
+        search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(Report.date >= start_date_obj)
+            query = query.filter(WorkTime.work_date >= start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(Report.date <= end_date_obj)
+            query = query.filter(WorkTime.work_date <= end_date_obj)
         except ValueError:
             pass
 
@@ -1557,12 +1626,14 @@ def order_details_pdf():
         sort_column = Property.name
     elif sort_by == "reception_type":
         sort_column = Property.reception_type
+    elif sort_by == "work_date":
+        sort_column = WorkTime.work_date
     elif sort_by == "date":
         sort_column = Report.date
     elif sort_by == "created_at":
         sort_column = Report.created_at
     else:
-        sort_column = Report.date
+        sort_column = WorkTime.work_date
 
     if order == "asc":
         query = query.order_by(sort_column.asc())

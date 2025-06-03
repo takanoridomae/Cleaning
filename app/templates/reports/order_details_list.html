@@ -41,11 +41,11 @@
                                        id="search"
                                        name="search" 
                                        value="{{ current_search }}" 
-                                       placeholder="顧客名、物件名、住所、受付種別で検索...">
+                                       placeholder="顧客名、物件名、住所、受付種別、ステータスで検索...">
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <label for="start_date" class="form-label">開始日</label>
+                            <label for="start_date" class="form-label">作業開始日</label>
                             <input type="date" 
                                    class="form-control" 
                                    id="start_date"
@@ -53,7 +53,7 @@
                                    value="{{ current_start_date }}">
                         </div>
                         <div class="col-md-3">
-                            <label for="end_date" class="form-label">終了日</label>
+                            <label for="end_date" class="form-label">作業終了日</label>
                             <input type="date" 
                                    class="form-control" 
                                    id="end_date"
@@ -83,8 +83,8 @@
                 <i class="bi bi-info-circle me-2"></i>
                 検索条件: 
                 {% if current_search %}「{{ current_search }}」{% endif %}
-                {% if current_start_date %}開始日「{{ current_start_date }}」{% endif %}
-                {% if current_end_date %}終了日「{{ current_end_date }}」{% endif %}
+                {% if current_start_date %}作業開始日「{{ current_start_date }}」{% endif %}
+                {% if current_end_date %}作業終了日「{{ current_end_date }}」{% endif %}
                 の検索結果: {{ pagination.total }}件
             </div>
             {% endif %}
@@ -192,6 +192,26 @@
                                                 search=current_search, 
                                                 start_date=current_start_date,
                                                 end_date=current_end_date,
+                                                sort='work_date', 
+                                                order='desc' if current_sort == 'work_date' and current_order == 'asc' else 'asc') }}" 
+                                               class="text-decoration-none text-dark">
+                                                作業日
+                                                {% if current_sort == 'work_date' %}
+                                                    {% if current_order == 'asc' %}
+                                                        <i class="bi bi-arrow-up"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-down"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th>
+                                            <a href="{{ url_for('reports.order_details_list', 
+                                                search=current_search, 
+                                                start_date=current_start_date,
+                                                end_date=current_end_date,
                                                 sort='date', 
                                                 order='desc' if current_sort == 'date' and current_order == 'asc' else 'asc') }}" 
                                                class="text-decoration-none text-dark">
@@ -249,6 +269,16 @@
                                                 <span class="text-success fw-bold">¥{{ "{:,}".format(detail.total_amount) }}</span>
                                             {% else %}
                                                 <span class="text-muted">¥0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if detail.work_dates and detail.work_dates|length > 0 %}
+                                                {{ detail.work_dates[0].strftime('%Y年%m月%d日') }}
+                                                {% if detail.work_dates|length > 1 %}
+                                                    <small class="text-muted d-block">他{{ detail.work_dates|length - 1 }}日</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>

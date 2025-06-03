@@ -1,14 +1,18 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from app.models.air_conditioner import AirConditioner
 from app.models.property import Property
+from app.models.photo import Photo
 from app import db
-from app.routes.auth import login_required
+from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+import os
+from flask import current_app
 
 bp = Blueprint("air_conditioners", __name__, url_prefix="/air_conditioners")
 
 
 @bp.route("/property/<int:property_id>")
 @login_required
+@view_permission_required
 def list_by_property(property_id):
     """物件に関連するエアコン一覧表示"""
     property = Property.query.get_or_404(property_id)
@@ -22,6 +26,7 @@ def list_by_property(property_id):
 
 @bp.route("/api/property/<int:property_id>")
 @login_required
+@view_permission_required
 def api_list_by_property(property_id):
     """物件に関連するエアコン一覧をJSON形式で返す（API）"""
     air_conditioners = AirConditioner.query.filter_by(property_id=property_id).all()
@@ -35,6 +40,7 @@ def api_list_by_property(property_id):
 
 @bp.route("/create/<int:property_id>", methods=("GET", "POST"))
 @login_required
+@create_permission_required
 def create(property_id):
     """エアコン情報新規登録"""
     property = Property.query.get_or_404(property_id)
@@ -88,6 +94,7 @@ def create(property_id):
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
 @login_required
+@edit_permission_required
 def edit(id):
     """エアコン情報編集"""
     air_conditioner = AirConditioner.query.get_or_404(id)
@@ -143,6 +150,7 @@ def edit(id):
 
 @bp.route("/<int:id>/delete", methods=("POST",))
 @login_required
+@delete_permission_required
 def delete(id):
     """エアコン情報削除"""
     air_conditioner = AirConditioner.query.get_or_404(id)

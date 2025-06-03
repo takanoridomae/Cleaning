@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}ユーザー管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-people-fill me-2"></i>ユーザー管理
+                </h1>
+                <div>
+                    <a href="{{ url_for('auth.create_user') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-person-plus me-1"></i>新規ユーザー作成
+                    </a>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>ダッシュボードに戻る
+                    </a>
+                </div>
+            </div>
+
+            {% if users %}
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list me-2"></i>ユーザー一覧 ({{ users|length }}人)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="15%">ユーザー名</th>
+                                    <th width="15%">表示名</th>
+                                    <th width="20%">メールアドレス</th>
+                                    <th width="12%">権限</th>
+                                    <th width="10%">状態</th>
+                                    <th width="15%">最終ログイン</th>
+                                    <th width="13%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.username }}</strong>
+                                        {% if user.role == 'admin' %}
+                                        <span class="badge bg-danger ms-1">管理者</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.name or '-' }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        {% set role_colors = {
+                                            'admin': 'danger',
+                                            'all_access': 'success',
+                                            'editor': 'warning',
+                                            'viewer': 'info',
+                                            'user': 'secondary'
+                                        } %}
+                                        <span class="badge bg-{{ role_colors.get(user.role, 'secondary') }}">
+                                            {{ user.get_role_display_name() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if user.active %}
+                                        <span class="badge bg-success">有効</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">無効</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.last_login %}
+                                        <small>{{ user.last_login.strftime('%m/%d %H:%M') }}</small>
+                                        {% else %}
+                                        <small class="text-muted">未ログイン</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="編集">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            {% if user.id != g.user.id %}
+                                            <a href="{{ url_for('auth.toggle_user_status', user_id=user.id) }}" 
+                                               class="btn btn-sm {% if user.active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" 
+                                               title="{% if user.active %}無効化{% else %}有効化{% endif %}"
+                                               onclick="return confirm('ユーザー「{{ user.username }}」を{% if user.active %}無効化{% else %}有効化{% endif %}しますか？')">
+                                                <i class="bi {% if user.active %}bi-pause{% else %}bi-play{% endif %}"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 権限説明 -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>権限レベルの説明
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <span class="badge bg-danger">管理者</span>
+                                    <span class="ms-2">すべての機能とユーザー管理が可能</span>
+                                </li>
+                                <li class="mb-2">
+                                    <span class="badge bg-success">すべて可能</span>
+                                    <span class="ms-2">作成・編集・削除・閲覧すべて可能</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <span class="badge bg-warning">修正のみ可能</span>
+                                    <span class="ms-2">既存データの編集と閲覧のみ可能</span>
+                                </li>
+                                <li class="mb-2">
+                                    <span class="badge bg-info">閲覧のみ可能</span>
+                                    <span class="ms-2">データの閲覧のみ可能</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle me-2"></i>
+                まだユーザーが登録されていません。
+                <a href="{{ url_for('auth.create_user') }}" class="alert-link">新規ユーザーを作成</a>してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

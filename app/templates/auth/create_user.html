@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}新規ユーザー作成{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-person-plus-fill me-2"></i>新規ユーザー作成
+                </h1>
+                <a href="{{ url_for('auth.user_list') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ユーザー一覧に戻る
+                </a>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person-gear me-2"></i>ユーザー情報入力
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="createUserForm">
+                                <!-- ユーザー名 -->
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">
+                                        <i class="bi bi-person me-1"></i>ユーザー名
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="username" 
+                                           name="username" 
+                                           required
+                                           minlength="3"
+                                           value="{{ request.form.get('username', '') }}"
+                                           placeholder="ログイン時に使用するユーザー名（3文字以上）">
+                                    <div class="form-text">英数字とアンダースコアが使用できます。</div>
+                                </div>
+
+                                <!-- メールアドレス -->
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="bi bi-envelope me-1"></i>メールアドレス
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           required
+                                           value="{{ request.form.get('email', '') }}"
+                                           placeholder="example@domain.com">
+                                    <div class="form-text">通知やパスワードリセットに使用されます。</div>
+                                </div>
+
+                                <!-- 表示名 -->
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">
+                                        <i class="bi bi-card-text me-1"></i>表示名
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="name" 
+                                           name="name" 
+                                           value="{{ request.form.get('name', '') }}"
+                                           placeholder="システム内で表示される名前（任意）">
+                                    <div class="form-text">未入力の場合はユーザー名が使用されます。</div>
+                                </div>
+
+                                <!-- 権限レベル -->
+                                <div class="mb-3">
+                                    <label for="role" class="form-label">
+                                        <i class="bi bi-shield-check me-1"></i>権限レベル
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="role" name="role" required>
+                                        <option value="">権限を選択してください</option>
+                                        {% for role_key, role_name in roles.items() %}
+                                        {% if role_key != 'admin' %}
+                                        <option value="{{ role_key }}" 
+                                                {% if request.form.get('role') == role_key %}selected{% endif %}>
+                                            {{ role_name }}
+                                        </option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">ユーザーのアクセス権限を決定します。</div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- パスワード -->
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">
+                                        <i class="bi bi-lock me-1"></i>パスワード
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password" 
+                                           name="password" 
+                                           required
+                                           minlength="6"
+                                           placeholder="6文字以上で入力してください">
+                                    <div class="form-text">セキュリティのため、6文字以上で設定してください。</div>
+                                </div>
+
+                                <!-- パスワード確認 -->
+                                <div class="mb-4">
+                                    <label for="confirm_password" class="form-label">
+                                        <i class="bi bi-lock-fill me-1"></i>パスワード確認
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="confirm_password" 
+                                           name="confirm_password" 
+                                           required
+                                           placeholder="上記のパスワードを再入力してください">
+                                    <div class="form-text">確認のため、同じパスワードを入力してください。</div>
+                                </div>
+
+                                <!-- 送信ボタン -->
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="bi bi-person-plus me-2"></i>ユーザーを作成
+                                    </button>
+                                    <a href="{{ url_for('auth.user_list') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>キャンセル
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 権限説明 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>権限レベルの説明
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <span class="badge bg-success">すべて可能</span>
+                                            <span class="ms-2">作成・編集・削除・閲覧すべて可能</span>
+                                        </li>
+                                        <li class="mb-2">
+                                            <span class="badge bg-warning">修正のみ可能</span>
+                                            <span class="ms-2">既存データの編集と閲覧のみ可能</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <span class="badge bg-info">閲覧のみ可能</span>
+                                            <span class="ms-2">データの閲覧のみ可能</span>
+                                        </li>
+                                        <li class="mb-2">
+                                            <span class="badge bg-secondary">一般ユーザー</span>
+                                            <span class="ms-2">従来の一般ユーザー権限</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// パスワード確認のバリデーション
+document.getElementById('createUserForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('パスワードと確認用パスワードが一致しません。');
+        document.getElementById('confirm_password').focus();
+    }
+});
+
+// ユーザー名の入力制限
+document.getElementById('username').addEventListener('input', function(e) {
+    const value = e.target.value;
+    const sanitized = value.replace(/[^a-zA-Z0-9_]/g, '');
+    if (value !== sanitized) {
+        e.target.value = sanitized;
+    }
+});
+</script>
+{% endblock %} 

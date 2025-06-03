@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}ユーザー編集 - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>ユーザー編集: {{ user.username }}
+                </h1>
+                <a href="{{ url_for('auth.user_list') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ユーザー一覧に戻る
+                </a>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <!-- 現在の情報表示 -->
+                    <div class="card shadow mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>現在の設定
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-sm-4"><strong>ユーザー名:</strong></div>
+                                <div class="col-sm-8">{{ user.username }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>表示名:</strong></div>
+                                <div class="col-sm-8">{{ user.name or '未設定' }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>メールアドレス:</strong></div>
+                                <div class="col-sm-8">{{ user.email }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>権限:</strong></div>
+                                <div class="col-sm-8">
+                                    {% set role_colors = {
+                                        'admin': 'danger',
+                                        'all_access': 'success',
+                                        'editor': 'warning',
+                                        'viewer': 'info',
+                                        'user': 'secondary'
+                                    } %}
+                                    <span class="badge bg-{{ role_colors.get(user.role, 'secondary') }}">
+                                        {{ user.get_role_display_name() }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>状態:</strong></div>
+                                <div class="col-sm-8">
+                                    {% if user.active %}
+                                    <span class="badge bg-success">有効</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">無効</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-4"><strong>最終ログイン:</strong></div>
+                                <div class="col-sm-8">
+                                    {% if user.last_login %}
+                                        {{ user.last_login.strftime('%Y年%m月%d日 %H:%M') }}
+                                    {% else %}
+                                        未ログイン
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 編集フォーム -->
+                    <div class="card shadow">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person-gear me-2"></i>ユーザー情報編集
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="editUserForm">
+                                <!-- ユーザー名 -->
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">
+                                        <i class="bi bi-person me-1"></i>ユーザー名
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="username" 
+                                           name="username" 
+                                           required
+                                           minlength="3"
+                                           value="{{ request.form.get('username', user.username) }}"
+                                           placeholder="ログイン時に使用するユーザー名（3文字以上）">
+                                    <div class="form-text">英数字とアンダースコアが使用できます。</div>
+                                </div>
+
+                                <!-- メールアドレス -->
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="bi bi-envelope me-1"></i>メールアドレス
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           required
+                                           value="{{ request.form.get('email', user.email) }}"
+                                           placeholder="example@domain.com">
+                                    <div class="form-text">通知やパスワードリセットに使用されます。</div>
+                                </div>
+
+                                <!-- 表示名 -->
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">
+                                        <i class="bi bi-card-text me-1"></i>表示名
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="name" 
+                                           name="name" 
+                                           value="{{ request.form.get('name', user.name or '') }}"
+                                           placeholder="システム内で表示される名前（任意）">
+                                    <div class="form-text">未入力の場合はユーザー名が使用されます。</div>
+                                </div>
+
+                                <!-- 権限レベル -->
+                                <div class="mb-3">
+                                    <label for="role" class="form-label">
+                                        <i class="bi bi-shield-check me-1"></i>権限レベル
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="role" name="role" required>
+                                        {% for role_key, role_name in roles.items() %}
+                                        <option value="{{ role_key }}" 
+                                                {% if request.form.get('role', user.role) == role_key %}selected{% endif %}>
+                                            {{ role_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">ユーザーのアクセス権限を決定します。</div>
+                                    {% if user.role == 'admin' %}
+                                    <div class="alert alert-warning mt-2">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        管理者権限を変更する場合は、他に管理者アカウントが存在することを確認してください。
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- パスワード変更セクション -->
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="changePassword" 
+                                               onchange="togglePasswordFields()">
+                                        <label class="form-check-label" for="changePassword">
+                                            <i class="bi bi-key me-1"></i>パスワードも変更する
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="passwordFields" style="display: none;">
+                                    <!-- 新しいパスワード -->
+                                    <div class="mb-3">
+                                        <label for="new_password" class="form-label">
+                                            <i class="bi bi-lock me-1"></i>新しいパスワード
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="new_password" 
+                                               name="new_password" 
+                                               minlength="6"
+                                               placeholder="6文字以上で入力してください">
+                                        <div class="form-text">セキュリティのため、6文字以上で設定してください。</div>
+                                    </div>
+
+                                    <!-- パスワード確認 -->
+                                    <div class="mb-3">
+                                        <label for="confirm_password" class="form-label">
+                                            <i class="bi bi-lock-fill me-1"></i>パスワード確認
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="confirm_password" 
+                                               name="confirm_password" 
+                                               placeholder="新しいパスワードを再入力してください">
+                                        <div class="form-text">確認のため、同じパスワードを入力してください。</div>
+                                    </div>
+                                </div>
+
+                                <!-- 送信ボタン -->
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-warning btn-lg">
+                                        <i class="bi bi-check-circle me-2"></i>ユーザー情報を更新
+                                    </button>
+                                    <a href="{{ url_for('auth.user_list') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>キャンセル
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 権限説明 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>権限レベルの説明
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <span class="badge bg-danger">管理者</span>
+                                            <span class="ms-2">すべての機能とユーザー管理が可能</span>
+                                        </li>
+                                        <li class="mb-2">
+                                            <span class="badge bg-success">すべて可能</span>
+                                            <span class="ms-2">作成・編集・削除・閲覧すべて可能</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <span class="badge bg-warning">修正のみ可能</span>
+                                            <span class="ms-2">既存データの編集と閲覧のみ可能</span>
+                                        </li>
+                                        <li class="mb-2">
+                                            <span class="badge bg-info">閲覧のみ可能</span>
+                                            <span class="ms-2">データの閲覧のみ可能</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePasswordFields() {
+    const checkbox = document.getElementById('changePassword');
+    const passwordFields = document.getElementById('passwordFields');
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    if (checkbox.checked) {
+        passwordFields.style.display = 'block';
+        newPassword.required = true;
+        confirmPassword.required = true;
+    } else {
+        passwordFields.style.display = 'none';
+        newPassword.required = false;
+        confirmPassword.required = false;
+        newPassword.value = '';
+        confirmPassword.value = '';
+    }
+}
+
+// パスワード確認のバリデーション
+document.getElementById('editUserForm').addEventListener('submit', function(e) {
+    const changePassword = document.getElementById('changePassword').checked;
+    
+    if (changePassword) {
+        const password = document.getElementById('new_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('パスワードと確認用パスワードが一致しません。');
+            document.getElementById('confirm_password').focus();
+        }
+    }
+});
+
+// ユーザー名の入力制限
+document.getElementById('username').addEventListener('input', function(e) {
+    const value = e.target.value;
+    const sanitized = value.replace(/[^a-zA-Z0-9_]/g, '');
+    if (value !== sanitized) {
+        e.target.value = sanitized;
+    }
+});
+</script>
+{% endblock %} 
