@@ -25,7 +25,13 @@ from sqlalchemy import or_
 import os
 from datetime import datetime, time, date
 from werkzeug.utils import secure_filename
-from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+from app.routes.auth import (
+    login_required,
+    view_permission_required,
+    edit_permission_required,
+    create_permission_required,
+    delete_permission_required,
+)
 from app.services.pdf_service import PDFService
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -252,18 +258,18 @@ def list():
             # ステータスでの検索（英語コード）
             Report.status.contains(search),
         ]
-        
+
         # 日本語ステータス検索
         search_lower = search.lower()
-        if '未完了' in search_lower:
-            search_conditions.append(Report.status == 'pending')
-        if '完了' in search_lower and '未完了' not in search_lower:
-            search_conditions.append(Report.status == 'completed')
-        if '下書き' in search_lower:
-            search_conditions.append(Report.status == 'draft')
-        if 'キャンセル' in search_lower:
-            search_conditions.append(Report.status == 'cancelled')
-            
+        if "未完了" in search_lower:
+            search_conditions.append(Report.status == "pending")
+        if "完了" in search_lower and "未完了" not in search_lower:
+            search_conditions.append(Report.status == "completed")
+        if "下書き" in search_lower:
+            search_conditions.append(Report.status == "draft")
+        if "キャンセル" in search_lower:
+            search_conditions.append(Report.status == "cancelled")
+
         search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
@@ -1427,7 +1433,7 @@ def order_details_list():
     latest_work_date_subquery = (
         db.session.query(
             WorkTime.report_id,
-            db.func.max(WorkTime.work_date).label('latest_work_date')
+            db.func.max(WorkTime.work_date).label("latest_work_date"),
         )
         .group_by(WorkTime.report_id)
         .subquery()
@@ -1440,14 +1446,14 @@ def order_details_list():
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
         .join(
             latest_work_date_subquery,
-            Report.id == latest_work_date_subquery.c.report_id
+            Report.id == latest_work_date_subquery.c.report_id,
         )
         .outerjoin(
             WorkTime,
             db.and_(
                 Report.id == WorkTime.report_id,
-                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date
-            )
+                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date,
+            ),
         )
     )
 
@@ -1462,18 +1468,18 @@ def order_details_list():
             # ステータスでの検索（英語コード）
             Report.status.contains(search),
         ]
-        
+
         # 日本語ステータス検索
         search_lower = search.lower()
-        if '未完了' in search_lower:
-            search_conditions.append(Report.status == 'pending')
-        if '完了' in search_lower and '未完了' not in search_lower:
-            search_conditions.append(Report.status == 'completed')
-        if '下書き' in search_lower:
-            search_conditions.append(Report.status == 'draft')
-        if 'キャンセル' in search_lower:
-            search_conditions.append(Report.status == 'cancelled')
-            
+        if "未完了" in search_lower:
+            search_conditions.append(Report.status == "pending")
+        if "完了" in search_lower and "未完了" not in search_lower:
+            search_conditions.append(Report.status == "completed")
+        if "下書き" in search_lower:
+            search_conditions.append(Report.status == "draft")
+        if "キャンセル" in search_lower:
+            search_conditions.append(Report.status == "cancelled")
+
         search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
@@ -1481,14 +1487,18 @@ def order_details_list():
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(latest_work_date_subquery.c.latest_work_date >= start_date_obj)
+            query = query.filter(
+                latest_work_date_subquery.c.latest_work_date >= start_date_obj
+            )
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(latest_work_date_subquery.c.latest_work_date <= end_date_obj)
+            query = query.filter(
+                latest_work_date_subquery.c.latest_work_date <= end_date_obj
+            )
         except ValueError:
             pass
 
@@ -1529,15 +1539,24 @@ def order_details_list():
         # 作業内容の総数（この報告書の）
         work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
 
-        # エアコンの数（物件全体の）
-        ac_count = AirConditioner.query.filter_by(
-            property_id=report.property_id
-        ).count()
+        # エアコンの数（この報告書で作業したエアコンのみ）
+        ac_count = (
+            db.session.query(
+                db.func.count(db.func.distinct(WorkDetail.air_conditioner_id))
+            )
+            .filter(
+                WorkDetail.report_id == report.id,
+                WorkDetail.air_conditioner_id.isnot(None),
+            )
+            .scalar()
+            or 0
+        )
 
-        # 金額の合計（物件全体の）
+        # 金額の合計（この報告書で作業したエアコンのみ）
         total_amount = (
             db.session.query(db.func.sum(AirConditioner.total_amount))
-            .filter(AirConditioner.property_id == report.property_id)
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
         )
@@ -1590,7 +1609,7 @@ def order_details_pdf():
     latest_work_date_subquery = (
         db.session.query(
             WorkTime.report_id,
-            db.func.max(WorkTime.work_date).label('latest_work_date')
+            db.func.max(WorkTime.work_date).label("latest_work_date"),
         )
         .group_by(WorkTime.report_id)
         .subquery()
@@ -1603,14 +1622,14 @@ def order_details_pdf():
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
         .join(
             latest_work_date_subquery,
-            Report.id == latest_work_date_subquery.c.report_id
+            Report.id == latest_work_date_subquery.c.report_id,
         )
         .outerjoin(
             WorkTime,
             db.and_(
                 Report.id == WorkTime.report_id,
-                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date
-            )
+                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date,
+            ),
         )
     )
 
@@ -1625,32 +1644,36 @@ def order_details_pdf():
             # ステータスでの検索（英語コード）
             Report.status.contains(search),
         ]
-        
+
         # 日本語ステータス検索
         search_lower = search.lower()
-        if '未完了' in search_lower:
-            search_conditions.append(Report.status == 'pending')
-        if '完了' in search_lower and '未完了' not in search_lower:
-            search_conditions.append(Report.status == 'completed')
-        if '下書き' in search_lower:
-            search_conditions.append(Report.status == 'draft')
-        if 'キャンセル' in search_lower:
-            search_conditions.append(Report.status == 'cancelled')
-            
+        if "未完了" in search_lower:
+            search_conditions.append(Report.status == "pending")
+        if "完了" in search_lower and "未完了" not in search_lower:
+            search_conditions.append(Report.status == "completed")
+        if "下書き" in search_lower:
+            search_conditions.append(Report.status == "draft")
+        if "キャンセル" in search_lower:
+            search_conditions.append(Report.status == "cancelled")
+
         search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(latest_work_date_subquery.c.latest_work_date >= start_date_obj)
+            query = query.filter(
+                latest_work_date_subquery.c.latest_work_date >= start_date_obj
+            )
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(latest_work_date_subquery.c.latest_work_date <= end_date_obj)
+            query = query.filter(
+                latest_work_date_subquery.c.latest_work_date <= end_date_obj
+            )
         except ValueError:
             pass
 
@@ -1757,15 +1780,24 @@ def order_details_pdf():
         # 作業内容の総数（この報告書の）
         work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
 
-        # エアコンの数（物件全体の）
-        ac_count = AirConditioner.query.filter_by(
-            property_id=report.property_id
-        ).count()
+        # エアコンの数（この報告書で作業したエアコンのみ）
+        ac_count = (
+            db.session.query(
+                db.func.count(db.func.distinct(WorkDetail.air_conditioner_id))
+            )
+            .filter(
+                WorkDetail.report_id == report.id,
+                WorkDetail.air_conditioner_id.isnot(None),
+            )
+            .scalar()
+            or 0
+        )
 
-        # 金額の合計（物件全体の）
+        # 金額の合計（この報告書で作業したエアコンのみ）
         total_amount = (
             db.session.query(db.func.sum(AirConditioner.total_amount))
-            .filter(AirConditioner.property_id == report.property_id)
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
         )
