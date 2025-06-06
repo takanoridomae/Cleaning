@@ -176,4 +176,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
-}); 
+});
+
+/**
+ * 地図表示機能
+ */
+function showMapForAddress(address) {
+    if (!address || address.trim() === '' || address.trim() === '未設定') {
+        alert('住所が設定されていません。');
+        return;
+    }
+    
+    // 郵便番号記号を除去して住所を整形
+    const cleanAddress = address.replace(/^〒\d{3}-?\d{4}\s*/, '').trim();
+    
+    if (cleanAddress === '') {
+        alert('有効な住所が設定されていません。');
+        return;
+    }
+    
+    // GoogleマップのURLを生成（検索クエリとして住所を渡す）
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`;
+    
+    // 新しいタブでGoogleマップを開く
+    window.open(mapUrl, '_blank', 'noopener,noreferrer');
+} 

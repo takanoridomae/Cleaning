@@ -45,12 +45,23 @@
                         <tr>
                             <th>住所</th>
                             <td>
-                                {% if property.postal_code or property.address %}
-                                {% if property.postal_code %}〒{{ property.postal_code }}{% endif %}
-                                {{ property.address or '未設定' }}
-                                {% else %}
-                                未設定
-                                {% endif %}
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        {% if property.postal_code or property.address %}
+                                        {% if property.postal_code %}〒{{ property.postal_code }}{% endif %}
+                                        {{ property.address or '未設定' }}
+                                        {% else %}
+                                        未設定
+                                        {% endif %}
+                                    </div>
+                                    {% if property.address and property.address != '未設定' %}
+                                    <button type="button" class="btn btn-sm btn-outline-info ms-2" 
+                                            onclick="showMapForAddress('{% if property.postal_code %}〒{{ property.postal_code }} {% endif %}{{ property.address }}')"
+                                            title="地図で確認">
+                                        <i class="bi bi-geo-alt"></i> 地図
+                                    </button>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         <tr>

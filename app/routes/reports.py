@@ -1413,7 +1413,7 @@ def download_pdf(id):
 @login_required
 @view_permission_required
 def order_details_list():
-    """受注明細一覧画面表示（作業日ベースで時系列表示）"""
+    """受注明細一覧画面表示（最新作業日ベースで時系列表示、重複防止）"""
     # パラメータの取得
     search = request.args.get("search", "").strip()
     start_date = request.args.get("start_date", "")
@@ -1423,12 +1423,32 @@ def order_details_list():
     page = request.args.get("page", 1, type=int)
     per_page = 20
 
-    # ベースクエリの作成（WorkTimeテーブルもJOINして作業日での検索を可能にする）
+    # 各報告書の最新作業日を取得するサブクエリ
+    latest_work_date_subquery = (
+        db.session.query(
+            WorkTime.report_id,
+            db.func.max(WorkTime.work_date).label('latest_work_date')
+        )
+        .group_by(WorkTime.report_id)
+        .subquery()
+    )
+
+    # ベースクエリの作成（最新作業日のWorkTimeのみをJOIN）
     query = (
         Report.query.join(Property)
         .join(Customer)
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
-        .outerjoin(WorkTime, Report.id == WorkTime.report_id)
+        .join(
+            latest_work_date_subquery,
+            Report.id == latest_work_date_subquery.c.report_id
+        )
+        .outerjoin(
+            WorkTime,
+            db.and_(
+                Report.id == WorkTime.report_id,
+                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date
+            )
+        )
     )
 
     # 検索フィルタ
@@ -1457,18 +1477,18 @@ def order_details_list():
         search_filter = or_(*search_conditions)
         query = query.filter(search_filter)
 
-    # 期間フィルタ（作業日ベース）
+    # 期間フィルタ（最新作業日ベース）
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(WorkTime.work_date >= start_date_obj)
+            query = query.filter(latest_work_date_subquery.c.latest_work_date >= start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(WorkTime.work_date <= end_date_obj)
+            query = query.filter(latest_work_date_subquery.c.latest_work_date <= end_date_obj)
         except ValueError:
             pass
 
@@ -1486,13 +1506,13 @@ def order_details_list():
     elif sort_by == "reception_type":
         sort_column = Property.reception_type
     elif sort_by == "work_date":
-        sort_column = WorkTime.work_date
+        sort_column = latest_work_date_subquery.c.latest_work_date
     elif sort_by == "date":
         sort_column = Report.date
     elif sort_by == "created_at":
         sort_column = Report.created_at
     else:
-        sort_column = WorkTime.work_date
+        sort_column = latest_work_date_subquery.c.latest_work_date
 
     if order == "asc":
         query = query.order_by(sort_column.asc())
@@ -1522,7 +1542,7 @@ def order_details_list():
             or 0
         )
 
-        # 作業日情報を取得（日付順）
+        # 作業日情報を取得（すべての作業日を表示用に取得）
         work_times = (
             WorkTime.query.filter_by(report_id=report.id)
             .order_by(WorkTime.work_date.asc())
@@ -1558,7 +1578,7 @@ def order_details_list():
 @login_required
 @view_permission_required
 def order_details_pdf():
-    """受注明細一覧PDF出力"""
+    """受注明細一覧PDF出力（最新作業日ベース、重複防止）"""
     # パラメータの取得（一覧画面と同じフィルタを適用）
     search = request.args.get("search", "").strip()
     start_date = request.args.get("start_date", "")
@@ -1566,12 +1586,32 @@ def order_details_pdf():
     sort_by = request.args.get("sort", "work_date")
     order = request.args.get("order", "desc")
 
-    # データ取得（ページネーションなし）
+    # 各報告書の最新作業日を取得するサブクエリ
+    latest_work_date_subquery = (
+        db.session.query(
+            WorkTime.report_id,
+            db.func.max(WorkTime.work_date).label('latest_work_date')
+        )
+        .group_by(WorkTime.report_id)
+        .subquery()
+    )
+
+    # データ取得（ページネーションなし、最新作業日のWorkTimeのみをJOIN）
     query = (
         Report.query.join(Property)
         .join(Customer)
         .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
-        .outerjoin(WorkTime, Report.id == WorkTime.report_id)
+        .join(
+            latest_work_date_subquery,
+            Report.id == latest_work_date_subquery.c.report_id
+        )
+        .outerjoin(
+            WorkTime,
+            db.and_(
+                Report.id == WorkTime.report_id,
+                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date
+            )
+        )
     )
 
     # 同じフィルタ条件を適用
@@ -1603,14 +1643,14 @@ def order_details_pdf():
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(WorkTime.work_date >= start_date_obj)
+            query = query.filter(latest_work_date_subquery.c.latest_work_date >= start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(WorkTime.work_date <= end_date_obj)
+            query = query.filter(latest_work_date_subquery.c.latest_work_date <= end_date_obj)
         except ValueError:
             pass
 
@@ -1627,13 +1667,13 @@ def order_details_pdf():
     elif sort_by == "reception_type":
         sort_column = Property.reception_type
     elif sort_by == "work_date":
-        sort_column = WorkTime.work_date
+        sort_column = latest_work_date_subquery.c.latest_work_date
     elif sort_by == "date":
         sort_column = Report.date
     elif sort_by == "created_at":
         sort_column = Report.created_at
     else:
-        sort_column = WorkTime.work_date
+        sort_column = latest_work_date_subquery.c.latest_work_date
 
     if order == "asc":
         query = query.order_by(sort_column.asc())
