@@ -161,10 +161,95 @@
         </div>
     </footer>
 
+    <!-- jQuery -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- エラー防止スクリプト -->
+    <script>
+        // すべてのService Worker関連エラーを防ぐ
+        if (typeof caches === 'undefined') {
+            window.caches = {
+                get: function() { return Promise.resolve(null); },
+                set: function() { return Promise.resolve(); },
+                open: function() { return Promise.resolve({
+                    get: function() { return Promise.resolve(null); },
+                    put: function() { return Promise.resolve(); },
+                    delete: function() { return Promise.resolve(true); },
+                    keys: function() { return Promise.resolve([]); },
+                    match: function() { return Promise.resolve(null); }
+                }); },
+                match: function() { return Promise.resolve(null); },
+                keys: function() { return Promise.resolve([]); },
+                delete: function() { return Promise.resolve(true); }
+            };
+        }
+        
+        // CacheStore関連エラーを防ぐ
+        if (typeof CacheStore === 'undefined') {
+            window.CacheStore = {
+                get: function() { return Promise.resolve(null); },
+                set: function() { return Promise.resolve(); },
+                getWithTTL: function() { return Promise.resolve(null); },
+                setWithTTL: function() { return Promise.resolve(); }
+            };
+        }
+        
+        // GenAI関連エラーを防ぐ
+        if (typeof GenAIWebpageEligibilityService === 'undefined') {
+            window.GenAIWebpageEligibilityService = {
+                getExplicitBlockList: function() { return Promise.resolve([]); },
+                shouldShowTouchpoints: function() { return Promise.resolve(false); }
+            };
+        }
+        
+        // ActionableCoachmark関連エラーを防ぐ
+        if (typeof ActionableCoachmark === 'undefined') {
+            window.ActionableCoachmark = {
+                isEligible: function() { return Promise.resolve(false); }
+            };
+        }
+        
+        // ShowOneChild関連エラーを防ぐ
+        if (typeof ShowOneChild === 'undefined') {
+            window.ShowOneChild = {
+                getRenderPrompt: function() { return Promise.resolve(null); },
+                render: function() { return Promise.resolve(); }
+            };
+        }
+        
+        // 全般的なエラーキャッチを強化
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('caches') || 
+                e.message.includes('GenAI') || 
+                e.message.includes('CacheStore') ||
+                e.message.includes('ActionableCoachmark') ||
+                e.message.includes('ShowOneChild')
+            )) {
+                console.warn('Service Workerエラーをキャッチしました:', e.message);
+                e.preventDefault();
+                return true;
+            }
+        });
+        
+        // 未処理のPromise拒否も同様にキャッチ
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && typeof e.reason === 'string' && (
+                e.reason.includes('caches') || 
+                e.reason.includes('GenAI') || 
+                e.reason.includes('CacheStore')
+            )) {
+                console.warn('Service Worker関連のPromise拒否をキャッチしました:', e.reason);
+                e.preventDefault();
+                return true;
+            }
+        });
+    </script>
+    
     <!-- カスタムJS -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" onerror="console.log('main.js読み込みエラー')"></script>
     <!-- iOS ウェブアプリ対応 -->
     <script>
         // iOSでスクロールの挙動を改善

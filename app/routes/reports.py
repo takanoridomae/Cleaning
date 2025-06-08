@@ -566,36 +566,30 @@ def edit(id):
                 f"作業内容ID: {detail.id}, エアコンID: {detail.air_conditioner_id}, 物件ID: {detail.property_id}"
             )
 
-    # 物件の住所を取得
-    default_address = ""
+        # 物件の住所を取得
+        default_address = ""
     if report.property:
         default_address = report.property.address or ""
 
     if request.method == "POST":
+        print(f"=== POST request received for report {id} ===")
+        try:
+            form_keys = [key for key in request.form.keys()]
+            print(f"Form keys: {form_keys}")
+        except Exception as e:
+            print(f"Form keys error: {e}")
+
         if "update_report" in request.form:
-            # 報告書情報の更新
+            # current_tabパラメータを取得してタブ別処理を実行
+            current_tab = request.form.get("current_tab", "info")
+            print(f"=== update_report処理開始 (タブ: {current_tab}) ===")
+
+            # 基本情報の共通更新（全タブ共通）
             property_id = request.form["property_id"]
             report_date = request.form.get("date")
             work_address = request.form.get("work_address", "")
             note = request.form.get("note", "")
             status = request.form.get("status", "pending")
-
-            # 作業時間の取得
-            work_dates = request.form.getlist("work_dates[]")
-            start_times = request.form.getlist("start_times[]")
-            end_times = request.form.getlist("end_times[]")
-            work_time_ids = request.form.getlist("work_time_ids[]")
-            work_time_notes = request.form.getlist(
-                "work_time_notes[]"
-            )  # 備考欄の値を取得
-
-            # 作業内容の取得
-            work_item_ids = request.form.getlist("work_item_ids[]")
-            work_item_texts = request.form.getlist("work_item_texts[]")
-            descriptions = request.form.getlist("descriptions[]")
-            confirmations = request.form.getlist("confirmations[]")
-            work_detail_ids = request.form.getlist("work_detail_ids[]")
-            air_conditioner_ids = request.form.getlist("air_conditioner_ids[]")
 
             error = None
 
@@ -609,166 +603,192 @@ def edit(id):
             if error is not None:
                 flash(error, "danger")
             else:
-                # 報告書情報更新
+                # 基本情報更新（全タブ共通）
                 report.property_id = property_id
                 report.date = datetime.strptime(report_date, "%Y-%m-%d").date()
                 report.work_address = work_address
                 report.note = note
                 report.status = status
 
-                # 既存の作業時間を更新または削除
-                existing_work_time_ids = [wt.id for wt in work_times]
-                for wt_id in existing_work_time_ids:
-                    if str(wt_id) not in work_time_ids:
-                        # 削除するべき作業時間
-                        WorkTime.query.filter_by(id=wt_id).delete()
+                # タブ別の処理分岐
+                if current_tab == "times":
+                    # 作業時間タブの処理
+                    print("=== 作業時間タブの処理 ===")
+                    work_dates = request.form.getlist("work_dates[]")
+                    start_times = request.form.getlist("start_times[]")
+                    end_times = request.form.getlist("end_times[]")
+                    work_time_ids = request.form.getlist("work_time_ids[]")
+                    work_time_notes = request.form.getlist("work_time_notes[]")
 
-                # 作業時間を更新または追加
-                for i in range(len(work_dates)):
-                    if (
-                        i < len(work_dates)
-                        and work_dates[i]
-                        and i < len(start_times)
-                        and start_times[i]
-                        and i < len(end_times)
-                        and end_times[i]
-                    ):
-                        try:
-                            if i < len(work_time_ids) and work_time_ids[i]:
-                                # 既存の作業時間を更新
-                                work_time = WorkTime.query.get(work_time_ids[i])
-                                if work_time:
-                                    work_time.work_date = datetime.strptime(
-                                        work_dates[i], "%Y-%m-%d"
-                                    ).date()
-                                    work_time.start_time = datetime.strptime(
-                                        start_times[i], "%H:%M"
-                                    ).time()
-                                    work_time.end_time = datetime.strptime(
-                                        end_times[i], "%H:%M"
-                                    ).time()
-                                    work_time.note = (
-                                        work_time_notes[i]
-                                        if i < len(work_time_notes)
-                                        else None
-                                    )  # 備考欄の値を設定
+                    # 既存の作業時間を更新または削除
+                    existing_work_time_ids = [wt.id for wt in work_times]
+                    for wt_id in existing_work_time_ids:
+                        if str(wt_id) not in work_time_ids:
+                            WorkTime.query.filter_by(id=wt_id).delete()
+
+                    # 作業時間を更新または追加
+                    for i in range(len(work_dates)):
+                        if (
+                            i < len(work_dates)
+                            and work_dates[i]
+                            and i < len(start_times)
+                            and start_times[i]
+                            and i < len(end_times)
+                            and end_times[i]
+                        ):
+                            try:
+                                if i < len(work_time_ids) and work_time_ids[i]:
+                                    # 既存の作業時間を更新
+                                    work_time = WorkTime.query.get(work_time_ids[i])
+                                    if work_time:
+                                        work_time.work_date = datetime.strptime(
+                                            work_dates[i], "%Y-%m-%d"
+                                        ).date()
+                                        work_time.start_time = datetime.strptime(
+                                            start_times[i], "%H:%M"
+                                        ).time()
+                                        work_time.end_time = datetime.strptime(
+                                            end_times[i], "%H:%M"
+                                        ).time()
+                                        work_time.note = (
+                                            work_time_notes[i]
+                                            if i < len(work_time_notes)
+                                            else None
+                                        )
+                                else:
+                                    # 新規作業時間を追加
+                                    work_time = WorkTime(
+                                        report_id=report.id,
+                                        property_id=property_id,
+                                        work_date=datetime.strptime(
+                                            work_dates[i], "%Y-%m-%d"
+                                        ).date(),
+                                        start_time=datetime.strptime(
+                                            start_times[i], "%H:%M"
+                                        ).time(),
+                                        end_time=datetime.strptime(
+                                            end_times[i], "%H:%M"
+                                        ).time(),
+                                        note=(
+                                            work_time_notes[i]
+                                            if i < len(work_time_notes)
+                                            else None
+                                        ),
+                                    )
+                                    db.session.add(work_time)
+                            except ValueError:
+                                continue
+
+                    # スケジュール更新
+                    update_schedule_from_work_times(
+                        report, work_dates, start_times, end_times, property_id
+                    )
+
+                elif current_tab == "details":
+                    # 作業内容タブの処理
+                    print("=== 作業内容タブの処理 ===")
+                    work_item_ids = request.form.getlist("work_item_ids[]")
+                    work_item_texts = request.form.getlist("work_item_texts[]")
+                    descriptions = request.form.getlist("descriptions[]")
+                    confirmations = request.form.getlist("confirmations[]")
+                    work_detail_ids = request.form.getlist("work_detail_ids[]")
+                    air_conditioner_ids = request.form.getlist("air_conditioner_ids[]")
+
+                    print(
+                        f"作業内容データ: work_detail_ids={work_detail_ids}, air_conditioner_ids={air_conditioner_ids}"
+                    )
+
+                    # 既存の作業内容を更新または削除
+                    existing_work_detail_ids = [wd.id for wd in work_details]
+                    for wd_id in existing_work_detail_ids:
+                        if str(wd_id) not in work_detail_ids:
+                            WorkDetail.query.filter_by(id=wd_id).delete()
+
+                    # 作業内容を更新または追加
+                    for i in range(len(descriptions)):
+                        if i < len(descriptions) and descriptions[i]:
+                            work_item_id = None
+                            work_item_text = None
+                            air_conditioner_id = None
+
+                            if (
+                                i < len(work_item_ids)
+                                and work_item_ids[i]
+                                and work_item_ids[i] != "other"
+                            ):
+                                work_item_id = work_item_ids[i]
+                            elif i < len(work_item_texts) and work_item_texts[i]:
+                                work_item_text = work_item_texts[i]
+
+                            # エアコンIDの設定
+                            if i < len(air_conditioner_ids) and air_conditioner_ids[i]:
+                                if air_conditioner_ids[i].strip():
+                                    try:
+                                        air_conditioner_id = int(air_conditioner_ids[i])
+                                        print(
+                                            f"DEBUG: エアコンID {air_conditioner_id} が設定されました"
+                                        )
+                                    except (ValueError, TypeError):
+                                        print(
+                                            f"Warning: Invalid air_conditioner_id: {air_conditioner_ids[i]}"
+                                        )
+                                        air_conditioner_id = None
+
+                            if i < len(work_detail_ids) and work_detail_ids[i]:
+                                # 既存の作業内容を更新
+                                work_detail = WorkDetail.query.get(work_detail_ids[i])
+                                if work_detail:
+                                    work_detail.work_item_id = work_item_id
+                                    work_detail.work_item_text = work_item_text
+                                    work_detail.description = descriptions[i]
+                                    work_detail.confirmation = (
+                                        confirmations[i]
+                                        if i < len(confirmations)
+                                        else ""
+                                    )
+                                    work_detail.air_conditioner_id = air_conditioner_id
+                                    work_detail.property_id = property_id
+                                    print(
+                                        f"DEBUG: 作業内容ID {work_detail.id} のエアコンIDを {air_conditioner_id} に更新"
+                                    )
                             else:
-                                # 新規作業時間を追加
-                                work_time = WorkTime(
+                                # 新規作業内容を追加
+                                work_detail = WorkDetail(
                                     report_id=report.id,
                                     property_id=property_id,
-                                    work_date=datetime.strptime(
-                                        work_dates[i], "%Y-%m-%d"
-                                    ).date(),
-                                    start_time=datetime.strptime(
-                                        start_times[i], "%H:%M"
-                                    ).time(),
-                                    end_time=datetime.strptime(
-                                        end_times[i], "%H:%M"
-                                    ).time(),
-                                    note=(
-                                        work_time_notes[i]
-                                        if i < len(work_time_notes)
-                                        else None
-                                    ),  # 備考欄の値を設定
+                                    air_conditioner_id=air_conditioner_id,
+                                    work_item_id=work_item_id,
+                                    work_item_text=work_item_text,
+                                    description=descriptions[i],
+                                    confirmation=(
+                                        confirmations[i]
+                                        if i < len(confirmations)
+                                        else ""
+                                    ),
                                 )
-                                db.session.add(work_time)
-                        except ValueError:
-                            # 時間形式が不正な場合はスキップ
-                            continue
+                                db.session.add(work_detail)
 
-                # 既存の作業内容を更新または削除
-                existing_work_detail_ids = [wd.id for wd in work_details]
-                for wd_id in existing_work_detail_ids:
-                    if str(wd_id) not in work_detail_ids:
-                        # 削除するべき作業内容
-                        WorkDetail.query.filter_by(id=wd_id).delete()
-
-                # 作業内容を更新または追加
-                for i in range(len(descriptions)):
-                    if i < len(descriptions) and descriptions[i]:
-                        # work_item_idかwork_item_textのどちらかを設定
-                        work_item_id = None
-                        work_item_text = None
-                        air_conditioner_id = None
-
-                        if (
-                            i < len(work_item_ids)
-                            and work_item_ids[i]
-                            and work_item_ids[i] != "other"
-                        ):
-                            work_item_id = work_item_ids[i]
-                        elif i < len(work_item_texts) and work_item_texts[i]:
-                            work_item_text = work_item_texts[i]
-
-                        # エアコンIDの設定（空文字列の場合はNoneに）
-                        if i < len(air_conditioner_ids) and air_conditioner_ids[i]:
-                            if air_conditioner_ids[
-                                i
-                            ].strip():  # 空白のみでないことを確認
-                                try:
-                                    air_conditioner_id = int(air_conditioner_ids[i])
-                                    print(
-                                        f"DEBUG: エアコンID {air_conditioner_id} が設定されました"
-                                    )
-                                except (ValueError, TypeError):
-                                    # 整数に変換できない場合はエラーログを出力
-                                    print(
-                                        f"Warning: Invalid air_conditioner_id: {air_conditioner_ids[i]}"
-                                    )
-                                    air_conditioner_id = None
-
-                        if i < len(work_detail_ids) and work_detail_ids[i]:
-                            # 既存の作業内容を更新
-                            work_detail = WorkDetail.query.get(work_detail_ids[i])
-                            if work_detail:
-                                work_detail.work_item_id = work_item_id
-                                work_detail.work_item_text = work_item_text
-                                work_detail.description = descriptions[i]
-                                work_detail.confirmation = (
-                                    confirmations[i] if i < len(confirmations) else ""
-                                )
-                                # エアコンIDの更新
-                                work_detail.air_conditioner_id = air_conditioner_id
-                                # 物件IDの更新 (常に物件IDを設定する)
-                                work_detail.property_id = property_id
-                        else:
-                            # 新規作業内容を追加
-                            work_detail = WorkDetail(
-                                report_id=report.id,
-                                property_id=property_id,  # 常に物件IDを設定
-                                air_conditioner_id=air_conditioner_id,
-                                work_item_id=work_item_id,
-                                work_item_text=work_item_text,
-                                description=descriptions[i],
-                                confirmation=(
-                                    confirmations[i] if i < len(confirmations) else ""
-                                ),
-                            )
-                            db.session.add(work_detail)
-
-                # 作業時間の変更に伴いスケジュールを更新
-                update_schedule_from_work_times(
-                    report, work_dates, start_times, end_times, property_id
-                )
+                else:
+                    # 基本情報タブ (info) または他のタブの処理
+                    print(
+                        "=== 基本情報タブの処理（作業内容・作業時間は更新しません） ==="
+                    )
+                    # 基本情報のみ更新、作業内容や作業時間には触れない
 
                 # スケジュール更新後に報告書ステータスと同期
                 sync_schedule_status_with_report(report)
 
+                print("=== データベースコミット開始 ===")
                 db.session.commit()
-                flash("報告書情報とスケジュールが更新されました", "success")
+                print("=== データベースコミット完了 ===")
+                flash("報告書情報が更新されました", "success")
 
-                # current_tabパラメータを取得（デフォルトは'info'）
-                current_tab = request.form.get("current_tab", "info")
-
-                # データの詳細表示ページに戻るか、編集ページの特定のタブに戻るか判定
+                # リダイレクト処理
                 if current_tab in ["photos", "times", "details"]:
-                    # 編集ページの特定のタブに戻る
                     return redirect(
                         url_for("reports.edit", id=report.id, active_tab=current_tab)
                     )
                 else:
-                    # データの詳細表示ページに戻る
                     return redirect(url_for("reports.view", id=report.id))
 
         elif "upload_photo" in request.form:

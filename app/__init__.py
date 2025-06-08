@@ -17,6 +17,15 @@ def create_app(test_config=None):
         SQLALCHEMY_DATABASE_URI="sqlite:///"
         + os.path.join(app.instance_path, "aircon_report.db"),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SQLALCHEMY_ENGINE_OPTIONS={
+            "pool_timeout": 30,  # 接続プールタイムアウト
+            "pool_recycle": 3600,  # 接続の再利用間隔（1時間）
+            "pool_pre_ping": True,  # 接続の事前チェック
+            "connect_args": {
+                "timeout": 30,  # SQLite接続タイムアウト
+                "check_same_thread": False,  # マルチスレッド対応
+            },
+        },
         UPLOAD_FOLDER=os.path.join(os.path.dirname(app.root_path), "uploads"),
     )
 

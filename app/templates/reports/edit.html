@@ -86,11 +86,12 @@
                         {% for work_detail in work_details %}
                         <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
                         <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
-                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
+                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or (work_detail.work_item_text and 'other' or '') }}">
                         <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
                         <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
                         <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
                         {% endfor %}
+                        
                     </form>
                 </div>
             </div>
@@ -117,7 +118,7 @@
                         {% for work_detail in work_details %}
                         <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
                         <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
-                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
+                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or (work_detail.work_item_text and 'other' or '') }}">
                         <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
                         <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
                         <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
@@ -202,7 +203,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="details-form">
                         <input type="hidden" name="update_report" value="1">
                         <input type="hidden" name="current_tab" value="details">
                         <input type="hidden" name="property_id" value="{{ report.property_id }}">
@@ -211,35 +212,15 @@
                         <input type="hidden" name="note" value="{{ report.note or '' }}">
                         <input type="hidden" name="status" value="{{ report.status or 'pending' }}">
                         
-                        <!-- 作業時間のIDを維持するためのhidden fields -->
-                        {% for work_time in work_times %}
-                        <input type="hidden" name="work_time_ids[]" value="{{ work_time.id }}">
-                        <input type="hidden" name="work_dates[]" value="{{ work_time.work_date.isoformat() }}">
-                        <input type="hidden" name="start_times[]" value="{{ work_time.start_time.strftime('%H:%M') }}">
-                        <input type="hidden" name="end_times[]" value="{{ work_time.end_time.strftime('%H:%M') }}">
-                        <input type="hidden" name="work_time_notes[]" value="{{ work_time.note or '' }}">
-                        {% endfor %}
-                        
-                        <!-- 作業内容のIDを維持するためのhidden fields -->
-                        {% for work_detail in work_details %}
-                        <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
-                        <input type="hidden" name="air_conditioner_ids[]" value="{{ work_detail.air_conditioner_id or '' }}">
-                        <input type="hidden" name="work_item_ids[]" value="{{ work_detail.work_item_id or 'other' if work_detail.work_item_text else '' }}">
-                        <input type="hidden" name="work_item_texts[]" value="{{ work_detail.work_item_text or '' }}">
-                        <input type="hidden" name="descriptions[]" value="{{ work_detail.description }}">
-                        <input type="hidden" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
-                        {% endfor %}
-                        
                         <div id="work-details-container">
                             {% if work_details %}
                                 {% for work_detail in work_details %}
                                 <div class="work-detail-entry mb-3 p-3 border rounded">
                                     <input type="hidden" name="work_detail_ids[]" value="{{ work_detail.id }}">
-                                    <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="{{ work_detail.air_conditioner_id or '' }}">
                                     <div class="row">
                                         <div class="col-md-3 mb-2">
                                             <label class="form-label">エアコン情報</label>
-                                            <select class="form-select air-conditioner-select" name="dummy_select_aircon">
+                                            <select class="form-select air-conditioner-select" name="air_conditioner_ids[]" data-original-value="{{ work_detail.air_conditioner_id or '' }}">
                                                 <option value="">選択してください</option>
                                             </select>
                                         </div>
@@ -277,11 +258,10 @@
                             {% else %}
                                 <div class="work-detail-entry mb-3 p-3 border rounded">
                                     <input type="hidden" name="work_detail_ids[]" value="">
-                                    <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="">
                                     <div class="row">
                                         <div class="col-md-3 mb-2">
                                             <label class="form-label">エアコン情報</label>
-                                            <select class="form-select air-conditioner-select" name="dummy_select_aircon">
+                                            <select class="form-select air-conditioner-select" name="air_conditioner_ids[]" data-original-value="">
                                                 <option value="">選択してください</option>
                                             </select>
                                         </div>
@@ -869,22 +849,87 @@
 </div>
 
 <script>
+    // ページ読み込み時のエラーハンドリング
+    window.addEventListener('error', function(e) {
+        console.log('JavaScriptエラーをキャッチ:', e.error);
+    });
+    
+    // 未定義変数のエラーを防ぐ
+    if (typeof $ === 'undefined') {
+        console.log('jQueryが読み込まれていません。プレーンJavaScriptで実行します。');
+        // jQueryの代替として空のオブジェクトを作成
+        window.$ = function() {
+            return {
+                DataTable: function() { return this; }
+            };
+        };
+        window.$.fn = { DataTable: function() { return this; } };
+    }
+    
+    // Service Workerのエラーを防ぐ
+    if (typeof caches === 'undefined') {
+        console.log('Service Workerが利用できません。');
+        // cachesを空のオブジェクトで初期化してエラーを防ぐ
+        window.caches = {
+            get: function() { return Promise.resolve(null); },
+            set: function() { return Promise.resolve(); },
+            open: function() { return Promise.resolve(null); },
+            match: function() { return Promise.resolve(null); },
+            keys: function() { return Promise.resolve([]); },
+            delete: function() { return Promise.resolve(true); }
+        };
+    }
+    
+    // 追加のService Worker関連エラーを防ぐ
+    if (typeof CacheStorage === 'undefined') {
+        window.CacheStorage = function() {};
+    }
+    
+    // GenAIWebpage関連のエラーを防ぐ
+    if (typeof GenAIWebpageEligibilityService === 'undefined') {
+        window.GenAIWebpageEligibilityService = {
+            getExplicitBlockList: function() { return Promise.resolve([]); },
+            shouldShowTouchpoints: function() { return Promise.resolve(false); }
+        };
+    }
+    
+    // 全てのJavaScriptエラーをキャッチ
+    window.addEventListener('error', function(e) {
+        console.warn('JavaScriptエラーをキャッチしました:', e.message, 'ファイル:', e.filename, '行:', e.lineno);
+        // エラーが発生してもページの動作を停止させない
+        e.preventDefault();
+        return true;
+    });
+    
+    // 未処理のPromise拒否をキャッチ
+    window.addEventListener('unhandledrejection', function(e) {
+        console.warn('未処理のPromise拒否をキャッチしました:', e.reason);
+        e.preventDefault();
+        return true;
+    });
+ 
     // エアコン情報を更新する関数
     function updateAirConditioners() {
         const propertyId = document.getElementById('property_id').value;
-        if (!propertyId) return;
+        if (!propertyId) {
+            console.log('updateAirConditioners: 物件IDがありません');
+            return;
+        }
 
+        console.log(`updateAirConditioners: 物件ID ${propertyId} のエアコン情報を取得中...`);
+        
         // 作業詳細タブのエアコン選択セレクトボックスを更新
         fetch(`/reports/api/properties/${propertyId}/air_conditioners`)
             .then(response => response.json())
             .then(data => {
+                console.log('エアコン情報取得成功:', data);
                 // すべてのエアコン選択セレクトボックスを更新
                 document.querySelectorAll('.air-conditioner-select').forEach((select, index) => {
-                    // 現在の選択値を保持
-                    const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-                    const currentValue = hiddenInput ? hiddenInput.value : '';
+                    // 現在の選択値を保持（data-original-valueまたは現在の値を使用）
+                    const originalValue = select.getAttribute('data-original-value');
+                    const currentValue = originalValue || select.value || '';
                     
-                    console.log(`エアコン情報更新: 行${index+1}の現在の値=${currentValue}`);
+                    console.log(`エアコン情報更新: 行${index+1}の現在の値=${currentValue}, original-value=${originalValue}`);
                     
                     // セレクトボックスをクリア
                     select.innerHTML = '<option value="">選択してください</option>';
@@ -895,33 +940,20 @@
                             const option = document.createElement('option');
                             option.value = ac.id;
                             option.textContent = `${ac.manufacturer || '不明'} ${ac.model_number || '不明'} (${ac.location || '不明'})`;
-                            select.appendChild(option);
                             
-                            // 元の値を保持
+                            // 元の値と一致する場合は選択状態にする
                             if (currentValue && currentValue == ac.id) {
                                 option.selected = true;
                                 console.log(`エアコン情報更新: ${ac.id}を選択状態に設定`);
                             }
+                            
+                            select.appendChild(option);
                         });
+                        
+                        // 選択値を再確認
+                        console.log(`エアコン情報更新後の値: ${select.value}`);
                     } else {
                         console.log("エアコン情報がありません");
-                    }
-                    
-                    // hiddenのinputと同期
-                    select.addEventListener('change', function() {
-                        const hiddenInput = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-                        if (hiddenInput) {
-                            hiddenInput.value = this.value;
-                            console.log(`エアコン選択変更: セレクトボックス値=${this.value}, hidden値=${hiddenInput.value}`);
-                        }
-                    });
-                    
-                    // 初期値を同期
-                    if (select.value) {
-                        if (hiddenInput) {
-                            hiddenInput.value = select.value;
-                            console.log(`エアコン情報初期化: hidden値を${select.value}に設定`);
-                        }
                     }
                 });
             })
@@ -996,10 +1028,6 @@
             // 物件が選択されていない場合はエアコン選択をクリア
             document.querySelectorAll('.air-conditioner-select').forEach(select => {
                 select.innerHTML = '<option value="">選択してください</option>';
-                const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-                if (hiddenInput) {
-                    hiddenInput.value = '';
-                }
             });
             
             // 写真タブのエアコン選択ボックスもクリア
@@ -1055,10 +1083,10 @@
         // IDをクリア
         newEntry.querySelector('input[name="work_detail_ids[]"]').value = '';
         
-        // hidden フィールドを明示的にクリア
-        const hiddenAcId = newEntry.querySelector('.work-detail-ac-id');
-        if (hiddenAcId) {
-            hiddenAcId.value = '';
+        // エアコン選択をクリア
+        const acSelect = newEntry.querySelector('.air-conditioner-select');
+        if (acSelect) {
+            acSelect.value = '';
         }
         
         // その他入力欄を隠す
@@ -1072,19 +1100,11 @@
         });
         
         // エアコン選択セレクトボックスにイベントリスナーを追加
-        const acSelect = newEntry.querySelector('.air-conditioner-select');
-        
-        // イベントリスナーをクリアしてコピー
-        const newSelect = acSelect.cloneNode(true);
-        acSelect.replaceWith(newSelect);
+        const newSelect = newEntry.querySelector('.air-conditioner-select');
         
         // 新しいイベントリスナーを追加
         newSelect.addEventListener('change', function() {
-            const hiddenAcId = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-            if (hiddenAcId) {
-                hiddenAcId.value = this.value;
-                console.log(`エアコン選択変更: セレクト値=${this.value}, 隠しフィールド値=${hiddenAcId.value}`);
-            }
+            console.log(`エアコン選択変更: セレクト値=${this.value}`);
         });
         
         // 物件が選択されている場合、エアコン情報を設定
@@ -1179,10 +1199,16 @@
 
     // 初期化時にエアコン情報も取得
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded: 初期化開始');
+        
         // 物件選択済みの場合はエアコン情報も取得
         const propertySelect = document.getElementById('property_id');
         if (propertySelect.value) {
-            propertySelect.dispatchEvent(new Event('change'));
+            console.log(`物件が選択済み: ${propertySelect.value}`);
+            // 直接updateAirConditioners関数を呼び出す
+            updateAirConditioners();
+        } else {
+            console.log('物件が未選択');
         }
         
         // 既存の削除ボタンにイベントリスナーを追加
@@ -1211,37 +1237,273 @@
         
         // エアコン選択セレクトボックスにイベントリスナーを追加
         document.querySelectorAll('.air-conditioner-select').forEach(select => {
-            // イベントリスナーをクリアしてコピー
-            const newSelect = select.cloneNode(true);
-            select.replaceWith(newSelect);
+            // data-original-valueの確認
+            const originalValue = select.getAttribute('data-original-value');
+            console.log(`エアコン選択要素: original-value=${originalValue}, 現在の値=${select.value}`);
             
             // 新しいイベントリスナーを追加
-            newSelect.addEventListener('change', function() {
-                const hiddenAcId = this.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-                if (hiddenAcId) {
-                    hiddenAcId.value = this.value;
-                    console.log(`エアコン選択変更: セレクト値=${this.value}, hidden値=${hiddenAcId.value}`);
-                }
+            select.addEventListener('change', function() {
+                console.log(`エアコン選択変更: セレクト値=${this.value}`);
+                // 他のタブのhiddenフィールドを更新
+                updateOtherTabsHiddenFields();
             });
             
-            // 初期値を同期
-            const hiddenAcId = newSelect.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-            if (hiddenAcId && newSelect.value) {
-                hiddenAcId.value = newSelect.value;
-                console.log(`初期化時のエアコン同期: hidden値を${newSelect.value}に設定`);
+            // 既存の選択値をログ出力
+            if (select.value) {
+                console.log(`初期化時のエアコン値: ${select.value}`);
             }
         });
         
-        // フォーム送信前に全てのエアコン選択とhidden inputの同期を確認
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                // エアコン選択の同期を確認
-                document.querySelectorAll('.air-conditioner-select').forEach(select => {
-                    const hiddenInput = select.closest('.work-detail-entry').querySelector('.work-detail-ac-id');
-                    if (hiddenInput && select.value) {
-                        hiddenInput.value = select.value;
-                        console.log(`フォーム送信前の同期: エアコンID=${select.value}をhidden値に設定`);
+        // 作業内容フォーム専用のイベントリスナー
+        const detailsForm = document.getElementById('details-form');
+        if (detailsForm) {
+            detailsForm.addEventListener('submit', function(e) {
+                console.log('=== 作業内容フォーム送信開始 ===');
+                
+                // 他のタブのデータを収集して隠しフィールドとして追加
+                addOtherTabsDataToForm(this);
+                
+                // フォームデータのデバッグ出力
+                const formData = new FormData(this);
+                console.log('フォームデータ一覧:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(`  ${key}: ${value}`);
+                }
+                
+                // 配列データの詳細確認
+                const workDetailIds = formData.getAll('work_detail_ids[]');
+                const descriptions = formData.getAll('descriptions[]');
+                const airConditionerIds = formData.getAll('air_conditioner_ids[]');
+                const workItemIds = formData.getAll('work_item_ids[]');
+                const confirmations = formData.getAll('confirmations[]');
+                
+                console.log('=== 配列データの詳細 ===');
+                console.log('work_detail_ids[]:', workDetailIds);
+                console.log('descriptions[]:', descriptions);
+                console.log('air_conditioner_ids[]:', airConditionerIds);
+                console.log('work_item_ids[]:', workItemIds);
+                console.log('confirmations[]:', confirmations);
+                
+                // 長さの確認
+                console.log('=== 配列の長さ確認 ===');
+                console.log('work_detail_ids配列の長さ:', workDetailIds.length);
+                console.log('descriptions配列の長さ:', descriptions.length);
+                console.log('air_conditioner_ids配列の長さ:', airConditionerIds.length);
+                console.log('work_item_ids配列の長さ:', workItemIds.length);
+                console.log('confirmations配列の長さ:', confirmations.length);
+            });
+        }
+        
+        // 他のタブのデータを作業内容フォームに追加する関数
+        function addOtherTabsDataToForm(detailsForm) {
+            console.log('他のタブのデータを収集中...');
+            
+            // 作業時間データを収集
+            const workTimesContainer = document.getElementById('work-times-container');
+            if (workTimesContainer) {
+                const workTimeEntries = workTimesContainer.querySelectorAll('.work-time-entry');
+                workTimeEntries.forEach((entry, index) => {
+                    // 作業時間IDを追加
+                    const workTimeId = entry.querySelector('input[name="work_time_ids[]"]');
+                    if (workTimeId) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'work_time_ids[]';
+                        hiddenInput.value = workTimeId.value;
+                        detailsForm.appendChild(hiddenInput);
+                        console.log(`作業時間ID追加: ${workTimeId.value}`);
                     }
+                    
+                    // 開始時間を追加
+                    const startTime = entry.querySelector('input[name="start_times[]"]');
+                    if (startTime) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'start_times[]';
+                        hiddenInput.value = startTime.value;
+                        detailsForm.appendChild(hiddenInput);
+                    }
+                    
+                    // 終了時間を追加
+                    const endTime = entry.querySelector('input[name="end_times[]"]');
+                    if (endTime) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'end_times[]';
+                        hiddenInput.value = endTime.value;
+                        detailsForm.appendChild(hiddenInput);
+                    }
+                });
+            }
+            
+            console.log('他のタブのデータ収集完了');
+        }
+        
+        // 作業内容タブで変更があった場合、基本情報と作業時間フォームのhiddenフィールドを更新
+        function updateOtherTabsHiddenFields() {
+            console.log('基本情報と作業時間フォームの隠しフィールドを更新中...');
+            
+            // 基本情報フォームの作業内容hidden fieldsを更新
+            const infoForm = document.querySelector('#info form');
+            if (infoForm) {
+                // 既存の作業内容hidden fieldsを削除
+                infoForm.querySelectorAll('input[name="work_detail_ids[]"], input[name="air_conditioner_ids[]"], input[name="work_item_ids[]"], input[name="work_item_texts[]"], input[name="descriptions[]"], input[name="confirmations[]"]').forEach(input => {
+                    if (input.closest('#info')) {
+                        input.remove();
+                    }
+                });
+                
+                // 作業内容タブから最新データを収集して追加
+                const workDetailEntries = document.querySelectorAll('#details .work-detail-entry');
+                workDetailEntries.forEach((entry, index) => {
+                    // 作業内容ID
+                    const workDetailId = entry.querySelector('input[name="work_detail_ids[]"]');
+                    if (workDetailId) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_detail_ids[]';
+                        input.value = workDetailId.value;
+                        infoForm.appendChild(input);
+                    }
+                    
+                    // エアコンID
+                    const airConditionerSelect = entry.querySelector('.air-conditioner-select');
+                    if (airConditionerSelect) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'air_conditioner_ids[]';
+                        input.value = airConditionerSelect.value || '';
+                        infoForm.appendChild(input);
+                        console.log(`基本情報にエアコンID更新: ${airConditionerSelect.value || 'なし'}`);
+                    }
+                    
+                    // 作業項目ID
+                    const workItemSelect = entry.querySelector('.work-item-select');
+                    if (workItemSelect) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_item_ids[]';
+                        input.value = workItemSelect.value || '';
+                        infoForm.appendChild(input);
+                    }
+                    
+                    // 作業項目テキスト
+                    const workItemText = entry.querySelector('.work-item-text');
+                    if (workItemText) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_item_texts[]';
+                        input.value = workItemText.value || '';
+                        infoForm.appendChild(input);
+                    }
+                    
+                    // 作業内容
+                    const description = entry.querySelector('textarea[name="descriptions[]"]');
+                    if (description) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'descriptions[]';
+                        input.value = description.value || '';
+                        infoForm.appendChild(input);
+                    }
+                    
+                    // 作業確認
+                    const confirmation = entry.querySelector('input[name="confirmations[]"]');
+                    if (confirmation) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'confirmations[]';
+                        input.value = confirmation.value || '';
+                        infoForm.appendChild(input);
+                    }
+                });
+            }
+            
+            // 作業時間フォームも同様に更新
+            const timesForm = document.querySelector('#times form');
+            if (timesForm) {
+                // 既存の作業内容hidden fieldsを削除
+                timesForm.querySelectorAll('input[name="work_detail_ids[]"], input[name="air_conditioner_ids[]"], input[name="work_item_ids[]"], input[name="work_item_texts[]"], input[name="descriptions[]"], input[name="confirmations[]"]').forEach(input => {
+                    if (input.closest('#times')) {
+                        input.remove();
+                    }
+                });
+                
+                // 作業内容タブから最新データを収集して追加
+                const workDetailEntries = document.querySelectorAll('#details .work-detail-entry');
+                workDetailEntries.forEach((entry, index) => {
+                    // 作業内容ID
+                    const workDetailId = entry.querySelector('input[name="work_detail_ids[]"]');
+                    if (workDetailId) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_detail_ids[]';
+                        input.value = workDetailId.value;
+                        timesForm.appendChild(input);
+                    }
+                    
+                    // エアコンID
+                    const airConditionerSelect = entry.querySelector('.air-conditioner-select');
+                    if (airConditionerSelect) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'air_conditioner_ids[]';
+                        input.value = airConditionerSelect.value || '';
+                        timesForm.appendChild(input);
+                        console.log(`作業時間にエアコンID更新: ${airConditionerSelect.value || 'なし'}`);
+                    }
+                    
+                    // 作業項目ID
+                    const workItemSelect = entry.querySelector('.work-item-select');
+                    if (workItemSelect) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_item_ids[]';
+                        input.value = workItemSelect.value || '';
+                        timesForm.appendChild(input);
+                    }
+                    
+                    // 作業項目テキスト
+                    const workItemText = entry.querySelector('.work-item-text');
+                    if (workItemText) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'work_item_texts[]';
+                        input.value = workItemText.value || '';
+                        timesForm.appendChild(input);
+                    }
+                    
+                    // 作業内容
+                    const description = entry.querySelector('textarea[name="descriptions[]"]');
+                    if (description) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'descriptions[]';
+                        input.value = description.value || '';
+                        timesForm.appendChild(input);
+                    }
+                    
+                    // 作業確認
+                    const confirmation = entry.querySelector('input[name="confirmations[]"]');
+                    if (confirmation) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'confirmations[]';
+                        input.value = confirmation.value || '';
+                        timesForm.appendChild(input);
+                    }
+                });
+            }
+            
+            console.log('基本情報と作業時間フォームの隠しフィールド更新完了');
+        }
+        
+        // その他のフォーム用のイベントリスナー
+        document.querySelectorAll('form:not(#details-form)').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                // エアコン選択の値確認
+                document.querySelectorAll('.air-conditioner-select').forEach((select, index) => {
+                    console.log(`エアコン選択${index}: 値=${select.value}`);
                 });
 
                 // 作業項目データの同期（修正追加）
@@ -1675,6 +1937,146 @@
         document.documentElement.style.paddingRight = '';
     }
 
+    // 他のタブのhidden fieldsを更新する関数
+    function updateOtherTabsHiddenFields() {
+        console.log('=== updateOtherTabsHiddenFields 開始 ===');
+        
+        // 作業内容タブから現在のデータを取得
+        const workDetailsData = collectWorkDetailsData();
+        const workTimesData = collectWorkTimesData();
+        
+        // 基本情報タブのhidden fieldsを更新
+        updateBasicTabHiddenFields(workDetailsData, workTimesData);
+        
+        // 作業時間タブのhidden fieldsを更新
+        updateTimesTabHiddenFields(workDetailsData);
+        
+        console.log('=== updateOtherTabsHiddenFields 完了 ===');
+    }
+    
+    // 作業内容データを収集する関数
+    function collectWorkDetailsData() {
+        const workDetailsContainer = document.getElementById('work-details-container');
+        const data = {
+            work_detail_ids: [],
+            air_conditioner_ids: [],
+            work_item_ids: [],
+            work_item_texts: [],
+            descriptions: [],
+            confirmations: []
+        };
+        
+        if (workDetailsContainer) {
+            const entries = workDetailsContainer.querySelectorAll('.work-detail-entry');
+            entries.forEach(entry => {
+                const workDetailId = entry.querySelector('input[name="work_detail_ids[]"]')?.value || '';
+                const airConditionerId = entry.querySelector('select[name="air_conditioner_ids[]"]')?.value || '';
+                const workItemId = entry.querySelector('select[name="work_item_ids[]"]')?.value || '';
+                const workItemText = entry.querySelector('input[name="work_item_texts[]"]')?.value || '';
+                const description = entry.querySelector('textarea[name="descriptions[]"]')?.value || '';
+                const confirmation = entry.querySelector('input[name="confirmations[]"]')?.value || '';
+                
+                data.work_detail_ids.push(workDetailId);
+                data.air_conditioner_ids.push(airConditionerId);
+                data.work_item_ids.push(workItemId);
+                data.work_item_texts.push(workItemText);
+                data.descriptions.push(description);
+                data.confirmations.push(confirmation);
+            });
+        }
+        
+        console.log('収集した作業内容データ:', data);
+        return data;
+    }
+    
+    // 作業時間データを収集する関数
+    function collectWorkTimesData() {
+        const workTimesContainer = document.getElementById('work-times-container');
+        const data = {
+            work_time_ids: [],
+            work_dates: [],
+            start_times: [],
+            end_times: [],
+            work_time_notes: []
+        };
+        
+        if (workTimesContainer) {
+            const entries = workTimesContainer.querySelectorAll('.work-time-entry');
+            entries.forEach(entry => {
+                const workTimeId = entry.querySelector('input[name="work_time_ids[]"]')?.value || '';
+                const workDate = entry.querySelector('input[name="work_dates[]"]')?.value || '';
+                const startTime = entry.querySelector('input[name="start_times[]"]')?.value || '';
+                const endTime = entry.querySelector('input[name="end_times[]"]')?.value || '';
+                const note = entry.querySelector('textarea[name="work_time_notes[]"]')?.value || '';
+                
+                data.work_time_ids.push(workTimeId);
+                data.work_dates.push(workDate);
+                data.start_times.push(startTime);
+                data.end_times.push(endTime);
+                data.work_time_notes.push(note);
+            });
+        }
+        
+        console.log('収集した作業時間データ:', data);
+        return data;
+    }
+    
+    // 基本情報タブのhidden fieldsを更新
+    function updateBasicTabHiddenFields(workDetailsData, workTimesData) {
+        const basicForm = document.querySelector('#basic form');
+        if (!basicForm) return;
+        
+        // 既存のhidden fieldsを削除
+        basicForm.querySelectorAll('input[name$="[]"][type="hidden"]').forEach(input => {
+            if (input.name.includes('work_detail') || input.name.includes('air_conditioner') || 
+                input.name.includes('work_item') || input.name.includes('description') || 
+                input.name.includes('confirmation') || input.name.includes('work_time')) {
+                input.remove();
+            }
+        });
+        
+        // 作業内容データを追加
+        addHiddenFieldsToForm(basicForm, workDetailsData);
+        
+        // 作業時間データを追加
+        addHiddenFieldsToForm(basicForm, workTimesData);
+        
+        console.log('基本情報タブのhidden fieldsを更新しました');
+    }
+    
+    // 作業時間タブのhidden fieldsを更新
+    function updateTimesTabHiddenFields(workDetailsData) {
+        const timesForm = document.querySelector('#times form');
+        if (!timesForm) return;
+        
+        // 既存の作業内容関連hidden fieldsを削除
+        timesForm.querySelectorAll('input[name$="[]"][type="hidden"]').forEach(input => {
+            if (input.name.includes('work_detail') || input.name.includes('air_conditioner') || 
+                input.name.includes('work_item') || input.name.includes('description') || 
+                input.name.includes('confirmation')) {
+                input.remove();
+            }
+        });
+        
+        // 作業内容データを追加
+        addHiddenFieldsToForm(timesForm, workDetailsData);
+        
+        console.log('作業時間タブのhidden fieldsを更新しました');
+    }
+    
+    // フォームにhidden fieldsを追加する関数
+    function addHiddenFieldsToForm(form, data) {
+        Object.keys(data).forEach(key => {
+            data[key].forEach(value => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key + '[]';
+                input.value = value;
+                form.appendChild(input);
+            });
+        });
+    }
+
     // 写真のアップロードフォーム送信時の処理
     document.addEventListener('DOMContentLoaded', function() {
         const photoForm = document.querySelector('form[name="upload_photo"]');
@@ -1742,6 +2144,15 @@
         
         // 初期化時にエアコン選択肢をロード
         initializeAirConditionerSelect();
+        
+        // フォーム送信前にhidden fieldsを更新
+        const forms = document.querySelectorAll('#basic form, #times form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                console.log('フォーム送信前にhidden fieldsを更新します');
+                updateOtherTabsHiddenFields();
+            });
+        });
         
         // 物件選択時にもエアコン選択肢を更新
         const propertySelect = document.getElementById('property_id');

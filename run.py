@@ -32,6 +32,9 @@ def create_db_backup(app, backup_type="startup"):
             db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "")
             if db_path.startswith("sqlite:///"):
                 db_path = db_path[10:]  # sqlite:/// を削除
+                # URIパラメータ（?timeout=30など）を除去
+                if "?" in db_path:
+                    db_path = db_path.split("?")[0]
             else:
                 db_path = "instance/aircon_report.db"  # デフォルトパス
 
@@ -59,10 +62,14 @@ def create_db_backup(app, backup_type="startup"):
 
         # データベースの一時的なロックを避けるためにコピーを作成
         try:
-            # データベース接続を確立してバックアップを作成
-            conn = sqlite3.connect(db_path)
-            backup_conn = sqlite3.connect(backup_file)
+            # データベース接続を確立してバックアップを作成（タイムアウト設定）
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            backup_conn = sqlite3.connect(backup_file, timeout=30.0)
 
+            # WALモードでの整合性を保つために、まずチェックポイントを実行
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+            # バックアップを作成
             conn.backup(backup_conn)
 
             backup_conn.close()
@@ -132,11 +139,8 @@ def start_daily_backup_thread():
 
 
 if __name__ == "__main__":
-    # 起動時にバックアップを作成
-    create_db_backup(app, "startup")
-
     # 日次バックアップスレッドを開始
     start_daily_backup_thread()
 
-    # アプリケーションを起動
+    # アプリケーションを起動（起動時バックアップは一時的に無効化）
     app.run(debug=True, host="0.0.0.0")
