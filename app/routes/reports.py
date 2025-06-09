@@ -1559,15 +1559,11 @@ def order_details_list():
         # 作業内容の総数（この報告書の）
         work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
 
-        # エアコンの数（この報告書で作業したエアコンのみ）
+        # エアコンの数（この報告書で作業したエアコンのみ）- 台数を含めて集計
         ac_count = (
-            db.session.query(
-                db.func.count(db.func.distinct(WorkDetail.air_conditioner_id))
-            )
-            .filter(
-                WorkDetail.report_id == report.id,
-                WorkDetail.air_conditioner_id.isnot(None),
-            )
+            db.session.query(db.func.sum(AirConditioner.quantity))
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
         )
@@ -1800,15 +1796,11 @@ def order_details_pdf():
         # 作業内容の総数（この報告書の）
         work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
 
-        # エアコンの数（この報告書で作業したエアコンのみ）
+        # エアコンの数（この報告書で作業したエアコンのみ）- 台数を含めて集計
         ac_count = (
-            db.session.query(
-                db.func.count(db.func.distinct(WorkDetail.air_conditioner_id))
-            )
-            .filter(
-                WorkDetail.report_id == report.id,
-                WorkDetail.air_conditioner_id.isnot(None),
-            )
+            db.session.query(db.func.sum(AirConditioner.quantity))
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
         )
