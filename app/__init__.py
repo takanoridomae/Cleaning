@@ -3,6 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from markupsafe import Markup
 import os
+from dotenv import load_dotenv
+
+# 環境変数の読み込み
+load_dotenv()
 
 # データベースインスタンスの作成
 db = SQLAlchemy()
@@ -13,7 +17,7 @@ def create_app(test_config=None):
     # アプリケーションの作成と設定
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY="dev",
+        SECRET_KEY=os.environ.get("SECRET_KEY", "dev"),
         SQLALCHEMY_DATABASE_URI="sqlite:///"
         + os.path.join(app.instance_path, "aircon_report.db"),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -27,6 +31,20 @@ def create_app(test_config=None):
             },
         },
         UPLOAD_FOLDER=os.path.join(os.path.dirname(app.root_path), "uploads"),
+        # Mail設定
+        MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
+        MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
+        MAIL_USE_TLS=os.environ.get("MAIL_USE_TLS", "True").lower() == "true",
+        MAIL_USE_SSL=os.environ.get("MAIL_USE_SSL", "False").lower() == "true",
+        MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
+        MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+        MAIL_DEFAULT_SENDER=os.environ.get("MAIL_DEFAULT_SENDER"),
+        # 通知設定
+        NOTIFICATION_ENABLED=os.environ.get("NOTIFICATION_ENABLED", "True").lower()
+        == "true",
+        NOTIFICATION_CHECK_INTERVAL=int(
+            os.environ.get("NOTIFICATION_CHECK_INTERVAL", 60)
+        ),
     )
 
     if test_config is None:
@@ -81,6 +99,7 @@ def create_app(test_config=None):
         reports,
         air_conditioners,
         schedules,
+        notifications,
     )
 
     app.register_blueprint(main.bp)
@@ -90,6 +109,7 @@ def create_app(test_config=None):
     app.register_blueprint(reports.bp)
     app.register_blueprint(air_conditioners.bp)
     app.register_blueprint(schedules.bp)
+    app.register_blueprint(notifications.bp)
 
     app.add_url_rule("/", endpoint="index")
 
@@ -107,5 +127,14 @@ def create_app(test_config=None):
     def uploaded_file(filename):
         upload_folder = os.path.join(os.path.dirname(app.root_path), "uploads")
         return send_from_directory(upload_folder, filename)
+
+    # 通知スケジューラーの初期化
+    if not app.config.get("TESTING", False):
+        try:
+            from app.services.scheduler_service import scheduler_service
+
+            scheduler_service.start()
+        except Exception as e:
+            print(f"スケジューラー開始エラー: {e}")
 
     return app

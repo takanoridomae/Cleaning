@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}通知設定 - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="page-title">通知設定</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('notifications.dashboard') }}">通知管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">設定</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>現在の設定
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if settings.configured %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>通知機能は正常に設定されています。
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>通知機能の設定が不完全です。
+                </div>
+                {% endif %}
+
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold" style="width: 30%;">通知機能:</td>
+                            <td>
+                                {% if settings.enabled %}
+                                <span class="badge bg-success">有効</span>
+                                {% else %}
+                                <span class="badge bg-secondary">無効</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">SMTPサーバー:</td>
+                            <td><code>{{ settings.mail_server }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ポート:</td>
+                            <td><code>{{ settings.mail_port }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">TLS使用:</td>
+                            <td>
+                                {% if settings.use_tls %}
+                                <span class="badge bg-success">有効</span>
+                                {% else %}
+                                <span class="badge bg-secondary">無効</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ユーザー名:</td>
+                            <td>
+                                {% if settings.username %}
+                                <code>{{ settings.username[:5] }}*****</code>
+                                {% else %}
+                                <span class="text-muted">未設定</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">送信者:</td>
+                            <td>
+                                {% if settings.sender %}
+                                <code>{{ settings.sender }}</code>
+                                {% else %}
+                                <span class="text-muted">未設定</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>設定について
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    通知設定は環境変数(.env)ファイルで管理されています。
+                    設定を変更する場合は、プロジェクトルートの<code>.env</code>ファイルを編集してください。
+                </p>
+                
+                <h6 class="mt-3">必要な設定項目:</h6>
+                <div class="small text-muted">
+                    <div class="mb-2">
+                        <code>MAIL_USERNAME</code><br>
+                        Gmailのアドレス
+                    </div>
+                    <div class="mb-2">
+                        <code>MAIL_PASSWORD</code><br>
+                        Gmailのアプリパスワード
+                    </div>
+                    <div class="mb-2">
+                        <code>MAIL_DEFAULT_SENDER</code><br>
+                        送信元として表示されるアドレス
+                    </div>
+                    <div class="mb-2">
+                        <code>NOTIFICATION_ENABLED</code><br>
+                        通知機能の有効/無効（True/False）
+                    </div>
+                    <div class="mb-2">
+                        <code>NOTIFICATION_CHECK_INTERVAL</code><br>
+                        通知チェック間隔（秒）
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <a href="{{ url_for('notifications.dashboard') }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-arrow-left me-1"></i>ダッシュボードに戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-shield-check me-2"></i>セキュリティ
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>重要:</strong> <code>.env</code>ファイルは<code>.gitignore</code>により
+                    Gitリポジトリから除外されています。機密情報が漏洩することはありません。
+                </div>
+
+                <h6 class="small">Gmailアプリパスワードの作成方法:</h6>
+                <ol class="small text-muted">
+                    <li>Googleアカウントの2段階認証を有効化</li>
+                    <li>Googleアカウント設定 > セキュリティ</li>
+                    <li>「アプリパスワード」を選択</li>
+                    <li>アプリを選択して16文字のパスワードを生成</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 設定状況を定期的にチェック（5分ごと）
+setInterval(function() {
+    fetch('{{ url_for("notifications.api_status") }}')
+        .then(response => response.json())
+        .then(data => {
+            console.log('通知設定状況:', data);
+        })
+        .catch(error => {
+            console.error('設定状況チェックエラー:', error);
+        });
+}, 300000);
+</script>
+{% endblock %} 
