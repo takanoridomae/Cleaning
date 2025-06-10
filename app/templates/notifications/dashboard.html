@@ -39,13 +39,18 @@
                 </div>
                 <div class="d-flex gap-2">
                     <form method="POST" action="{{ url_for('notifications.send_test_email') }}" style="display: inline;">
-                        <button type="submit" class="btn btn-outline-primary">
+                        <button type="submit" class="btn btn-outline-primary" id="testEmailBtn">
                             <i class="bi bi-envelope me-1"></i>テストメール送信
                         </button>
                     </form>
                     <form method="POST" action="{{ url_for('notifications.check_notifications') }}" style="display: inline;">
-                        <button type="submit" class="btn btn-outline-info">
+                        <button type="submit" class="btn btn-outline-info" id="manualCheckBtn">
                             <i class="bi bi-arrow-clockwise me-1"></i>手動通知チェック
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('notifications.send_all_reminder') }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-warning" id="allReminderBtn">
+                            <i class="bi bi-megaphone me-1"></i>全ユーザーリマインダー
                         </button>
                     </form>
                     <a href="{{ url_for('notifications.settings') }}" class="btn btn-outline-secondary">
@@ -105,6 +110,67 @@
             <div class="card-body">
                 <div class="display-6 text-warning">{{ stats.upcoming_24h }}</div>
                 <div class="small text-muted">24時間以内</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 機能説明カード -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>通知機能について
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-envelope-check text-primary me-2 mt-1"></i>
+                            <div>
+                                <h6 class="mb-1">テストメール送信</h6>
+                                <p class="small text-muted mb-0">全登録ユーザーに通知機能の動作確認メールを送信します。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-arrow-clockwise text-info me-2 mt-1"></i>
+                            <div>
+                                <h6 class="mb-1">手動通知チェック</h6>
+                                <p class="small text-muted mb-0">自動スケジューラーとは別に、手動で通知の送信チェックを実行します。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-megaphone text-warning me-2 mt-1"></i>
+                            <div>
+                                <h6 class="mb-1">全ユーザーリマインダー</h6>
+                                <p class="small text-muted mb-0">全登録ユーザーに現在のスケジュール状況をお知らせするリマインダーを送信します。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6 class="mb-2">キーボードショートカット</h6>
+                        <div class="d-flex flex-wrap gap-3">
+                            <span class="badge bg-light text-dark">
+                                <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> : テストメール送信
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> : 手動通知チェック
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> : 全ユーザーリマインダー
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -181,15 +247,31 @@
                                             </button>
                                             <ul class="dropdown-menu">
                                                 <li>
-                                                    <form method="POST" action="{{ url_for('notifications.send_schedule_notification', schedule_id=schedule.id) }}">
+                                                    <form method="POST" action="{{ url_for('notifications.send_schedule_notification', schedule_id=schedule.id) }}" class="notification-form">
                                                         <input type="hidden" name="type" value="reminder">
-                                                        <button type="submit" class="dropdown-item">リマインダー送信</button>
+                                                        <button type="submit" class="dropdown-item notification-btn">
+                                                            <span class="btn-text">
+                                                                <i class="bi bi-megaphone me-1"></i>全社リマインダー送信
+                                                            </span>
+                                                            <span class="btn-loading d-none">
+                                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                                送信中...
+                                                            </span>
+                                                        </button>
                                                     </form>
                                                 </li>
                                                 <li>
-                                                    <form method="POST" action="{{ url_for('notifications.send_schedule_notification', schedule_id=schedule.id) }}">
+                                                    <form method="POST" action="{{ url_for('notifications.send_schedule_notification', schedule_id=schedule.id) }}" class="notification-form">
                                                         <input type="hidden" name="type" value="start">
-                                                        <button type="submit" class="dropdown-item">開始通知送信</button>
+                                                        <button type="submit" class="dropdown-item notification-btn">
+                                                            <span class="btn-text">
+                                                                <i class="bi bi-broadcast me-1"></i>全社開始通知送信
+                                                            </span>
+                                                            <span class="btn-loading d-none">
+                                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                                送信中...
+                                                            </span>
+                                                        </button>
                                                     </form>
                                                 </li>
                                             </ul>
@@ -213,6 +295,40 @@
     </div>
 </div>
 
+<!-- メール送信プログレスバー -->
+<div class="email-progress" id="emailProgress">
+    <div class="email-progress-bar" id="emailProgressBar"></div>
+</div>
+
+<!-- メール送信モーダル -->
+<div class="email-modal-overlay" id="emailModal">
+    <div class="email-modal-content">
+        <div id="emailModalContent">
+            <div class="mb-3">
+                <i class="bi bi-envelope-heart email-icon-animation" style="font-size: 3rem; color: #0d6efd;"></i>
+            </div>
+            <h4 id="modalTitle">メール送信中</h4>
+            <p id="modalMessage">メールを送信しています<span class="loading-dots"></span></p>
+            <div id="progressInfo" class="mt-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span id="progressText">準備中...</span>
+                    <span id="progressPercentage" class="countdown-number">0%</span>
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         id="modalProgressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div id="completionMessage" class="mt-3 d-none">
+                <div class="alert alert-success success-message">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <span id="completionText">送信完了しました！</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -222,22 +338,917 @@ setInterval(function() {
     location.reload();
 }, 300000);
 
+// メール送信アニメーション管理クラス
+class EmailAnimationManager {
+    constructor() {
+        this.modal = document.getElementById('emailModal');
+        this.progressBar = document.getElementById('emailProgress');
+        this.progressBarInner = document.getElementById('emailProgressBar');
+        this.modalProgressBar = document.getElementById('modalProgressBar');
+        this.progressText = document.getElementById('progressText');
+        this.progressPercentage = document.getElementById('progressPercentage');
+        this.modalTitle = document.getElementById('modalTitle');
+        this.modalMessage = document.getElementById('modalMessage');
+        this.completionMessage = document.getElementById('completionMessage');
+        this.completionText = document.getElementById('completionText');
+        
+        this.isAnimating = false;
+        this.currentProgress = 0;
+        this.targetProgress = 0;
+        this.animationInterval = null;
+        this.audioContext = null;
+        
+        // 音効果の初期化
+        this.initAudio();
+    }
+    
+    // 音効果初期化
+    initAudio() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.log('音効果は利用できません');
+        }
+    }
+    
+    // 音効果再生
+    playSound(frequency, duration, type = 'sine') {
+        if (!this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+        oscillator.type = type;
+        
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + duration);
+    }
+    
+    // バイブレーション効果
+    vibrate(pattern) {
+        if ('vibrate' in navigator) {
+            navigator.vibrate(pattern);
+        }
+    }
+    
+    // メール送信開始
+    startEmailAnimation(type = 'general', recipientCount = 0) {
+        if (this.isAnimating) return;
+        
+        this.isAnimating = true;
+        this.currentProgress = 0;
+        this.targetProgress = 0;
+        
+        // 開始音とバイブレーション
+        this.playSound(800, 0.2);
+        this.vibrate([100, 50, 100]);
+        
+        // 送信タイプに応じたメッセージ設定
+        const messages = {
+            'test': {
+                title: 'テストメール送信中',
+                message: 'テストメールを送信しています',
+                stages: ['メール内容を準備中', 'SMTP接続中', 'メール送信中', '送信完了確認中'],
+                icon: 'bi-envelope-check',
+                color: '#17a2b8'
+            },
+            'reminder': {
+                title: 'リマインダー送信中',
+                message: `全ユーザー（${recipientCount}名）にリマインダーを送信しています`,
+                stages: ['送信先リスト作成中', 'メール内容を生成中', 'メール送信中', '送信結果確認中'],
+                icon: 'bi-megaphone',
+                color: '#fd7e14'
+            },
+            'schedule': {
+                title: 'スケジュール通知送信中',
+                message: `全ユーザー（${recipientCount}名）にスケジュール通知を送信しています`,
+                stages: ['スケジュール情報取得中', 'メール内容を生成中', 'メール送信中', '送信完了確認中'],
+                icon: 'bi-calendar-event',
+                color: '#6f42c1'
+            },
+            'check': {
+                title: '通知チェック実行中',
+                message: '自動通知の対象をチェックしています',
+                stages: ['スケジュール検索中', '通知対象の確認中', '通知送信中', 'チェック完了'],
+                icon: 'bi-search',
+                color: '#20c997'
+            }
+        };
+        
+        const config = messages[type] || messages['general'];
+        
+        // アイコンの更新
+        const modalIcon = this.modal.querySelector('.email-icon-animation');
+        if (modalIcon) {
+            modalIcon.className = `${config.icon} email-icon-animation`;
+            modalIcon.style.color = config.color;
+        }
+        
+        // モーダル表示
+        this.modalTitle.textContent = config.title;
+        this.modalMessage.innerHTML = config.message + '<span class="loading-dots"></span>';
+        this.completionMessage.classList.add('d-none');
+        this.modal.style.display = 'flex';
+        this.modal.classList.add('active');
+        
+        // プログレスバー表示
+        this.progressBar.style.display = 'block';
+        
+        // アニメーション開始
+        this.animateProgress(config.stages);
+    }
+    
+    // プログレス アニメーション
+    animateProgress(stages) {
+        let stageIndex = 0;
+        let stageProgress = 0;
+        const stageTotal = 100 / stages.length;
+        let lastPlayedStage = -1;
+        
+        this.animationInterval = setInterval(() => {
+            // ステージ内でのプログレス更新
+            stageProgress += Math.random() * 8 + 2; // 2-10% ずつ進行
+            
+            // ステージ切り替え時の音効果
+            if (stageIndex !== lastPlayedStage) {
+                this.playSound(600 + (stageIndex * 100), 0.1);
+                lastPlayedStage = stageIndex;
+            }
+            
+            if (stageProgress >= stageTotal) {
+                stageProgress = stageTotal;
+                stageIndex++;
+                
+                // ステージ完了音
+                this.playSound(1000, 0.15);
+                this.vibrate([50]);
+                
+                if (stageIndex < stages.length) {
+                    stageProgress = 0;
+                } else {
+                    // 完了
+                    this.targetProgress = 100;
+                    this.updateProgress(100, '送信完了');
+                    this.completeAnimation();
+                    return;
+                }
+            }
+            
+            this.targetProgress = (stageIndex * stageTotal) + stageProgress;
+            const currentStage = stages[stageIndex] || stages[stages.length - 1];
+            this.updateProgress(this.targetProgress, currentStage);
+            
+        }, 200 + Math.random() * 300); // 0.2-0.5秒間隔でランダム更新
+    }
+    
+    // プログレス更新
+    updateProgress(progress, text) {
+        this.currentProgress = Math.min(progress, 100);
+        
+        // プログレスバー更新
+        this.progressBarInner.style.width = `${this.currentProgress}%`;
+        this.modalProgressBar.style.width = `${this.currentProgress}%`;
+        
+        // テキスト更新
+        this.progressText.textContent = text;
+        this.progressPercentage.textContent = `${Math.round(this.currentProgress)}%`;
+        
+        // プログレスに応じた色変更とパーティクル効果
+        if (this.currentProgress < 33) {
+            this.modalProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+        } else if (this.currentProgress < 66) {
+            this.modalProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+        } else if (this.currentProgress < 100) {
+            this.modalProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
+        } else {
+            this.modalProgressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+        }
+        
+        // 25%ごとに特別な効果
+        const milestone = Math.floor(this.currentProgress / 25) * 25;
+        if (this.currentProgress >= milestone && milestone > 0 && this.currentProgress % 25 === 0) {
+            this.playSound(800 + milestone * 2, 0.2);
+            this.vibrate([100]);
+            this.addProgressParticles();
+        }
+    }
+    
+    // パーティクル効果追加
+    addProgressParticles() {
+        const progressContainer = this.modal.querySelector('.progress');
+        if (!progressContainer) return;
+        
+        for (let i = 0; i < 5; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+                position: absolute;
+                width: 4px;
+                height: 4px;
+                background: #ffd700;
+                border-radius: 50%;
+                pointer-events: none;
+                animation: particleFloat 1s ease-out forwards;
+                left: ${Math.random() * 100}%;
+                top: 50%;
+                z-index: 1000;
+            `;
+            
+            progressContainer.style.position = 'relative';
+            progressContainer.appendChild(particle);
+            
+            // パーティクル削除
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 1000);
+        }
+    }
+    
+    // アニメーション完了
+    completeAnimation() {
+        clearInterval(this.animationInterval);
+        
+        // 完了音とバイブレーション
+        this.playCompletionSound();
+        this.vibrate([200, 100, 200, 100, 200]);
+        
+        // 完了メッセージ表示
+        setTimeout(() => {
+            this.completionMessage.classList.remove('d-none');
+            this.completionText.textContent = '送信が完了しました！';
+            
+            // 爆発効果の追加
+            this.addCompletionBurst();
+            
+            // アイコンを成功アイコンに変更
+            const modalIcon = this.modal.querySelector('.email-icon-animation');
+            if (modalIcon) {
+                modalIcon.className = 'bi-check-circle-fill email-icon-animation';
+                modalIcon.style.color = '#28a745';
+            }
+            
+            // 2秒後にモーダルを閉じる
+            setTimeout(() => {
+                this.closeAnimation();
+            }, 2000);
+        }, 500);
+    }
+    
+    // 完了音再生
+    playCompletionSound() {
+        if (!this.audioContext) return;
+        
+        // メロディー風の完了音
+        const notes = [523.25, 659.25, 783.99]; // C, E, G
+        notes.forEach((frequency, index) => {
+            setTimeout(() => {
+                this.playSound(frequency, 0.3);
+            }, index * 150);
+        });
+    }
+    
+    // 爆発効果追加
+    addCompletionBurst() {
+        const burstElement = document.createElement('div');
+        burstElement.className = 'completion-burst';
+        this.modal.appendChild(burstElement);
+        
+        // 爆発効果削除
+        setTimeout(() => {
+            if (burstElement.parentNode) {
+                burstElement.parentNode.removeChild(burstElement);
+            }
+        }, 600);
+    }
+    
+    // アニメーション終了
+    closeAnimation() {
+        this.isAnimating = false;
+        clearInterval(this.animationInterval);
+        
+        // フェードアウト効果
+        this.modal.style.opacity = '0';
+        this.progressBar.style.opacity = '0';
+        
+        setTimeout(() => {
+            this.modal.style.display = 'none';
+            this.progressBar.style.display = 'none';
+            this.modal.style.opacity = '1';
+            this.progressBar.style.opacity = '1';
+            this.modal.classList.remove('active');
+            
+            // プログレスリセット
+            this.currentProgress = 0;
+            this.targetProgress = 0;
+            this.updateProgress(0, '準備中...');
+            
+            // アイコンをデフォルトに戻す
+            const modalIcon = this.modal.querySelector('.email-icon-animation');
+            if (modalIcon) {
+                modalIcon.className = 'bi-envelope-heart email-icon-animation';
+                modalIcon.style.color = '#0d6efd';
+            }
+        }, 300);
+    }
+}
+
+// アニメーションマネージャーインスタンス
+const emailAnimator = new EmailAnimationManager();
+
+// ローディング状態の管理（強化版）
+function setLoadingState(button, isLoading, animationType = 'general') {
+    const btnText = button.querySelector('.btn-text');
+    const btnLoading = button.querySelector('.btn-loading');
+    const icon = button.querySelector('i');
+    
+    if (isLoading) {
+        button.disabled = true;
+        button.classList.add('btn-sending', 'email-sending', 'pulse-animation');
+        
+        if (btnText) btnText.classList.add('d-none');
+        if (btnLoading) btnLoading.classList.remove('d-none');
+        if (icon && !btnText) {
+            icon.className = 'spinner-border spinner-border-sm me-1';
+        }
+        
+        // カウント情報の取得
+        let recipientCount = 0;
+        const userCountElements = document.querySelectorAll('.badge, .text-muted');
+        userCountElements.forEach(el => {
+            const match = el.textContent.match(/(\d+)名/);
+            if (match) recipientCount = parseInt(match[1]);
+        });
+        
+        // アニメーション開始
+        emailAnimator.startEmailAnimation(animationType, recipientCount);
+        
+    } else {
+        button.disabled = false;
+        button.classList.remove('btn-sending', 'email-sending', 'pulse-animation');
+        
+        if (btnText) btnText.classList.remove('d-none');
+        if (btnLoading) btnLoading.classList.add('d-none');
+        if (icon && !btnText) {
+            // 元のアイコンに戻す
+            if (button.id === 'testEmailBtn') icon.className = 'bi bi-envelope me-1';
+            if (button.id === 'manualCheckBtn') icon.className = 'bi bi-arrow-clockwise me-1';
+            if (button.id === 'allReminderBtn') icon.className = 'bi bi-megaphone me-1';
+        }
+    }
+}
+
+// 送信完了後のメッセージ表示（強化版）
+function showSuccessMessage(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show success-message`;
+    alertDiv.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid') || document.body;
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 自動消去タイマー
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.style.opacity = '0';
+            setTimeout(() => alertDiv.remove(), 300);
+        }
+    }, 5000);
+}
+
+// テストメール送信の確認
+document.getElementById('testEmailBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    if (confirm('テストメールを全ユーザーに送信しますか？')) {
+        setLoadingState(this, true, 'test');
+        
+        // フォーム送信
+        this.closest('form').submit();
+    }
+});
+
 // 手動通知チェックの確認
-document.querySelectorAll('form[action*="check-notifications"]').forEach(function(form) {
+document.getElementById('manualCheckBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    if (confirm('手動で通知チェックを実行しますか？')) {
+        setLoadingState(this, true, 'check');
+        
+        // フォーム送信
+        this.closest('form').submit();
+    }
+});
+
+// 全ユーザーリマインダー送信の確認
+document.getElementById('allReminderBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    const confirmMessage = `全登録ユーザーにリマインダーを送信します。
+    
+この操作により、システムに登録されている全ユーザーに一括でリマインダーメールが送信されます。
+
+続行しますか？`;
+    
+    if (confirm(confirmMessage)) {
+        setLoadingState(this, true, 'reminder');
+        
+        // フォーム送信
+        this.closest('form').submit();
+    }
+});
+
+// 個別通知の送信確認とローディング
+document.querySelectorAll('.notification-form').forEach(function(form) {
     form.addEventListener('submit', function(e) {
-        if (!confirm('手動で通知チェックを実行しますか？')) {
-            e.preventDefault();
+        e.preventDefault();
+        
+        const button = this.querySelector('.notification-btn');
+        const type = this.querySelector('input[name="type"]').value;
+        const typeNames = {
+            'reminder': '全社リマインダー',
+            'start': '全社開始通知',
+            'complete': '全社完了通知'
+        };
+        
+        const confirmMessage = `${typeNames[type]}を送信します。
+
+この操作により、システムに登録されている全ユーザーに対して、選択されたスケジュールの詳細情報がメール送信されます。
+
+続行しますか？`;
+        
+        if (confirm(confirmMessage)) {
+            setLoadingState(button, true, 'schedule');
+            
+            // フォーム送信
+            this.submit();
         }
     });
 });
 
-// テストメール送信の確認
-document.querySelectorAll('form[action*="send-test"]').forEach(function(form) {
-    form.addEventListener('submit', function(e) {
-        if (!confirm('テストメールを送信しますか？')) {
-            e.preventDefault();
+// ページ読み込み時のアニメーション（強化版）
+document.addEventListener('DOMContentLoaded', function() {
+    // カードのフェードイン効果
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // 統計数値のカウントアップ効果
+    const numbers = document.querySelectorAll('.display-6');
+    numbers.forEach(number => {
+        const finalValue = parseInt(number.textContent);
+        if (!isNaN(finalValue)) {
+            let currentValue = 0;
+            const increment = Math.ceil(finalValue / 20);
+            
+            const counter = setInterval(() => {
+                currentValue += increment;
+                if (currentValue >= finalValue) {
+                    currentValue = finalValue;
+                    clearInterval(counter);
+                }
+                number.textContent = currentValue;
+            }, 50);
         }
     });
+    
+    // ボタンのホバー効果
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+            if (!this.disabled && !this.classList.contains('btn-sending')) {
+                this.style.transform = 'translateY(-2px)';
+            }
+        });
+        
+        button.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('btn-sending')) {
+                this.style.transform = 'translateY(0)';
+            }
+        });
+    });
+});
+
+// キーボードショートカット
+document.addEventListener('keydown', function(e) {
+    // Ctrl + Shift + T: テストメール送信
+    if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        document.getElementById('testEmailBtn')?.click();
+    }
+    
+    // Ctrl + Shift + C: 手動チェック
+    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        document.getElementById('manualCheckBtn')?.click();
+    }
+    
+    // Ctrl + Shift + R: 全ユーザーリマインダー
+    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        e.preventDefault();
+        document.getElementById('allReminderBtn')?.click();
+    }
+    
+    // ESC: モーダルを閉じる
+    if (e.key === 'Escape' && emailAnimator.modal.style.display === 'flex') {
+        e.preventDefault();
+        emailAnimator.closeAnimation();
+    }
 });
 </script>
+
+<!-- 追加のスタイル -->
+<style>
+.card {
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+.notification-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.notification-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.display-6 {
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.75em;
+    padding: 0.375rem 0.75rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,123,255,0.1);
+}
+
+/* ローディングアニメーション */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.btn-loading {
+    animation: pulse 1.5s infinite;
+}
+
+/* レスポンシブ改善 */
+@media (max-width: 768px) {
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* メール送信アニメーション */
+.email-sending {
+    position: relative;
+    overflow: hidden;
+}
+
+.email-sending::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: emailSending 2s linear infinite;
+    z-index: 1;
+}
+
+@keyframes emailSending {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* パルス効果 */
+.pulse-animation {
+    animation: pulseGlow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+    from {
+        box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
+        transform: scale(1);
+    }
+    to {
+        box-shadow: 0 0 15px rgba(13, 110, 253, 0.8), 0 0 25px rgba(13, 110, 253, 0.3);
+        transform: scale(1.02);
+    }
+}
+
+/* メール送信プログレスバー */
+.email-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(13, 110, 253, 0.1);
+    z-index: 9999;
+    display: none;
+}
+
+.email-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0d6efd, #20c997, #0d6efd);
+    background-size: 200% 100%;
+    animation: progressMove 2s linear infinite;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+@keyframes progressMove {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* メール送信モーダルオーバーレイ */
+.email-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.email-modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 400px;
+    margin: 0 1rem;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* メール送信アイコンアニメーション */
+.email-icon-animation {
+    display: inline-block;
+    animation: emailBounce 1s ease-in-out infinite;
+}
+
+@keyframes emailBounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    10% {
+        transform: translateY(-10px) rotate(-5deg);
+    }
+    30% {
+        transform: translateY(-5px) rotate(5deg);
+    }
+    40% {
+        transform: translateY(-8px) rotate(-2deg);
+    }
+    60% {
+        transform: translateY(-3px) rotate(2deg);
+    }
+}
+
+/* 成功メッセージのアニメーション */
+.success-message {
+    animation: successSlideIn 0.5s ease-out;
+}
+
+@keyframes successSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ローディングドット */
+.loading-dots {
+    display: inline-block;
+}
+
+.loading-dots::after {
+    content: '';
+    animation: loadingDots 1.5s linear infinite;
+}
+
+@keyframes loadingDots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}
+
+/* カウントダウン数字 */
+.countdown-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d6efd;
+    animation: countdownPulse 1s ease-in-out infinite;
+}
+
+@keyframes countdownPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+/* ボタンのホバー効果強化 */
+.btn:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* 送信中ボタンの特別スタイル */
+.btn-sending {
+    background: linear-gradient(45deg, #0d6efd, #20c997);
+    background-size: 200% 200%;
+    animation: gradientShift 2s ease-in-out infinite;
+    border: none;
+    color: white;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* パーティクル効果 */
+@keyframes particleFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-20px) scale(1.5);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.5);
+    }
+}
+
+/* モーダルの背景パルス効果 */
+.email-modal-overlay.active {
+    animation: modalBackgroundPulse 3s ease-in-out infinite;
+}
+
+@keyframes modalBackgroundPulse {
+    0%, 100% {
+        background: rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        background: rgba(0, 0, 0, 0.7);
+    }
+}
+
+/* 完了時の爆発効果 */
+.completion-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, #ffd700, #ff6b6b, #4ecdc4);
+    border-radius: 50%;
+    animation: burstExpansion 0.6s ease-out forwards;
+    z-index: 1001;
+}
+
+@keyframes burstExpansion {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(0);
+    }
+    50% {
+        width: 200px;
+        height: 200px;
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+        width: 400px;
+        height: 400px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+}
+
+/* プログレスバーのグロー効果 */
+.progress-bar-animated {
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+    animation: progressGlow 2s ease-in-out infinite alternate,
+               progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progressGlow {
+    from {
+        box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+    }
+    to {
+        box-shadow: 0 0 20px rgba(13, 110, 253, 0.8), 
+                    0 0 30px rgba(13, 110, 253, 0.3);
+    }
+}
+
+/* 数字のカウンター効果強化 */
+.countdown-number {
+    text-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+    transition: all 0.3s ease;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .email-modal-content {
+        margin: 0 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .email-icon-animation {
+        font-size: 2rem !important;
+    }
+    
+    .countdown-number {
+        font-size: 1.5rem;
+    }
+}
+</style>
 {% endblock %} 

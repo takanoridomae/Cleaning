@@ -225,7 +225,7 @@ def api_status():
 @login_required
 @admin_required
 def send_schedule_notification(schedule_id):
-    """特定スケジュールの通知を手動送信"""
+    """特定スケジュールの通知を全ユーザーに手動送信"""
     try:
         schedule = Schedule.query.get_or_404(schedule_id)
 
@@ -235,7 +235,10 @@ def send_schedule_notification(schedule_id):
             flash("無効な通知タイプです。", "danger")
             return redirect(url_for("schedules.view", id=schedule_id))
 
-        success = email_service.send_schedule_notification(schedule, notification_type)
+        # 全ユーザーに送信
+        success = email_service.send_schedule_notification_to_all(
+            schedule, notification_type
+        )
 
         if success:
             type_names = {
@@ -243,8 +246,15 @@ def send_schedule_notification(schedule_id):
                 "start": "開始通知",
                 "complete": "完了通知",
             }
+
+            # 送信先ユーザー数を取得
+            all_users = User.query.filter(User.email.isnot(None)).all()
+            recipient_count = len(
+                [user for user in all_users if user.email and "@" in user.email]
+            )
+
             flash(
-                f"「{schedule.title}」の{type_names[notification_type]}を送信しました。",
+                f"「{schedule.title}」の{type_names[notification_type]}を全ユーザー（{recipient_count}名）に送信しました。",
                 "success",
             )
         else:
@@ -253,7 +263,8 @@ def send_schedule_notification(schedule_id):
     except Exception as e:
         flash(f"通知送信エラー: {e}", "danger")
 
-    return redirect(url_for("schedules.view", id=schedule_id))
+    # 通知管理ダッシュボードにリダイレクト
+    return redirect(url_for("notifications.dashboard"))
 
 
 @bp.route("/settings", methods=["GET", "POST"])
@@ -278,3 +289,120 @@ def settings():
     }
 
     return render_template("notifications/settings.html", settings=current_settings)
+
+
+@bp.route("/send-all-reminder", methods=["POST"])
+@login_required
+@admin_required
+def send_all_reminder():
+    """全ユーザーにリマインダー送信"""
+    try:
+        if not email_service.is_configured():
+            flash("メール設定が不完全です。環境変数を確認してください。", "danger")
+            return redirect(url_for("notifications.dashboard"))
+
+        # 全ユーザーのメールアドレスを取得
+        all_users = User.query.filter(User.email.isnot(None)).all()
+        recipients = [
+            user.email for user in all_users if user.email and "@" in user.email
+        ]
+
+        if not recipients:
+            flash("メールアドレスが設定されているユーザーが見つかりません。", "warning")
+            return redirect(url_for("notifications.dashboard"))
+
+        # 今後24時間以内の通知対象スケジュール数を取得
+        now = datetime.now()
+        tomorrow = now + timedelta(days=1)
+        upcoming_count = Schedule.query.filter(
+            Schedule.notification_enabled == True,
+            Schedule.status == "pending",
+            Schedule.start_datetime >= now,
+            Schedule.start_datetime <= tomorrow,
+        ).count()
+
+        subject = (
+            "【一括リマインダー】スケジュール通知 - エアコンクリーニング報告書システム"
+        )
+        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #007bff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; }}
+                .schedule-info {{ background: white; padding: 15px; border-left: 4px solid #007bff; margin: 10px 0; border-radius: 4px; }}
+                .footer {{ text-align: center; padding: 20px; color: #6c757d; font-size: 14px; border-radius: 0 0 8px 8px; background: #e9ecef; }}
+                .alert {{ padding: 12px; margin: 10px 0; border-radius: 4px; background: #d1ecf1; border: 1px solid #bee5eb; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>📅 スケジュール一括リマインダー</h1>
+                </div>
+                <div class="content">
+                    <p>エアコンクリーニング完了報告書システムからの一括リマインダーです。</p>
+                    
+                    <div class="schedule-info">
+                        <h3>📊 現在の状況</h3>
+                        <p><strong>送信日時:</strong> {current_time}</p>
+                        <p><strong>送信先:</strong> 登録されている全ユーザー（{len(recipients)}名）</p>
+                        <p><strong>今後24時間以内の通知対象:</strong> {upcoming_count} 件のスケジュール</p>
+                    </div>
+                    
+                    <div class="alert">
+                        <p><strong>💡 お知らせ:</strong></p>
+                        <p>スケジュールの詳細確認や個別通知は、通知管理画面からご利用いただけます。</p>
+                        <p>自動通知機能により、各スケジュールの開始前にも個別リマインダーが送信されます。</p>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>エアコンクリーニング完了報告書システム</p>
+                    <p>このメールは管理者により送信されました。</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_body = f"""
+📅 スケジュール一括リマインダー
+
+エアコンクリーニング完了報告書システムからの一括リマインダーです。
+
+📊 現在の状況:
+- 送信日時: {current_time}
+- 送信先: 登録されている全ユーザー（{len(recipients)}名）
+- 今後24時間以内の通知対象: {upcoming_count} 件のスケジュール
+
+💡 お知らせ:
+スケジュールの詳細確認や個別通知は、通知管理画面からご利用いただけます。
+自動通知機能により、各スケジュールの開始前にも個別リマインダーが送信されます。
+
+---
+エアコンクリーニング完了報告書システム
+このメールは管理者により送信されました。
+        """
+
+        success = email_service.send_email(recipients, subject, html_body, text_body)
+
+        if success:
+            flash(
+                f"全ユーザー（{len(recipients)}名）にリマインダーを送信しました。",
+                "success",
+            )
+        else:
+            flash(
+                "リマインダーの送信に失敗しました。ログを確認してください。", "danger"
+            )
+
+    except Exception as e:
+        flash(f"リマインダー送信エラー: {e}", "danger")
+
+    return redirect(url_for("notifications.dashboard"))

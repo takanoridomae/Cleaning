@@ -334,6 +334,290 @@ class EmailService:
             self.logger.error(f"通知チェック処理エラー: {e}")
             return 0
 
+    def send_schedule_notification_to_all(
+        self, schedule: Schedule, notification_type: str = "reminder"
+    ) -> bool:
+        """
+        スケジュール通知メールを全ユーザーに送信
+
+        Args:
+            schedule: スケジュールオブジェクト
+            notification_type: 通知タイプ（reminder, start, complete）
+
+        Returns:
+            bool: 送信成功の場合True
+        """
+        try:
+            # 全ユーザーのメールアドレスを取得
+            all_users = User.query.filter(User.email.isnot(None)).all()
+            to_addresses = [
+                user.email for user in all_users if user.email and "@" in user.email
+            ]
+
+            if not to_addresses:
+                self.logger.warning("送信先となる有効なメールアドレスが見つかりません")
+                return False
+
+            # メール内容生成（全ユーザー向け）
+            subject, html_body, text_body = (
+                self._generate_all_user_notification_content(
+                    schedule, notification_type, len(to_addresses)
+                )
+            )
+
+            # メール送信
+            success = self.send_email(to_addresses, subject, html_body, text_body)
+
+            if success:
+                self.logger.info(
+                    f"スケジュール {schedule.id} の{notification_type}通知を全ユーザー（{len(to_addresses)}名）に送信完了"
+                )
+
+            return success
+
+        except Exception as e:
+            self.logger.error(f"全ユーザースケジュール通知エラー: {e}")
+            return False
+
+    def _generate_all_user_notification_content(
+        self, schedule: Schedule, notification_type: str, recipient_count: int
+    ) -> tuple:
+        """
+        全ユーザー向けスケジュール通知メール内容生成
+
+        Args:
+            schedule: スケジュールオブジェクト
+            notification_type: 通知タイプ
+            recipient_count: 送信先ユーザー数
+
+        Returns:
+            tuple: (件名, HTML本文, テキスト本文)
+        """
+        # 基本情報
+        title = schedule.title
+        start_time = schedule.start_datetime.strftime("%Y年%m月%d日 %H:%M")
+        end_time = schedule.end_datetime.strftime("%Y年%m月%d日 %H:%M")
+        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+
+        # 詳細情報の組み立て
+        schedule_details = []
+
+        if schedule.description:
+            schedule_details.append(f"説明: {schedule.description}")
+
+        if schedule.customer:
+            customer_detail = f"お客様: {schedule.customer.name}"
+            if hasattr(schedule.customer, "phone") and schedule.customer.phone:
+                customer_detail += f" (Tel: {schedule.customer.phone})"
+            schedule_details.append(customer_detail)
+
+        if schedule.schedule_property:
+            property_detail = f"物件: {schedule.schedule_property.name}"
+            if (
+                hasattr(schedule.schedule_property, "address")
+                and schedule.schedule_property.address
+            ):
+                property_detail += f"\n住所: {schedule.schedule_property.address}"
+            schedule_details.append(property_detail)
+
+        if schedule.creator:
+            schedule_details.append(f"担当者: {schedule.creator.username}")
+
+        # 優先度の表示
+        priority_names = {"low": "低", "normal": "通常", "high": "高", "urgent": "緊急"}
+        priority_display = priority_names.get(schedule.priority, "通常")
+
+        # 通知タイプ別の件名とメッセージ
+        if notification_type == "reminder":
+            subject = f"【全社通知】スケジュールリマインダー: {title}"
+            message_title = "📅 スケジュールリマインダー（全社通知）"
+            message_body = f"以下のスケジュールが {schedule.notification_minutes} 分後に開始予定です。関係者の皆様はご確認ください。"
+            icon = "⏰"
+        elif notification_type == "start":
+            subject = f"【全社通知】スケジュール開始: {title}"
+            message_title = "🚀 スケジュール開始通知（全社通知）"
+            message_body = "以下のスケジュールが開始時刻になりました。関係者の皆様はご確認ください。"
+            icon = "▶️"
+        elif notification_type == "complete":
+            subject = f"【全社通知】スケジュール完了: {title}"
+            message_title = "✅ スケジュール完了通知（全社通知）"
+            message_body = "以下のスケジュールが完了しました。"
+            icon = "✅"
+        else:
+            subject = f"【全社通知】スケジュール通知: {title}"
+            message_title = "📢 スケジュール通知（全社通知）"
+            message_body = "重要なスケジュール情報をお知らせします。"
+            icon = "📢"
+
+        # HTML本文
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ 
+                    font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', Arial, sans-serif; 
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{ 
+                    max-width: 650px; 
+                    margin: 0 auto; 
+                    padding: 20px; 
+                }}
+                .header {{ 
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                    color: white; 
+                    padding: 25px; 
+                    text-align: center; 
+                    border-radius: 8px 8px 0 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }}
+                .content {{ 
+                    background: #f8f9fa; 
+                    padding: 25px; 
+                    border: 1px solid #dee2e6;
+                }}
+                .schedule-card {{ 
+                    background: white; 
+                    padding: 20px; 
+                    border-left: 5px solid #007bff; 
+                    margin: 15px 0; 
+                    border-radius: 0 8px 8px 0;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }}
+                .priority-high {{ border-left-color: #dc3545; }}
+                .priority-urgent {{ border-left-color: #dc3545; background: #fff5f5; }}
+                .info-row {{ 
+                    display: flex; 
+                    padding: 8px 0; 
+                    border-bottom: 1px solid #eee;
+                }}
+                .info-row:last-child {{ border-bottom: none; }}
+                .info-label {{ 
+                    font-weight: bold; 
+                    min-width: 100px; 
+                    color: #495057;
+                }}
+                .info-value {{ 
+                    flex: 1; 
+                    color: #212529;
+                }}
+                .footer {{ 
+                    text-align: center; 
+                    padding: 20px; 
+                    color: #6c757d; 
+                    font-size: 14px; 
+                    border-radius: 0 0 8px 8px; 
+                    background: #e9ecef;
+                }}
+                .alert {{ 
+                    padding: 15px; 
+                    margin: 15px 0; 
+                    border-radius: 6px; 
+                    background: #d1ecf1; 
+                    border: 1px solid #bee5eb; 
+                    color: #0c5460;
+                }}
+                .priority-badge {{
+                    display: inline-block;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                }}
+                .priority-low {{ background: #d4edda; color: #155724; }}
+                .priority-normal {{ background: #cce7ff; color: #004085; }}
+                .priority-high {{ background: #fff3cd; color: #856404; }}
+                .priority-urgent {{ background: #f8d7da; color: #721c24; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>{icon} {message_title}</h1>
+                    <p style="margin: 0; opacity: 0.9;">エアコンクリーニング完了報告書システム</p>
+                </div>
+                <div class="content">
+                    <p style="font-size: 16px; margin-bottom: 20px;">{message_body}</p>
+                    
+                    <div class="schedule-card {'priority-' + schedule.priority if schedule.priority in ['high', 'urgent'] else ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="margin: 0; color: #007bff;">{title}</h2>
+                            <span class="priority-badge priority-{schedule.priority}">優先度: {priority_display}</span>
+                        </div>
+                        
+                        <div class="info-row">
+                            <div class="info-label">📅 開始日時:</div>
+                            <div class="info-value">{start_time}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">🕐 終了日時:</div>
+                            <div class="info-value">{end_time}</div>
+                        </div>
+                        
+                        {chr(10).join([f'<div class="info-row"><div class="info-label">📋</div><div class="info-value">{detail}</div></div>' for detail in schedule_details]) if schedule_details else ''}
+                        
+                        <div class="info-row">
+                            <div class="info-label">⏰ 通知設定:</div>
+                            <div class="info-value">{schedule.notification_minutes}分前に通知</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert">
+                        <p><strong>💡 お知らせ:</strong></p>
+                        <p>この通知は全登録ユーザー（{recipient_count}名）に送信されています。</p>
+                        <p>スケジュールの詳細確認や変更は、システムの通知管理画面からご利用ください。</p>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #6c757d; margin-top: 20px;">
+                        <strong>送信日時:</strong> {current_time}<br>
+                        <strong>送信先:</strong> 全登録ユーザー（{recipient_count}名）
+                    </p>
+                </div>
+                <div class="footer">
+                    <p><strong>エアコンクリーニング完了報告書システム</strong></p>
+                    <p>このメールは管理者により全社に送信されました。</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # テキスト本文
+        text_body = f"""
+{icon} {message_title}
+
+{message_body}
+
+📋 スケジュール詳細:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+タイトル: {title}
+優先度: {priority_display}
+開始日時: {start_time}
+終了日時: {end_time}
+通知設定: {schedule.notification_minutes}分前に通知
+
+{chr(10).join([f"- {detail}" for detail in schedule_details]) if schedule_details else ""}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 お知らせ:
+この通知は全登録ユーザー（{recipient_count}名）に送信されています。
+スケジュールの詳細確認や変更は、システムの通知管理画面からご利用ください。
+
+送信日時: {current_time}
+送信先: 全登録ユーザー（{recipient_count}名）
+
+---
+エアコンクリーニング完了報告書システム
+このメールは管理者により全社に送信されました。
+        """
+
+        return subject, html_body, text_body
+
 
 # サービスインスタンス
 email_service = EmailService()

@@ -4,7 +4,13 @@ from app.models.customer import Customer
 from app.models.property import Property
 from app.models.report import Report
 from app import db
-from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+from app.routes.auth import (
+    login_required,
+    view_permission_required,
+    edit_permission_required,
+    create_permission_required,
+    delete_permission_required,
+)
 from sqlalchemy import or_, and_
 from datetime import datetime, date, timedelta
 import calendar
@@ -145,6 +151,10 @@ def create():
         property_id = request.form.get("property_id") or None
         report_id = request.form.get("report_id") or None
 
+        # 通知設定
+        notification_enabled = request.form.get("notification_enabled") == "on"
+        notification_minutes = int(request.form.get("notification_minutes", 30))
+
         error = None
 
         # 入力検証
@@ -188,6 +198,9 @@ def create():
                     property_id=int(property_id) if property_id else None,
                     report_id=int(report_id) if report_id else None,
                     status="pending",
+                    notification_enabled=notification_enabled,
+                    notification_minutes=notification_minutes,
+                    created_by=g.user.id,
                 )
 
                 db.session.add(schedule)
@@ -246,6 +259,10 @@ def edit(id):
         property_id = request.form.get("property_id") or None
         report_id = request.form.get("report_id") or None
 
+        # 通知設定
+        notification_enabled = request.form.get("notification_enabled") == "on"
+        notification_minutes = int(request.form.get("notification_minutes", 30))
+
         error = None
 
         # 入力検証
@@ -288,6 +305,8 @@ def edit(id):
                 schedule.customer_id = int(customer_id) if customer_id else None
                 schedule.property_id = int(property_id) if property_id else None
                 schedule.report_id = int(report_id) if report_id else None
+                schedule.notification_enabled = notification_enabled
+                schedule.notification_minutes = notification_minutes
 
                 db.session.commit()
                 flash("スケジュールが更新されました", "success")

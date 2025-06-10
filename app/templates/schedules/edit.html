@@ -96,6 +96,86 @@
                     </div>
 
                     <hr>
+                    
+                    <!-- 通知設定 -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">
+                            <i class="bi bi-bell me-2"></i>通知設定
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="notification_enabled" name="notification_enabled" {% if schedule.notification_enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="notification_enabled">
+                                        <strong>通知を有効にする</strong>
+                                    </label>
+                                    <div class="form-text">有効にすると、スケジュール開始前に自動でリマインダーメールが送信されます</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="notification-settings" class="border rounded p-3 bg-light" {% if not schedule.notification_enabled %}style="display: none;"{% endif %}>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="notification_type" class="form-label">通知タイミング</label>
+                                    <select class="form-select" id="notification_type" name="notification_type">
+                                        <option value="preset">プリセットから選択</option>
+                                        <option value="custom">カスタム設定</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="notification_preset" class="form-label">プリセット選択</label>
+                                    <select class="form-select" id="notification_preset" name="notification_preset">
+                                        <option value="5" {% if schedule.notification_minutes == 5 %}selected{% endif %}>5分前</option>
+                                        <option value="10" {% if schedule.notification_minutes == 10 %}selected{% endif %}>10分前</option>
+                                        <option value="15" {% if schedule.notification_minutes == 15 %}selected{% endif %}>15分前</option>
+                                        <option value="30" {% if schedule.notification_minutes == 30 %}selected{% endif %}>30分前</option>
+                                        <option value="60" {% if schedule.notification_minutes == 60 %}selected{% endif %}>1時間前</option>
+                                        <option value="120" {% if schedule.notification_minutes == 120 %}selected{% endif %}>2時間前</option>
+                                        <option value="360" {% if schedule.notification_minutes == 360 %}selected{% endif %}>6時間前</option>
+                                        <option value="720" {% if schedule.notification_minutes == 720 %}selected{% endif %}>12時間前</option>
+                                        <option value="1440" {% if schedule.notification_minutes == 1440 %}selected{% endif %}>1日前</option>
+                                        <option value="2880" {% if schedule.notification_minutes == 2880 %}selected{% endif %}>2日前</option>
+                                        <option value="10080" {% if schedule.notification_minutes == 10080 %}selected{% endif %}>1週間前</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div id="custom-notification" class="row" style="display: none;">
+                                <div class="col-md-4 mb-3">
+                                    <label for="notification_number" class="form-label">数値</label>
+                                    <input type="number" class="form-control" id="notification_number" name="notification_number" min="1" max="9999" value="{{ schedule.notification_minutes or 30 }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="notification_unit" class="form-label">単位</label>
+                                    <select class="form-select" id="notification_unit" name="notification_unit">
+                                        <option value="1">分</option>
+                                        <option value="60">時間</option>
+                                        <option value="1440">日</option>
+                                        <option value="10080">週</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">計算結果</label>
+                                    <div class="form-control-plaintext" id="calculated-minutes">{{ schedule.notification_minutes or 30 }}分前</div>
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" id="notification_minutes" name="notification_minutes" value="{{ schedule.notification_minutes or 30 }}">
+                            
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="alert alert-info small mb-0">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        <strong>通知プレビュー:</strong> <span id="notification-preview">スケジュール開始の{{ schedule.notification_minutes or 30 }}分前に通知メールが送信されます</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -200,7 +280,17 @@
                     <li>終日の場合は時刻設定は無視されます</li>
                     <li>ステータスを「完了」にすると関連報告書も自動的に完了になります</li>
                     <li>顧客・物件の関連付けにより報告書との連携が強化されます</li>
+                    <li><strong>通知設定により自動リマインダーのタイミングを制御できます</strong></li>
                 </ul>
+                
+                <hr>
+                
+                <h6>通知タイミング設定</h6>
+                <div class="small">
+                    <p><strong>プリセット:</strong> よく使われる設定から選択</p>
+                    <p><strong>カスタム:</strong> 自由に分数・時間・日・週単位で設定</p>
+                    <p class="text-muted">設定変更は次回の通知から適用されます</p>
+                </div>
             </div>
         </div>
     </div>
@@ -217,6 +307,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const endDate = document.getElementById('end_date');
     const customerSelect = document.getElementById('customer_id');
     const propertySelect = document.getElementById('property_id');
+    
+    // 通知設定の要素
+    const notificationEnabled = document.getElementById('notification_enabled');
+    const notificationSettings = document.getElementById('notification-settings');
+    const notificationType = document.getElementById('notification_type');
+    const notificationPreset = document.getElementById('notification_preset');
+    const customNotification = document.getElementById('custom-notification');
+    const notificationNumber = document.getElementById('notification_number');
+    const notificationUnit = document.getElementById('notification_unit');
+    const notificationMinutes = document.getElementById('notification_minutes');
+    const calculatedMinutes = document.getElementById('calculated-minutes');
+    const notificationPreview = document.getElementById('notification-preview');
 
     // 終日チェックボックスの処理
     allDayCheckbox.addEventListener('change', function() {
@@ -243,6 +345,142 @@ document.addEventListener('DOMContentLoaded', function() {
             endDate.value = this.value;
         }
     });
+
+    // 通知有効/無効の切り替え
+    notificationEnabled.addEventListener('change', function() {
+        if (this.checked) {
+            notificationSettings.style.display = 'block';
+            notificationSettings.classList.remove('d-none');
+        } else {
+            notificationSettings.style.display = 'none';
+            notificationSettings.classList.add('d-none');
+        }
+    });
+
+    // 通知タイプの切り替え（プリセット/カスタム）
+    notificationType.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customNotification.style.display = 'flex';
+            notificationPreset.parentElement.style.display = 'none';
+            updateNotificationFromCustom();
+        } else {
+            customNotification.style.display = 'none';
+            notificationPreset.parentElement.style.display = 'block';
+            updateNotificationFromPreset();
+        }
+    });
+
+    // プリセット選択時の処理
+    notificationPreset.addEventListener('change', function() {
+        updateNotificationFromPreset();
+    });
+
+    // カスタム設定変更時の処理
+    notificationNumber.addEventListener('input', updateNotificationFromCustom);
+    notificationUnit.addEventListener('change', updateNotificationFromCustom);
+
+    // プリセットから通知分数を更新
+    function updateNotificationFromPreset() {
+        const minutes = parseInt(notificationPreset.value);
+        notificationMinutes.value = minutes;
+        updateNotificationPreview(minutes);
+    }
+
+    // カスタム設定から通知分数を更新
+    function updateNotificationFromCustom() {
+        const number = parseInt(notificationNumber.value) || 1;
+        const unit = parseInt(notificationUnit.value);
+        const minutes = number * unit;
+        
+        notificationMinutes.value = minutes;
+        
+        // 計算結果の表示
+        let unitText = '';
+        switch(unit) {
+            case 1: unitText = '分'; break;
+            case 60: unitText = '時間'; break;
+            case 1440: unitText = '日'; break;
+            case 10080: unitText = '週'; break;
+        }
+        calculatedMinutes.textContent = `${number}${unitText}前 (${minutes}分)`;
+        
+        updateNotificationPreview(minutes);
+    }
+
+    // 通知プレビューの更新
+    function updateNotificationPreview(minutes) {
+        let previewText = '';
+        
+        if (minutes < 60) {
+            previewText = `スケジュール開始の${minutes}分前に通知メールが送信されます`;
+        } else if (minutes < 1440) {
+            const hours = Math.floor(minutes / 60);
+            const remainMinutes = minutes % 60;
+            if (remainMinutes > 0) {
+                previewText = `スケジュール開始の${hours}時間${remainMinutes}分前に通知メールが送信されます`;
+            } else {
+                previewText = `スケジュール開始の${hours}時間前に通知メールが送信されます`;
+            }
+        } else if (minutes < 10080) {
+            const days = Math.floor(minutes / 1440);
+            const remainHours = Math.floor((minutes % 1440) / 60);
+            if (remainHours > 0) {
+                previewText = `スケジュール開始の${days}日${remainHours}時間前に通知メールが送信されます`;
+            } else {
+                previewText = `スケジュール開始の${days}日前に通知メールが送信されます`;
+            }
+        } else {
+            const weeks = Math.floor(minutes / 10080);
+            const remainDays = Math.floor((minutes % 10080) / 1440);
+            if (remainDays > 0) {
+                previewText = `スケジュール開始の${weeks}週間${remainDays}日前に通知メールが送信されます`;
+            } else {
+                previewText = `スケジュール開始の${weeks}週間前に通知メールが送信されます`;
+            }
+        }
+        
+        notificationPreview.textContent = previewText;
+    }
+
+    // 既存の通知分数からプリセット/カスタム判定
+    function initializeNotificationSettings() {
+        const currentMinutes = parseInt(notificationMinutes.value);
+        const presetValues = [5, 10, 15, 30, 60, 120, 360, 720, 1440, 2880, 10080];
+        
+        if (presetValues.includes(currentMinutes)) {
+            // プリセット値の場合
+            notificationType.value = 'preset';
+            notificationPreset.value = currentMinutes;
+            customNotification.style.display = 'none';
+            notificationPreset.parentElement.style.display = 'block';
+        } else {
+            // カスタム値の場合
+            notificationType.value = 'custom';
+            customNotification.style.display = 'flex';
+            notificationPreset.parentElement.style.display = 'none';
+            
+            // 最適な単位を計算
+            let optimalNumber = currentMinutes;
+            let optimalUnit = 1; // 分
+            
+            if (currentMinutes % 10080 === 0) {
+                optimalNumber = currentMinutes / 10080;
+                optimalUnit = 10080; // 週
+            } else if (currentMinutes % 1440 === 0) {
+                optimalNumber = currentMinutes / 1440;
+                optimalUnit = 1440; // 日
+            } else if (currentMinutes % 60 === 0) {
+                optimalNumber = currentMinutes / 60;
+                optimalUnit = 60; // 時間
+            }
+            
+            notificationNumber.value = optimalNumber;
+            notificationUnit.value = optimalUnit;
+            updateNotificationFromCustom();
+        }
+        
+        updateNotificationPreview(currentMinutes);
+    }
 
     // 顧客選択時に関連物件をフィルタリング
     customerSelect.addEventListener('change', function() {
@@ -276,38 +514,34 @@ document.addEventListener('DOMContentLoaded', function() {
             const customerId = selectedOption.getAttribute('data-customer-id');
             if (customerId) {
                 customerSelect.value = customerId;
-            }
-        }
-    });
-
-    // 報告書選択時に関連する顧客・物件を自動設定
-    const reportSelect = document.getElementById('report_id');
-    reportSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        
-        if (this.value && selectedOption) {
-            const customerId = selectedOption.getAttribute('data-customer-id');
-            const propertyId = selectedOption.getAttribute('data-property-id');
-            
-            // 顧客を自動設定
-            if (customerId) {
-                customerSelect.value = customerId;
-                // 顧客変更イベントを発火して物件フィルタリングを実行
                 customerSelect.dispatchEvent(new Event('change'));
             }
-            
-            // 物件を自動設定
-            if (propertyId) {
-                propertySelect.value = propertyId;
-            }
         }
     });
 
-    // 初期化時の終日設定適用
-    if (allDayCheckbox.checked) {
-        startTime.disabled = true;
-        endTime.disabled = true;
+    // 報告書選択時に顧客・物件を自動選択
+    const reportSelect = document.getElementById('report_id');
+    if (reportSelect) {
+        reportSelect.addEventListener('change', function() {
+            if (this.value) {
+                const selectedOption = this.querySelector('option:checked');
+                const customerId = selectedOption.getAttribute('data-customer-id');
+                const propertyId = selectedOption.getAttribute('data-property-id');
+                
+                if (customerId) {
+                    customerSelect.value = customerId;
+                    customerSelect.dispatchEvent(new Event('change'));
+                }
+                
+                if (propertyId) {
+                    propertySelect.value = propertyId;
+                }
+            }
+        });
     }
+
+    // 初期化
+    initializeNotificationSettings();
 });
 </script>
 {% endblock %} 
