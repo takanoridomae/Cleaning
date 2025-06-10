@@ -1597,10 +1597,113 @@ def order_details_list():
             }
         )
 
+    # 全体の総合計を計算（フィルタ条件適用、ページネーション無し）
+    # 同じクエリを再構築して全データを取得
+    total_query = (
+        Report.query.join(Property)
+        .join(Customer)
+        .outerjoin(WorkDetail, Report.id == WorkDetail.report_id)
+        .join(
+            latest_work_date_subquery,
+            Report.id == latest_work_date_subquery.c.report_id,
+        )
+        .outerjoin(
+            WorkTime,
+            db.and_(
+                Report.id == WorkTime.report_id,
+                WorkTime.work_date == latest_work_date_subquery.c.latest_work_date,
+            ),
+        )
+    )
+
+    # 同じフィルタ条件を適用
+    if search:
+        search_conditions = [
+            Customer.name.contains(search),
+            Property.name.contains(search),
+            Property.reception_type.contains(search),
+            Property.reception_detail.contains(search),
+            WorkDetail.description.contains(search),
+            Report.status.contains(search),
+        ]
+
+        search_lower = search.lower()
+        if "未完了" in search_lower:
+            search_conditions.append(Report.status == "pending")
+        if "完了" in search_lower and "未完了" not in search_lower:
+            search_conditions.append(Report.status == "completed")
+        if "下書き" in search_lower:
+            search_conditions.append(Report.status == "draft")
+        if "キャンセル" in search_lower:
+            search_conditions.append(Report.status == "cancelled")
+
+        search_filter = or_(*search_conditions)
+        total_query = total_query.filter(search_filter)
+
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            total_query = total_query.filter(
+                latest_work_date_subquery.c.latest_work_date >= start_date_obj
+            )
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            total_query = total_query.filter(
+                latest_work_date_subquery.c.latest_work_date <= end_date_obj
+            )
+        except ValueError:
+            pass
+
+    total_query = total_query.distinct()
+    all_reports = total_query.all()
+
+    # 全体の総合計を計算
+    grand_totals = {
+        "total_reports": len(all_reports),
+        "total_ac_count": 0,
+        "total_work_details": 0,
+        "total_amount": 0,
+        "unique_properties": set(),
+    }
+
+    for report in all_reports:
+        # エアコンの数（台数を含めて集計）
+        ac_count = (
+            db.session.query(db.func.sum(AirConditioner.quantity))
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
+            .scalar()
+            or 0
+        )
+
+        # 作業内容の総数
+        work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
+
+        # 金額の合計
+        total_amount = (
+            db.session.query(db.func.sum(AirConditioner.total_amount))
+            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            .filter(WorkDetail.report_id == report.id)
+            .scalar()
+            or 0
+        )
+
+        grand_totals["total_ac_count"] += ac_count
+        grand_totals["total_work_details"] += work_detail_count
+        grand_totals["total_amount"] += total_amount
+        grand_totals["unique_properties"].add(report.property.id)
+
+    grand_totals["unique_properties"] = len(grand_totals["unique_properties"])
+
     return render_template(
         "reports/order_details_list.html",
         order_details=order_details,
         pagination=pagination,
+        grand_totals=grand_totals,
         current_search=search,
         current_start_date=start_date,
         current_end_date=end_date,

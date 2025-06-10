@@ -306,6 +306,25 @@
                                     </tr>
                                     {% endfor %}
                                 </tbody>
+                                <!-- ページ合計行 -->
+                                <tfoot class="table-secondary">
+                                    <tr class="fw-bold">
+                                        <td colspan="5" class="text-center">ページ合計</td>
+                                        <td class="text-center">
+                                            {% set page_ac_count = order_details|sum(attribute='ac_count') %}
+                                            <span class="badge bg-success fs-6">{{ page_ac_count }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% set page_work_details = order_details|sum(attribute='work_detail_count') %}
+                                            <span class="badge bg-warning fs-6">{{ page_work_details }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% set page_total_amount = order_details|sum(attribute='total_amount') %}
+                                            <span class="text-danger fw-bold fs-5">¥{{ "{:,}".format(page_total_amount) if page_total_amount else "0" }}</span>
+                                        </td>
+                                        <td colspan="2" class="text-center text-muted">-</td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
 
@@ -368,47 +387,38 @@
                             <div class="col-md-12">
                                 <div class="card bg-light">
                                     <div class="card-body">
-                                        <h5 class="card-title">集計情報</h5>
+                                        <h5 class="card-title">
+                                            <i class="bi bi-calculator me-2"></i>全体集計
+                                            <small class="text-muted ms-2">(検索条件に該当する全データ)</small>
+                                        </h5>
                                                                 <div class="row">
                             <div class="col-md-2">
                                 <div class="text-center">
-                                    <h4 class="text-primary">{{ pagination.total }}</h4>
+                                    <h4 class="text-primary">{{ grand_totals.total_reports }}</h4>
                                     <small class="text-muted">総報告書数</small>
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="text-center">
-                                    <h4 class="text-success">
-                                        {% set total_ac_count = order_details|sum(attribute='ac_count') %}
-                                        {{ total_ac_count }}
-                                    </h4>
+                                    <h4 class="text-success">{{ grand_totals.total_ac_count }}</h4>
                                     <small class="text-muted">総エアコン台数</small>
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="text-center">
-                                    <h4 class="text-warning">
-                                        {% set total_work_details = order_details|sum(attribute='work_detail_count') %}
-                                        {{ total_work_details }}
-                                    </h4>
+                                    <h4 class="text-warning">{{ grand_totals.total_work_details }}</h4>
                                     <small class="text-muted">総作業項目数</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="text-center">
-                                    <h4 class="text-info">
-                                        {% set unique_properties = order_details|map(attribute='property.id')|list|unique|list|length %}
-                                        {{ unique_properties }}
-                                    </h4>
+                                    <h4 class="text-info">{{ grand_totals.unique_properties }}</h4>
                                     <small class="text-muted">対象物件数</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="text-center">
-                                    <h4 class="text-danger">
-                                        {% set total_amount = order_details|sum(attribute='total_amount') %}
-                                        ¥{{ "{:,}".format(total_amount) if total_amount else "0" }}
-                                    </h4>
+                                    <h4 class="text-danger">¥{{ "{:,}".format(grand_totals.total_amount) if grand_totals.total_amount else "0" }}</h4>
                                     <small class="text-muted">総金額</small>
                                 </div>
                             </div>
