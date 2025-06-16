@@ -333,7 +333,7 @@ def list():
 def create():
     """新規報告書作成"""
     properties = (
-        Property.query.join(Customer).order_by(Customer.name, Property.name).all()
+        Property.query.join(Customer).order_by(Property.created_at.desc()).all()
     )
 
     # 作業項目の取得
@@ -539,7 +539,7 @@ def edit(id):
     """報告書編集"""
     report = Report.query.get_or_404(id)
     properties = (
-        Property.query.join(Customer).order_by(Customer.name, Property.name).all()
+        Property.query.join(Customer).order_by(Property.created_at.desc()).all()
     )
 
     # 作業項目の取得

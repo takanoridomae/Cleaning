@@ -34,11 +34,19 @@
                         <input type="hidden" name="current_tab" value="info">
                         
                         <div class="mb-3">
-                            <label for="property_id" class="form-label">物件</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="property_id" class="form-label mb-0">物件</label>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="物件ソート">
+                                    <input type="radio" class="btn-check" name="property_sort" id="sort_latest" value="latest" checked>
+                                    <label class="btn btn-outline-primary" for="sort_latest">登録最新順</label>
+                                    <input type="radio" class="btn-check" name="property_sort" id="sort_name" value="name">
+                                    <label class="btn btn-outline-primary" for="sort_name">あいうえお順</label>
+                                </div>
+                            </div>
                             <select class="form-select" id="property_id" name="property_id" required>
                                 <option value="">選択してください</option>
                                 {% for property in properties %}
-                                <option value="{{ property.id }}" data-address="{{ property.address or '' }}" {% if property.id == report.property_id %}selected{% endif %}>
+                                <option value="{{ property.id }}" data-address="{{ property.address or '' }}" data-customer-name="{{ property.customer.name }}" data-property-name="{{ property.name }}" data-created-at="{{ property.created_at.isoformat() if property.created_at else '' }}" {% if property.id == report.property_id %}selected{% endif %}>
                                     {{ property.customer.name }} - {{ property.name }}
                                 </option>
                                 {% endfor %}
@@ -2169,6 +2177,50 @@
                 photoUploadButton.textContent = 'アップロード中...';
             });
         }
+        
+        // 物件ソート機能
+        function sortProperties() {
+            const sortType = document.querySelector('input[name="property_sort"]:checked').value;
+            const propertySelect = document.getElementById('property_id');
+            const currentValue = propertySelect.value;
+            
+            // オプション要素を配列に変換（最初の「選択してください」以外）
+            const options = Array.from(propertySelect.options).slice(1);
+            
+            // ソート実行
+            if (sortType === 'latest') {
+                // 登録最新順（降順）
+                options.sort((a, b) => {
+                    const dateA = new Date(a.getAttribute('data-created-at') || '1970-01-01');
+                    const dateB = new Date(b.getAttribute('data-created-at') || '1970-01-01');
+                    return dateB - dateA;
+                });
+            } else if (sortType === 'name') {
+                // あいうえお順（顧客名 + 物件名で昇順）
+                options.sort((a, b) => {
+                    const nameA = (a.getAttribute('data-customer-name') + ' ' + a.getAttribute('data-property-name')).toLowerCase();
+                    const nameB = (b.getAttribute('data-customer-name') + ' ' + b.getAttribute('data-property-name')).toLowerCase();
+                    return nameA.localeCompare(nameB, 'ja');
+                });
+            }
+            
+            // セレクトボックスを更新
+            propertySelect.innerHTML = '<option value="">選択してください</option>';
+            options.forEach(option => {
+                propertySelect.appendChild(option);
+            });
+            
+            // 選択値を復元
+            propertySelect.value = currentValue;
+        }
+        
+        // ソートボタンのイベントリスナー追加
+        document.querySelectorAll('input[name="property_sort"]').forEach(radio => {
+            radio.addEventListener('change', sortProperties);
+        });
+        
+        // 初期ソート実行
+        sortProperties();
     });
 </script>
 {% endblock %} 
