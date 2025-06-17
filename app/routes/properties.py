@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from app.models.property import Property
 from app.models.customer import Customer
 from app.models.air_conditioner import AirConditioner
@@ -7,12 +7,59 @@ from app.models.photo import Photo
 from app.models.work_time import WorkTime
 from app.models.work_detail import WorkDetail
 from app import db
-from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+from app.routes.auth import (
+    login_required,
+    view_permission_required,
+    edit_permission_required,
+    create_permission_required,
+    delete_permission_required,
+)
 from sqlalchemy import or_
 import os
+import re
 from flask import current_app
 
 bp = Blueprint("properties", __name__, url_prefix="/properties")
+
+
+def extract_customer_name_from_property(property_name):
+    """物件名から顧客名部分（「様」までの文字）を抽出する"""
+    if not property_name:
+        return ""
+
+    # 「様」の位置を見つける
+    sama_index = property_name.find("様")
+    if sama_index != -1:
+        # 「様」が見つかった場合は、「様」を含む部分まで抽出
+        return property_name[: sama_index + 1]
+    else:
+        # 「様」が見つからない場合は、全体を返す
+        return property_name
+
+
+def check_property_name_duplicate(property_name, exclude_property_id=None):
+    """物件名の重複チェック（「様」までの文字で判定）"""
+    customer_part = extract_customer_name_from_property(property_name)
+
+    if not customer_part:
+        return False
+
+    # データベースから全ての物件を取得して重複チェック
+    properties = Property.query.all()
+
+    for prop in properties:
+        # 編集時は自分自身を除外
+        if exclude_property_id and prop.id == exclude_property_id:
+            continue
+
+        # 既存の物件名から顧客名部分を抽出
+        existing_customer_part = extract_customer_name_from_property(prop.name)
+
+        # 顧客名部分が一致する場合は重複
+        if customer_part == existing_customer_part:
+            return True
+
+    return False
 
 
 @bp.route("/")
@@ -114,6 +161,11 @@ def create():
         if not customer_id:
             error = "お客様の選択は必須です"
 
+        # 物件名重複チェック
+        if not error and check_property_name_duplicate(name):
+            customer_part = extract_customer_name_from_property(name)
+            error = f"物件名「{customer_part}」は既に登録されています。同一のお客様名での物件登録はできません。"
+
         if error is not None:
             flash(error, "danger")
         else:
@@ -206,6 +258,11 @@ def edit(id):
         if not customer_id:
             error = "お客様の選択は必須です"
 
+        # 物件名重複チェック（編集時は自分自身を除外）
+        if not error and check_property_name_duplicate(name, exclude_property_id=id):
+            customer_part = extract_customer_name_from_property(name)
+            error = f"物件名「{customer_part}」は既に登録されています。同一のお客様名での物件登録はできません。"
+
         if error is not None:
             flash(error, "danger")
         else:
@@ -225,6 +282,31 @@ def edit(id):
     return render_template(
         "properties/edit.html", property=property, customers=customers
     )
+
+
+@bp.route("/check_duplicate", methods=["POST"])
+@login_required
+def check_duplicate():
+    """AJAX用の物件名重複チェックエンドポイント"""
+    try:
+        data = request.get_json()
+        property_name = data.get("property_name", "")
+        exclude_property_id = data.get("exclude_property_id")
+
+        if not property_name:
+            return jsonify({"is_duplicate": False, "message": ""})
+
+        is_duplicate = check_property_name_duplicate(property_name, exclude_property_id)
+
+        if is_duplicate:
+            customer_part = extract_customer_name_from_property(property_name)
+            message = f"物件名「{customer_part}」は既に登録されています。"
+            return jsonify({"is_duplicate": True, "message": message})
+        else:
+            return jsonify({"is_duplicate": False, "message": ""})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/<int:id>/delete", methods=["POST"])

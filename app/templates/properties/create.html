@@ -598,6 +598,94 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return result;
     }
+    
+    // 物件名重複チェック機能
+    const propertyNameInput = document.getElementById('name');
+    let duplicateCheckTimeout;
+    
+    // 物件名入力時のリアルタイム重複チェック
+    propertyNameInput.addEventListener('input', function() {
+        // 入力が止まってから500ms後にチェック実行
+        clearTimeout(duplicateCheckTimeout);
+        duplicateCheckTimeout = setTimeout(checkPropertyNameDuplicate, 500);
+        
+        // エラーメッセージをクリア
+        clearDuplicateMessage();
+    });
+    
+    // 重複チェック実行関数
+    function checkPropertyNameDuplicate() {
+        const propertyName = propertyNameInput.value.trim();
+        
+        if (!propertyName) {
+            clearDuplicateMessage();
+            return;
+        }
+        
+        // AJAX送信
+        fetch('/properties/check_duplicate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                property_name: propertyName,
+                exclude_property_id: null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('重複チェックエラー:', data.error);
+                return;
+            }
+            
+            if (data.is_duplicate) {
+                showDuplicateMessage(data.message, 'danger');
+            } else {
+                clearDuplicateMessage();
+            }
+        })
+        .catch(error => {
+            console.error('重複チェック通信エラー:', error);
+        });
+    }
+    
+    // 重複メッセージ表示
+    function showDuplicateMessage(message, type) {
+        clearDuplicateMessage();
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-2`;
+        alertDiv.id = 'duplicate-alert';
+        alertDiv.innerHTML = `
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        propertyNameInput.parentNode.appendChild(alertDiv);
+        
+        // 送信ボタンを無効化
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // 重複メッセージクリア
+    function clearDuplicateMessage() {
+        const existingAlert = document.getElementById('duplicate-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // 送信ボタンを有効化
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
 });
 </script>
 {% endblock %} 
