@@ -41,6 +41,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import inch
 from io import BytesIO
+from sqlalchemy import func, extract, case
 
 bp = Blueprint("reports", __name__, url_prefix="/reports")
 
@@ -1830,18 +1831,15 @@ def order_details_pdf():
 
     # 日本語フォントの登録
     try:
-        # Windowsの場合
         pdfmetrics.registerFont(TTFont("Japanese", "C:/Windows/Fonts/msgothic.ttc"))
         japanese_font = "Japanese"
     except:
         try:
-            # その他のフォント
             pdfmetrics.registerFont(
                 TTFont("Japanese", "C:/Windows/Fonts/NotoSansCJK-Regular.ttc")
             )
             japanese_font = "Japanese"
         except:
-            # フォントが見つからない場合はデフォルトを使用
             japanese_font = "Helvetica"
 
     # スタイル設定
@@ -1850,177 +1848,573 @@ def order_details_pdf():
         "CustomTitle", fontSize=16, alignment=1, spaceAfter=20, fontName=japanese_font
     )
 
-    normal_style = ParagraphStyle("JapaneseNormal", fontSize=10, fontName=japanese_font)
-
     # PDFコンテンツ
     story = []
 
     # タイトル
-    today = datetime.now().strftime("%Y年%m月%d日")
-    title = f"受注明細一覧表　({today})"
+    type_display = {"count": "件数", "quantity": "台数", "amount": "金額"}
+    title = f"{year}年度 受注月間表（{type_display.get(summary_type, '件数')}ベース）"
     story.append(Paragraph(title, title_style))
-    story.append(Spacer(1, 20))
-
-    # 検索条件の表示
-    if search or start_date or end_date:
-        condition_text = "検索条件: "
-        conditions = []
-        if search:
-            conditions.append(f"キーワード「{search}」")
-        if start_date:
-            conditions.append(f"開始日：{start_date}")
-        if end_date:
-            conditions.append(f"終了日：{end_date}")
-        condition_text += " / ".join(conditions)
-        story.append(Paragraph(condition_text, normal_style))
-        story.append(Spacer(1, 10))
+    story.append(Spacer(1, 12))
 
     # テーブルデータの準備
-    data = [
-        [
-            "No.",
-            "物件ID",
-            "顧客名",
-            "物件名",
-            "受付種別",
-            "AC数",
-            "作業数",
-            "金額",
-            "報告日",
-        ]
-    ]
+    table_data = []
 
-    # 合計計算用変数
-    total_ac_count = 0
-    total_work_count = 0
-    total_amount_sum = 0
+    # ヘッダー行1（受付種別のグループ）
+    header1 = ["月"]
+    for reception_type in reception_types:
+        header1.extend([reception_type, "", ""])  # 完了、未完了、合計用の3列
+    header1.extend(["合計", "", ""])
+    table_data.append(header1)
 
-    for i, report in enumerate(reports, 1):
-        # 作業内容の総数（この報告書の）
-        work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
+    # ヘッダー行2（完了・未完了・合計）
+    header2 = [""]
+    for _ in reception_types:
+        header2.extend(["完了", "未完了", "合計"])
+    header2.extend(["完了", "未完了", "合計"])
+    table_data.append(header2)
 
-        # エアコンの数（この報告書で作業したエアコンのみ）- 台数を含めて集計
-        ac_count = (
-            db.session.query(db.func.sum(AirConditioner.quantity))
-            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
-            .filter(WorkDetail.report_id == report.id)
-            .scalar()
-            or 0
+    # データ行
+    for month_data in monthly_data:
+        row = [month_data["month_name"]]
+        for reception_type in reception_types:
+            data = month_data["reception_types"][reception_type]
+            row.extend(
+                [str(data["completed"]), str(data["pending"]), str(data["total"])]
+            )
+
+        totals = month_data["totals"]
+        row.extend(
+            [str(totals["completed"]), str(totals["pending"]), str(totals["total"])]
         )
+        table_data.append(row)
 
-        # 金額の合計（この報告書で作業したエアコンのみ）
-        total_amount = (
-            db.session.query(db.func.sum(AirConditioner.total_amount))
-            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
-            .filter(WorkDetail.report_id == report.id)
-            .scalar()
-            or 0
+    # 合計行
+    total_row = ["合計"]
+    for reception_type in reception_types:
+        completed_total = sum(
+            month["reception_types"][reception_type]["completed"]
+            for month in monthly_data
         )
-
-        # 合計に加算
-        total_ac_count += ac_count
-        total_work_count += work_detail_count
-        total_amount_sum += total_amount
-
-        # 長いテキストを改行で折り返し
-        customer_name = (
-            report.property.customer.name if report.property.customer else ""
+        pending_total = sum(
+            month["reception_types"][reception_type]["pending"]
+            for month in monthly_data
         )
-        if len(customer_name) > 8:
-            customer_name = customer_name[:8] + "\n" + customer_name[8:]
+        total_total = completed_total + pending_total
+        total_row.extend([str(completed_total), str(pending_total), str(total_total)])
 
-        property_name = report.property.name or ""
-        if len(property_name) > 8:
-            property_name = property_name[:8] + "\n" + property_name[8:]
+    grand_completed = sum(month["totals"]["completed"] for month in monthly_data)
+    grand_pending = sum(month["totals"]["pending"] for month in monthly_data)
+    grand_total = grand_completed + grand_pending
+    total_row.extend([str(grand_completed), str(grand_pending), str(grand_total)])
+    table_data.append(total_row)
 
-        row = [
-            str(i),
-            str(report.property.id),
-            customer_name,
-            property_name,
-            report.property.reception_type or "",
-            str(ac_count),
-            str(work_detail_count),
-            f"¥{total_amount:,}" if total_amount else "¥0",
-            report.date.strftime("%Y/%m/%d") if report.date else "",
-        ]
-        data.append(row)
-
-    # 合計行を追加
-    data.append(
-        [
-            "合計",
-            "",
-            "",
-            "",
-            "",
-            str(total_ac_count),
-            str(total_work_count),
-            f"¥{total_amount_sum:,}",
-            "",
-        ]
-    )
-
-    # テーブル作成（A4サイズに収まるよう列幅を調整）
-    table = Table(
-        data,
-        colWidths=[
-            0.3 * inch,  # No.
-            0.5 * inch,  # 物件ID
-            0.9 * inch,  # 顧客名
-            0.9 * inch,  # 物件名
-            0.7 * inch,  # 受付種別
-            0.7 * inch,  # エアコン数
-            0.7 * inch,  # 作業台数
-            0.9 * inch,  # 金額
-            0.7 * inch,  # 報告日
-        ],
-        repeatRows=1,  # ヘッダー行を各ページで繰り返し
-    )
+    # テーブル作成
+    table = Table(table_data)
     table.setStyle(
         TableStyle(
             [
-                # ヘッダー行のスタイル
-                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("FONTNAME", (0, 0), (-1, 0), japanese_font),
-                ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                # データ行のスタイル
-                ("BACKGROUND", (0, 1), (-1, -2), colors.beige),
-                ("FONTNAME", (0, 1), (-1, -2), japanese_font),
-                ("FONTSIZE", (0, 1), (-1, -2), 8),
-                # 合計行のスタイル
+                ("FONTNAME", (0, 0), (-1, -1), japanese_font),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
                 ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
-                ("FONTNAME", (0, -1), (-1, -1), japanese_font),
-                ("FONTSIZE", (0, -1), (-1, -1), 9),
-                ("FONTWEIGHT", (0, -1), (-1, -1), "BOLD"),
-                # 枠線
                 ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                # 行の高さを調整（改行対応）
-                ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, colors.beige]),
             ]
         )
     )
 
     story.append(table)
 
-    # 集計情報
-    story.append(Spacer(1, 20))
-    summary_text = f"合計件数: {len(reports)}件"
-    story.append(Paragraph(summary_text, normal_style))
+    # PDF生成
+    doc.build(story)
+    buffer.seek(0)
+
+    # レスポンス作成
+    response = make_response(buffer.read())
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename=monthly_summary_{year}.pdf"
+    )
+
+    return response
+
+
+@bp.route("/monthly-summary")
+@login_required
+@view_permission_required
+def monthly_summary():
+    """受注月間表の表示"""
+    from sqlalchemy import func, extract, case
+
+    # パラメータの取得
+    year = request.args.get("year", datetime.now().year, type=int)
+    summary_type = request.args.get(
+        "type", "count"
+    )  # count(件数), quantity(台数), amount(金額)
+
+    # 受付種別の一覧を取得
+    reception_types = (
+        db.session.query(Property.reception_type)
+        .filter(Property.reception_type.isnot(None), Property.reception_type != "")
+        .distinct()
+        .order_by(Property.reception_type)
+        .all()
+    )
+    reception_types = [rt[0] for rt in reception_types]
+
+    # 月別・受付種別・完了状況の集計データを取得
+    # WorkTimeを使って実際の作業月で集計
+    monthly_data = []
+
+    for month in range(1, 13):
+        month_data = {"month": month, "month_name": f"{month}月", "reception_types": {}}
+
+        for reception_type in reception_types:
+            if summary_type == "count":
+                # 件数ベースの集計（従来通り）
+                completed_count = (
+                    db.session.query(func.count(Report.id))
+                    .join(Property)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.count(Report.id))
+                    .join(Property)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            elif summary_type == "quantity":
+                # 台数ベースの集計
+                completed_count = (
+                    db.session.query(func.sum(AirConditioner.quantity))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.sum(AirConditioner.quantity))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            elif summary_type == "amount":
+                # 金額ベースの集計
+                completed_count = (
+                    db.session.query(func.sum(AirConditioner.total_amount))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                        AirConditioner.total_amount.isnot(None),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.sum(AirConditioner.total_amount))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                        AirConditioner.total_amount.isnot(None),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            total_count = completed_count + pending_count
+
+            month_data["reception_types"][reception_type] = {
+                "completed": completed_count,
+                "pending": pending_count,
+                "total": total_count,
+            }
+
+        # 月合計を計算
+        month_completed_total = sum(
+            data["completed"] for data in month_data["reception_types"].values()
+        )
+        month_pending_total = sum(
+            data["pending"] for data in month_data["reception_types"].values()
+        )
+        month_total = month_completed_total + month_pending_total
+
+        month_data["totals"] = {
+            "completed": month_completed_total,
+            "pending": month_pending_total,
+            "total": month_total,
+        }
+
+        monthly_data.append(month_data)
+
+    # 受付種別別の年間合計を計算
+    reception_type_totals = {}
+    for reception_type in reception_types:
+        completed_total = sum(
+            month["reception_types"][reception_type]["completed"]
+            for month in monthly_data
+        )
+        pending_total = sum(
+            month["reception_types"][reception_type]["pending"]
+            for month in monthly_data
+        )
+        reception_type_totals[reception_type] = {
+            "completed": completed_total,
+            "pending": pending_total,
+            "total": completed_total + pending_total,
+        }
+
+    # 全体の年間合計
+    grand_totals = {
+        "completed": sum(month["totals"]["completed"] for month in monthly_data),
+        "pending": sum(month["totals"]["pending"] for month in monthly_data),
+        "total": sum(month["totals"]["total"] for month in monthly_data),
+    }
+
+    return render_template(
+        "reports/monthly_summary.html",
+        monthly_data=monthly_data,
+        reception_types=reception_types,
+        reception_type_totals=reception_type_totals,
+        grand_totals=grand_totals,
+        current_year=year,
+        current_type=summary_type,
+        available_years=range(2020, datetime.now().year + 5),
+    )
+
+
+@bp.route("/monthly-summary/pdf")
+@login_required
+@view_permission_required
+def monthly_summary_pdf():
+    """受注月間表のPDF出力"""
+    from sqlalchemy import func, extract
+
+    # パラメータの取得
+    year = request.args.get("year", datetime.now().year, type=int)
+    summary_type = request.args.get(
+        "type", "count"
+    )  # count(件数), quantity(台数), amount(金額)
+
+    # 受付種別の一覧を取得
+    reception_types = (
+        db.session.query(Property.reception_type)
+        .filter(Property.reception_type.isnot(None), Property.reception_type != "")
+        .distinct()
+        .order_by(Property.reception_type)
+        .all()
+    )
+    reception_types = [rt[0] for rt in reception_types]
+
+    # 月別・受付種別・完了状況の集計データを取得（HTML版と同じロジック）
+    monthly_data = []
+
+    for month in range(1, 13):
+        month_data = {"month": month, "month_name": f"{month}月", "reception_types": {}}
+
+        for reception_type in reception_types:
+            if summary_type == "count":
+                # 件数ベースの集計
+                completed_count = (
+                    db.session.query(func.count(Report.id))
+                    .join(Property)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.count(Report.id))
+                    .join(Property)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            elif summary_type == "quantity":
+                # 台数ベースの集計
+                completed_count = (
+                    db.session.query(func.sum(AirConditioner.quantity))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.sum(AirConditioner.quantity))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            elif summary_type == "amount":
+                # 金額ベースの集計
+                completed_count = (
+                    db.session.query(func.sum(AirConditioner.total_amount))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status == "completed",
+                        AirConditioner.total_amount.isnot(None),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+                pending_count = (
+                    db.session.query(func.sum(AirConditioner.total_amount))
+                    .join(
+                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
+                    )
+                    .join(Report, WorkDetail.report_id == Report.id)
+                    .join(Property, Report.property_id == Property.id)
+                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .filter(
+                        extract("year", WorkTime.work_date) == year,
+                        extract("month", WorkTime.work_date) == month,
+                        Property.reception_type == reception_type,
+                        Report.status.in_(["pending", "draft"]),
+                        AirConditioner.total_amount.isnot(None),
+                    )
+                    .scalar()
+                    or 0
+                )
+
+            total_count = completed_count + pending_count
+
+            month_data["reception_types"][reception_type] = {
+                "completed": completed_count,
+                "pending": pending_count,
+                "total": total_count,
+            }
+
+        month_completed_total = sum(
+            data["completed"] for data in month_data["reception_types"].values()
+        )
+        month_pending_total = sum(
+            data["pending"] for data in month_data["reception_types"].values()
+        )
+        month_total = month_completed_total + month_pending_total
+
+        month_data["totals"] = {
+            "completed": month_completed_total,
+            "pending": month_pending_total,
+            "total": month_total,
+        }
+
+        monthly_data.append(month_data)
+
+    # PDF作成
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=30, bottomMargin=30)
+
+    # 日本語フォントの登録
+    try:
+        pdfmetrics.registerFont(TTFont("Japanese", "C:/Windows/Fonts/msgothic.ttc"))
+        japanese_font = "Japanese"
+    except:
+        try:
+            pdfmetrics.registerFont(
+                TTFont("Japanese", "C:/Windows/Fonts/NotoSansCJK-Regular.ttc")
+            )
+            japanese_font = "Japanese"
+        except:
+            japanese_font = "Helvetica"
+
+    # スタイル設定
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "CustomTitle", fontSize=16, alignment=1, spaceAfter=20, fontName=japanese_font
+    )
+
+    # PDFコンテンツ
+    story = []
+
+    # タイトル
+    title = f"{year}年度 受注月間表"
+    story.append(Paragraph(title, title_style))
+    story.append(Spacer(1, 12))
+
+    # テーブルデータの準備
+    table_data = []
+
+    # ヘッダー行1（受付種別のグループ）
+    header1 = ["月"]
+    for reception_type in reception_types:
+        header1.extend([reception_type, "", ""])  # 完了、未完了、合計用の3列
+    header1.extend(["合計", "", ""])
+    table_data.append(header1)
+
+    # ヘッダー行2（完了・未完了・合計）
+    header2 = [""]
+    for _ in reception_types:
+        header2.extend(["完了", "未完了", "合計"])
+    header2.extend(["完了", "未完了", "合計"])
+    table_data.append(header2)
+
+    # データ行
+    for month_data in monthly_data:
+        row = [month_data["month_name"]]
+        for reception_type in reception_types:
+            data = month_data["reception_types"][reception_type]
+            row.extend(
+                [str(data["completed"]), str(data["pending"]), str(data["total"])]
+            )
+
+        totals = month_data["totals"]
+        row.extend(
+            [str(totals["completed"]), str(totals["pending"]), str(totals["total"])]
+        )
+        table_data.append(row)
+
+    # 合計行
+    total_row = ["合計"]
+    for reception_type in reception_types:
+        completed_total = sum(
+            month["reception_types"][reception_type]["completed"]
+            for month in monthly_data
+        )
+        pending_total = sum(
+            month["reception_types"][reception_type]["pending"]
+            for month in monthly_data
+        )
+        total_total = completed_total + pending_total
+        total_row.extend([str(completed_total), str(pending_total), str(total_total)])
+
+    grand_completed = sum(month["totals"]["completed"] for month in monthly_data)
+    grand_pending = sum(month["totals"]["pending"] for month in monthly_data)
+    grand_total = grand_completed + grand_pending
+    total_row.extend([str(grand_completed), str(grand_pending), str(grand_total)])
+    table_data.append(total_row)
+
+    # テーブル作成
+    table = Table(table_data)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 1), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 1), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, -1), japanese_font),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+
+    story.append(table)
 
     # PDF生成
     doc.build(story)
     buffer.seek(0)
 
     # レスポンス作成
-    response = make_response(buffer.getvalue())
+    response = make_response(buffer.read())
     response.headers["Content-Type"] = "application/pdf"
     response.headers["Content-Disposition"] = (
-        f'attachment; filename=order_details_{today.replace("年", "").replace("月", "").replace("日", "")}.pdf'
+        f"attachment; filename=monthly_summary_{year}.pdf"
     )
 
     return response

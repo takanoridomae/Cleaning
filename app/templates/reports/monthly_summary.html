@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% set active_page = "reports" %}
+
+{% block title %}受注月間表{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">
+                    <i class="bi bi-calendar3"></i> 
+                    {{ current_year }}年度 受注月間表
+                    {% if current_type == 'amount' %}
+                    <small class="text-muted">（金額ベース）</small>
+                    {% elif current_type == 'quantity' %}
+                    <small class="text-muted">（台数ベース）</small>
+                    {% else %}
+                    <small class="text-muted">（件数ベース）</small>
+                    {% endif %}
+                </h1>
+                <div class="btn-group">
+                    <a href="{{ url_for('reports.monthly_summary_pdf', year=current_year, type=current_type) }}" 
+                       class="btn btn-outline-danger" target="_blank">
+                        <i class="bi bi-file-pdf"></i> PDF出力
+                    </a>
+                </div>
+            </div>
+
+            <!-- 年度・集計方法選択 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <label for="year" class="form-label">対象年度:</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select" id="year" name="year" onchange="this.form.submit()">
+                                {% for year in available_years %}
+                                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>
+                                    {{ year }}年度
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <label for="type" class="form-label">集計方法:</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select" id="type" name="type" onchange="this.form.submit()">
+                                <option value="count" {% if current_type == 'count' %}selected{% endif %}>件数ベース</option>
+                                <option value="quantity" {% if current_type == 'quantity' %}selected{% endif %}>台数ベース</option>
+                                <option value="amount" {% if current_type == 'amount' %}selected{% endif %}>金額ベース</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <small class="text-muted">
+                                作業日ベースで集計しています
+                                {% if current_type == 'amount' %}
+                                （金額は作業したエアコンのみ）
+                                {% elif current_type == 'quantity' %}
+                                （台数は作業したエアコンのみ）
+                                {% endif %}
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 集計結果表示 -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover table-striped table-sm">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th rowspan="2" class="text-center align-middle">月</th>
+                                    {% for reception_type in reception_types %}
+                                    <th colspan="3" class="text-center">{{ reception_type }}</th>
+                                    {% endfor %}
+                                    <th colspan="3" class="text-center bg-warning text-dark">合計</th>
+                                </tr>
+                                <tr>
+                                    {% for reception_type in reception_types %}
+                                    <th class="text-center">完了</th>
+                                    <th class="text-center">未完了</th>
+                                    <th class="text-center">計</th>
+                                    {% endfor %}
+                                    <th class="text-center bg-warning text-dark">完了</th>
+                                    <th class="text-center bg-warning text-dark">未完了</th>
+                                    <th class="text-center bg-warning text-dark">計</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for month_data in monthly_data %}
+                                <tr>
+                                    <td class="fw-bold text-center">{{ month_data.month_name }}</td>
+                                    {% for reception_type in reception_types %}
+                                    {% set data = month_data.reception_types[reception_type] %}
+                                    <td class="text-center text-success">
+                                        {% if data.completed > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                <strong>¥{{ "{:,}".format(data.completed) }}</strong>
+                                            {% else %}
+                                                <strong>{{ data.completed }}</strong>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                {{ data.completed }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center text-warning">
+                                        {% if data.pending > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                <strong>¥{{ "{:,}".format(data.pending) }}</strong>
+                                            {% else %}
+                                                <strong>{{ data.pending }}</strong>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                {{ data.pending }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold">
+                                        {% if data.total > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                ¥{{ "{:,}".format(data.total) }}
+                                            {% else %}
+                                                {{ data.total }}
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-center text-success bg-light">
+                                        {% if month_data.totals.completed > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                <strong>¥{{ "{:,}".format(month_data.totals.completed) }}</strong>
+                                            {% else %}
+                                                <strong>{{ month_data.totals.completed }}</strong>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                {{ month_data.totals.completed }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center text-warning bg-light">
+                                        {% if month_data.totals.pending > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                <strong>¥{{ "{:,}".format(month_data.totals.pending) }}</strong>
+                                            {% else %}
+                                                <strong>{{ month_data.totals.pending }}</strong>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                {{ month_data.totals.pending }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold bg-light">
+                                        {% if month_data.totals.total > 0 %}
+                                            {% if current_type == 'amount' %}
+                                                ¥{{ "{:,}".format(month_data.totals.total) }}
+                                            {% else %}
+                                                {{ month_data.totals.total }}
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_type == 'amount' %}
+                                                ¥0
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary">
+                                <tr class="fw-bold">
+                                    <td class="text-center">合計</td>
+                                    {% for reception_type in reception_types %}
+                                    <td class="text-center text-success">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(reception_type_totals[reception_type].completed) }}
+                                        {% else %}
+                                            {{ reception_type_totals[reception_type].completed }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center text-warning">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(reception_type_totals[reception_type].pending) }}
+                                        {% else %}
+                                            {{ reception_type_totals[reception_type].pending }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(reception_type_totals[reception_type].total) }}
+                                        {% else %}
+                                            {{ reception_type_totals[reception_type].total }}
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-center text-success bg-warning text-dark">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(grand_totals.completed) }}
+                                        {% else %}
+                                            {{ grand_totals.completed }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center text-warning bg-warning text-dark">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(grand_totals.pending) }}
+                                        {% else %}
+                                            {{ grand_totals.pending }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center bg-warning text-dark">
+                                        {% if current_type == 'amount' %}
+                                            ¥{{ "{:,}".format(grand_totals.total) }}
+                                        {% else %}
+                                            {{ grand_totals.total }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 凡例 -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-info-circle"></i> 凡例
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><span class="text-success fw-bold">緑色</span>: 完了
+                                    {% if current_type == 'amount' %}金額{% elif current_type == 'quantity' %}台数{% else %}案件数{% endif %}
+                                </li>
+                                <li><span class="text-warning fw-bold">黄色</span>: 未完了
+                                    {% if current_type == 'amount' %}金額{% elif current_type == 'quantity' %}台数{% else %}案件数{% endif %}
+                                </li>
+                                <li><span class="fw-bold">太字</span>: 合計
+                                    {% if current_type == 'amount' %}金額{% elif current_type == 'quantity' %}台数{% else %}案件数{% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-calendar3"></i> 作業日ベースで集計</li>
+                                <li><i class="bi bi-check-circle"></i> 完了: ステータスが「完了」</li>
+                                <li><i class="bi bi-clock"></i> 未完了: ステータスが「未完了」「下書き」</li>
+                                {% if current_type in ['amount', 'quantity'] %}
+                                <li><i class="bi bi-info-circle"></i> 作業実績のあるエアコンのみ対象</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- データなしの場合 -->
+            {% if grand_totals.total == 0 %}
+            <div class="alert alert-info mt-4" role="alert">
+                <i class="bi bi-info-circle"></i>
+                {{ current_year }}年度のデータがありません。
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<style>
+/* 月間表専用スタイル */
+.table th {
+    vertical-align: middle;
+    text-align: center;
+    white-space: nowrap;
+    padding: 8px;
+}
+
+.table td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+/* データ部分のみの区切り線（tbody、tfoot） */
+.table tbody td:nth-child(2), .table tfoot td:nth-child(2) { border-left: 3px solid #007bff; } /* LINE - 青 */
+.table tbody td:nth-child(5), .table tfoot td:nth-child(5) { border-left: 3px solid #28a745; } /* おうち - 緑 */
+.table tbody td:nth-child(8), .table tfoot td:nth-child(8) { border-left: 3px solid #ffc107; } /* クラマ - 黄 */
+.table tbody td:nth-child(11), .table tfoot td:nth-child(11) { border-left: 3px solid #fd7e14; } /* 紹介 - オレンジ */
+.table tbody td:nth-child(14), .table tfoot td:nth-child(14) { border-left: 3px solid #6f42c1; } /* 電話 - 紫 */
+.table tbody td:nth-child(17), .table tfoot td:nth-child(17) { border-left: 3px solid #dc3545; } /* 合計 - 赤 */
+
+/* 月列の強調（データ部分のみ） */
+.table tbody td:first-child, .table tfoot td:first-child {
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+    font-weight: bold;
+}
+
+/* ヘッダーとフッターの境界線強調 */
+.table thead th {
+    border-bottom: 2px solid #495057;
+}
+
+.table tfoot td {
+    border-top: 2px solid #495057;
+}
+</style>
+{% endblock %} 
