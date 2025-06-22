@@ -282,11 +282,17 @@ class PDFService:
         elements.append(Spacer(1, 12))
 
         # 基本情報
-        property_name = (
-            f"{report.property.customer.name}"
-            if report.property and report.property.customer
-            else "不明"
-        )
+        # 顧客名と会社名を組み合わせて表示
+        if report.property and report.property.customer:
+            customer_name = report.property.customer.name
+            company_name = report.property.customer.company_name
+            if company_name:
+                property_name = f"{customer_name}（{company_name}）"
+            else:
+                property_name = customer_name
+        else:
+            property_name = "不明"
+
         address = report.work_address or (
             report.property.address if report.property else ""
         )

@@ -2418,3 +2418,154 @@ def monthly_summary_pdf():
     )
 
     return response
+
+
+@bp.route("/work-items-list")
+@login_required
+@view_permission_required
+def work_items_list():
+    """作業項目一覧画面表示（作業日・作業時間・物件名・エアコン情報・作業内容）"""
+    # パラメータの取得
+    search = request.args.get("search", "").strip()
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+    work_item_filter = request.args.get("work_item_filter", "")
+    sort_by = request.args.get("sort", "work_date")
+    order = request.args.get("order", "desc")
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+
+    # ベースクエリの作成（作業詳細を中心に結合）
+    query = (
+        WorkDetail.query.join(Report, WorkDetail.report_id == Report.id)
+        .join(Property, Report.property_id == Property.id)
+        .join(Customer, Property.customer_id == Customer.id)
+        .outerjoin(AirConditioner, WorkDetail.air_conditioner_id == AirConditioner.id)
+        .outerjoin(WorkTime, Report.id == WorkTime.report_id)
+        .outerjoin(WorkItem, WorkDetail.work_item_id == WorkItem.id)
+    )
+
+    # 検索フィルタ
+    if search:
+        search_conditions = [
+            Customer.name.contains(search),
+            Property.name.contains(search),
+            WorkDetail.description.contains(search),
+            WorkDetail.work_item_text.contains(search),
+            WorkItem.name.contains(search),
+            AirConditioner.manufacturer.contains(search),
+            AirConditioner.model_number.contains(search),
+            AirConditioner.location.contains(search),
+        ]
+
+        search_filter = or_(*search_conditions)
+        query = query.filter(search_filter)
+
+    # 作業項目フィルタ
+    if work_item_filter:
+        if work_item_filter == "manual":
+            # 手動入力の作業項目（work_item_idがNullでwork_item_textがある）
+            query = query.filter(
+                WorkDetail.work_item_id.is_(None),
+                WorkDetail.work_item_text.isnot(None),
+                WorkDetail.work_item_text != "",
+            )
+        elif work_item_filter == "no_item":
+            # 作業項目未設定（work_item_idもwork_item_textもない）
+            query = query.filter(
+                WorkDetail.work_item_id.is_(None),
+                or_(
+                    WorkDetail.work_item_text.is_(None), WorkDetail.work_item_text == ""
+                ),
+            )
+        else:
+            # 特定の作業項目ID
+            try:
+                work_item_id = int(work_item_filter)
+                query = query.filter(WorkDetail.work_item_id == work_item_id)
+            except ValueError:
+                pass
+
+    # 期間フィルタ（作業日ベース）
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            query = query.filter(WorkTime.work_date >= start_date_obj)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(WorkTime.work_date <= end_date_obj)
+        except ValueError:
+            pass
+
+    # ソート処理
+    sort_column = None
+    if sort_by == "work_date":
+        sort_column = WorkTime.work_date
+    elif sort_by == "property":
+        sort_column = Property.name
+    elif sort_by == "customer":
+        sort_column = Customer.name
+    elif sort_by == "work_item":
+        sort_column = case(
+            [(WorkItem.name.isnot(None), WorkItem.name)],
+            else_=WorkDetail.work_item_text,
+        )
+    elif sort_by == "air_conditioner":
+        sort_column = AirConditioner.manufacturer
+    elif sort_by == "report_id":
+        sort_column = Report.id
+    else:
+        sort_column = WorkTime.work_date
+
+    if order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
+    # ページネーション
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    work_details = pagination.items
+
+    # 各作業詳細の情報を整理
+    work_items_data = []
+    for work_detail in work_details:
+        # 作業時間情報を取得
+        work_times = (
+            WorkTime.query.filter_by(report_id=work_detail.report_id)
+            .order_by(WorkTime.work_date.asc())
+            .all()
+        )
+
+        work_items_data.append(
+            {
+                "work_detail": work_detail,
+                "report": work_detail.report,
+                "property": work_detail.report.property,
+                "customer": work_detail.report.property.customer,
+                "air_conditioner": work_detail.air_conditioner,
+                "work_times": work_times,
+                "work_item_name": work_detail.work_item_name,
+            }
+        )
+
+    # 作業項目マスターリストを取得（ドロップダウン用）
+    work_items_master = (
+        WorkItem.query.filter_by(is_active=True).order_by(WorkItem.name.asc()).all()
+    )
+
+    return render_template(
+        "reports/work_items_list.html",
+        work_items_data=work_items_data,
+        pagination=pagination,
+        current_search=search,
+        current_start_date=start_date,
+        current_end_date=end_date,
+        current_work_item_filter=work_item_filter,
+        current_sort=sort_by,
+        current_order=order,
+        work_items_master=work_items_master,
+    )
