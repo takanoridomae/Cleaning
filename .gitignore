@@ -20,6 +20,9 @@ var/
 .installed.cfg
 *.egg
 
+# MyPy キャッシュ
+.mypy_cache/
+
 # 仮想環境
 venv/
 ENV/
