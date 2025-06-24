@@ -236,42 +236,114 @@ def create_initial_user(force_create=False):
         print(f"初期ユーザー作成エラー: {e}")
 
 
-if __name__ == "__main__":
-    # 本番環境でのデータベース初期化制御（緊急修正版）
-    if os.environ.get("RENDER"):
-        print("Render環境でのデータベース状態を確認中...")
+def ultra_safe_database_initialization():
+    """超安全なデータベース初期化制御"""
+    with app.app_context():
+        try:
+            # 各種制御フラグの確認
+            skip_init = os.environ.get("SKIP_DB_INIT", "").lower() == "true"
+            preserve_data = os.environ.get("PRESERVE_DATA", "").lower() == "true"
+            force_init = os.environ.get("FORCE_DB_INIT", "").lower() == "true"
 
-        # SKIP_DB_INIT=trueでも緊急時のテーブル作成は実行
-        skip_init = os.environ.get("SKIP_DB_INIT", "").lower() == "true"
+            print(f"🔧 初期化制御フラグ:")
+            print(f"   SKIP_DB_INIT: {skip_init}")
+            print(f"   PRESERVE_DATA: {preserve_data}")
+            print(f"   FORCE_DB_INIT: {force_init}")
 
-        if skip_init:
-            print("SKIP_DB_INIT=true が設定されています")
-            # 緊急修正: テーブルが存在しない場合は最低限のテーブル作成
-            with app.app_context():
+            # 強制初期化が明示的に指定された場合のみ初期化
+            if force_init:
+                print("🔄 FORCE_DB_INIT=true: 強制的にデータベースを初期化します")
+                db.create_all()
+                create_initial_user(True)
+                return
+
+            # PRESERVE_DATA=trueまたはSKIP_DB_INIT=trueの場合は初期化を行わない
+            if preserve_data or skip_init:
+                protection_mode = "PRESERVE_DATA" if preserve_data else "SKIP_DB_INIT"
+                print(f"🛡️ {protection_mode}=true: データ保護モードが有効です")
+
+                # テーブルの存在確認
                 try:
-                    from app.models.user import User
+                    # データベースファイルの確認
+                    db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+                    if db_path.startswith("sqlite:///"):
+                        db_path = db_path[10:]
+                        if "?" in db_path:
+                            db_path = db_path.split("?")[0]
 
-                    # テーブルの存在確認を試行
-                    user_count = User.query.count()
-                    print(f"既存データ確認: ユーザー{user_count}件")
-                    print("既存データが確認できました。初期化をスキップします。")
-                except Exception as e:
-                    print(
-                        f"⚠️  テーブルが存在しません。緊急修正でテーブルを作成します: {e}"
-                    )
-                    try:
-                        # 最低限のテーブル作成
+                    db_exists = os.path.exists(db_path)
+                    print(f"📁 データベースファイル存在: {db_exists}")
+
+                    # テーブル存在確認（より安全な方法）
+                    from sqlalchemy import inspect
+
+                    inspector = inspect(db.engine)
+                    tables = inspector.get_table_names()
+                    print(f"📊 既存テーブル: {tables}")
+
+                    if "users" in tables:
+                        from app.models.user import User
+
+                        user_count = User.query.count()
+                        print(f"👥 既存ユーザー数: {user_count}")
+
+                        if user_count > 0:
+                            print(
+                                "✅ 既存データを検出しました。初期化を完全にスキップします。"
+                            )
+                            print(
+                                "🔒 データ保護モードにより、既存データが保護されました。"
+                            )
+                            return
+
+                    # テーブルが存在しない、またはユーザーが存在しない場合
+                    print("⚠️ データベースまたはユーザーデータが存在しません")
+                    if preserve_data:
+                        print(
+                            "🔧 PRESERVE_DATA=trueのため、最低限のテーブル作成のみ実行します"
+                        )
                         db.create_all()
-                        print("✅ 緊急修正: テーブルを作成しました")
-
-                        # 最低限の初期ユーザー作成
                         create_initial_user(True)
-                        print("✅ 緊急修正: 初期ユーザーを作成しました")
-                    except Exception as create_error:
-                        print(f"❌ 緊急修正失敗: {create_error}")
-        else:
-            # スマートロジックで必要時のみ初期化
+                        print("✅ 最低限の初期化を完了しました")
+                    else:
+                        print("⏭️ SKIP_DB_INIT=trueのため、初期化をスキップします")
+                    return
+
+                except Exception as e:
+                    print(f"⚠️ データ確認エラー: {e}")
+                    if preserve_data:
+                        print(
+                            "🔧 エラーが発生しましたが、PRESERVE_DATA=trueのため最低限の処理のみ実行"
+                        )
+                        try:
+                            db.create_all()
+                            create_initial_user(True)
+                        except Exception as create_error:
+                            print(f"❌ 最低限初期化エラー: {create_error}")
+                    else:
+                        print(
+                            "⏭️ SKIP_DB_INIT=trueのため、エラー時でも初期化をスキップします"
+                        )
+                    return
+
+            # どの保護フラグも設定されていない場合のみ通常初期化
+            print("⚠️ 警告: データ保護フラグが設定されていません")
+            print("🔄 通常の初期化ロジックを実行します")
             init_database()
+
+        except Exception as e:
+            print(f"❌ 初期化制御の致命的エラー: {e}")
+            print("🚨 安全のため、一切の初期化処理をスキップします")
+
+
+if __name__ == "__main__":
+    # 本番環境でのデータベース初期化制御（超安全版）
+    if os.environ.get("RENDER"):
+        print("🚀 Render環境での超安全データベース初期化制御を開始...")
+        ultra_safe_database_initialization()
+    else:
+        print("💻 ローカル環境での通常初期化")
+        init_database()
 
     # デプロイ時はポート番号を環境変数から取得
     port = int(os.environ.get("PORT", 5000))
