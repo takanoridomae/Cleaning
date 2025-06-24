@@ -138,9 +138,42 @@ def start_daily_backup_thread():
     print("日次バックアップスケジューラを起動しました")
 
 
-if __name__ == "__main__":
-    # 日次バックアップスレッドを開始
-    start_daily_backup_thread()
+def init_database():
+    """本番環境でのデータベース初期化"""
+    with app.app_context():
+        try:
+            # データベースファイルが存在しない場合、テーブルを作成
+            db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+            if db_path.startswith("sqlite:///"):
+                db_path = db_path[10:]  # sqlite:/// を削除
+                if "?" in db_path:
+                    db_path = db_path.split("?")[0]
 
-    # アプリケーションを起動（起動時バックアップは一時的に無効化）
-    app.run(debug=True, host="0.0.0.0")
+            if not os.path.exists(db_path):
+                print("データベースファイルが存在しません。テーブルを作成します...")
+                db.create_all()
+                print("データベースの初期化が完了しました。")
+            else:
+                # テーブルが存在するかチェック
+                try:
+                    from app.models.customer import Customer
+
+                    Customer.query.count()
+                    print("データベースは既に初期化済みです。")
+                except Exception:
+                    print("テーブルが存在しません。テーブルを作成します...")
+                    db.create_all()
+                    print("データベースの初期化が完了しました。")
+        except Exception as e:
+            print(f"データベース初期化エラー: {e}")
+
+
+if __name__ == "__main__":
+    # 本番環境でデータベースを初期化
+    if os.environ.get("RENDER"):
+        print("Render環境でのデータベース初期化を開始...")
+        init_database()
+
+    # デプロイ時はポート番号を環境変数から取得
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
