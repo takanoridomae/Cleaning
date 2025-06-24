@@ -237,32 +237,38 @@ def create_initial_user(force_create=False):
 
 
 if __name__ == "__main__":
-    # 本番環境でのデータベース初期化制御（超安全モード）
+    # 本番環境でのデータベース初期化制御（緊急修正版）
     if os.environ.get("RENDER"):
         print("Render環境でのデータベース状態を確認中...")
 
-        # SKIP_DB_INIT=trueでも安全チェックは実行
+        # SKIP_DB_INIT=trueでも緊急時のテーブル作成は実行
         skip_init = os.environ.get("SKIP_DB_INIT", "").lower() == "true"
 
         if skip_init:
             print("SKIP_DB_INIT=true が設定されています")
-            # テーブルの存在だけは確認（データがある場合は何もしない）
+            # 緊急修正: テーブルが存在しない場合は最低限のテーブル作成
             with app.app_context():
                 try:
                     from app.models.user import User
 
+                    # テーブルの存在確認を試行
                     user_count = User.query.count()
                     print(f"既存データ確認: ユーザー{user_count}件")
-                    if user_count > 0:
-                        print("既存データが確認できました。初期化をスキップします。")
-                    else:
-                        print(
-                            "⚠️  データが存在しませんが、SKIP_DB_INIT=trueのため初期化をスキップします"
-                        )
+                    print("既存データが確認できました。初期化をスキップします。")
                 except Exception as e:
                     print(
-                        f"⚠️  テーブルが存在しませんが、SKIP_DB_INIT=trueのため初期化をスキップします: {e}"
+                        f"⚠️  テーブルが存在しません。緊急修正でテーブルを作成します: {e}"
                     )
+                    try:
+                        # 最低限のテーブル作成
+                        db.create_all()
+                        print("✅ 緊急修正: テーブルを作成しました")
+
+                        # 最低限の初期ユーザー作成
+                        create_initial_user(True)
+                        print("✅ 緊急修正: 初期ユーザーを作成しました")
+                    except Exception as create_error:
+                        print(f"❌ 緊急修正失敗: {create_error}")
         else:
             # スマートロジックで必要時のみ初期化
             init_database()
