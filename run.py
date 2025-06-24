@@ -237,13 +237,33 @@ def create_initial_user(force_create=False):
 
 
 if __name__ == "__main__":
-    # 本番環境でのデータベース初期化制御
+    # 本番環境でのデータベース初期化制御（超安全モード）
     if os.environ.get("RENDER"):
-        # SKIP_DB_INIT環境変数でDB初期化を完全にスキップ
-        if os.environ.get("SKIP_DB_INIT", "").lower() == "true":
-            print("SKIP_DB_INIT=true により、データベース初期化をスキップします")
+        print("Render環境でのデータベース状態を確認中...")
+
+        # SKIP_DB_INIT=trueでも安全チェックは実行
+        skip_init = os.environ.get("SKIP_DB_INIT", "").lower() == "true"
+
+        if skip_init:
+            print("SKIP_DB_INIT=true が設定されています")
+            # テーブルの存在だけは確認（データがある場合は何もしない）
+            with app.app_context():
+                try:
+                    from app.models.user import User
+
+                    user_count = User.query.count()
+                    print(f"既存データ確認: ユーザー{user_count}件")
+                    if user_count > 0:
+                        print("既存データが確認できました。初期化をスキップします。")
+                    else:
+                        print(
+                            "⚠️  データが存在しませんが、SKIP_DB_INIT=trueのため初期化をスキップします"
+                        )
+                except Exception as e:
+                    print(
+                        f"⚠️  テーブルが存在しませんが、SKIP_DB_INIT=trueのため初期化をスキップします: {e}"
+                    )
         else:
-            print("Render環境でのデータベース状態を確認中...")
             # スマートロジックで必要時のみ初期化
             init_database()
 
