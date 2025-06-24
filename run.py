@@ -149,9 +149,11 @@ def init_database():
                 if "?" in db_path:
                     db_path = db_path.split("?")[0]
 
+            tables_created = False
             if not os.path.exists(db_path):
                 print("データベースファイルが存在しません。テーブルを作成します...")
                 db.create_all()
+                tables_created = True
                 print("データベースの初期化が完了しました。")
             else:
                 # テーブルが存在するかチェック
@@ -163,9 +165,51 @@ def init_database():
                 except Exception:
                     print("テーブルが存在しません。テーブルを作成します...")
                     db.create_all()
+                    tables_created = True
                     print("データベースの初期化が完了しました。")
+
+            # 初期ユーザーを作成
+            create_initial_user(tables_created)
+
         except Exception as e:
             print(f"データベース初期化エラー: {e}")
+
+
+def create_initial_user(force_create=False):
+    """初期管理者ユーザーを作成"""
+    try:
+        from app.models.user import User
+        from datetime import datetime
+
+        # 既存のユーザーをチェック
+        user_count = User.query.count()
+
+        if user_count == 0 or force_create:
+            # 管理者ユーザーを作成
+            admin = User(
+                username="admin",
+                email="admin@example.com",
+                name="管理者",
+                role="admin",
+                active=True,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            admin.set_password("admin123")
+
+            # データベースに保存
+            db.session.add(admin)
+            db.session.commit()
+
+            print("初期管理者ユーザーを作成しました")
+            print("ユーザー名: admin")
+            print("パスワード: admin123")
+            print("※本番運用前に必ずパスワードを変更してください")
+        else:
+            print(f"ユーザーは既に存在します（{user_count}人）")
+
+    except Exception as e:
+        print(f"初期ユーザー作成エラー: {e}")
 
 
 if __name__ == "__main__":
