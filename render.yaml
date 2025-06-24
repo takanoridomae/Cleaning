@@ -6,4 +6,12 @@ services:
     startCommand: python run.py
     envVars:
       - key: FLASK_ENV
-        value: production 
+        value: production
+      # データ保護モード（推奨設定）
+      - key: PRESERVE_DATA
+        value: "true"
+      # 他の制御用環境変数（必要に応じてコメントアウト）
+      # - key: SKIP_DB_INIT
+      #   value: "true"
+      # - key: FORCE_DB_INIT
+      #   value: "true" 
