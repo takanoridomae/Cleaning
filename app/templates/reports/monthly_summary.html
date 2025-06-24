@@ -55,7 +55,7 @@
                         </div>
                         <div class="col-auto">
                             <small class="text-muted">
-                                作業日ベースで集計しています
+                                最終作業日ベースで集計
                                 {% if current_type == 'amount' %}
                                 （金額は作業したエアコンのみ）
                                 {% elif current_type == 'quantity' %}
@@ -267,7 +267,7 @@
                         </div>
                         <div class="col-md-6">
                             <ul class="list-unstyled">
-                                <li><i class="bi bi-calendar3"></i> 作業日ベースで集計</li>
+                                <li><i class="bi bi-calendar3"></i> 最終作業日ベースで集計（受注明細一覧と同方式）</li>
                                 <li><i class="bi bi-check-circle"></i> 完了: ステータスが「完了」</li>
                                 <li><i class="bi bi-clock"></i> 未完了: ステータスが「未完了」「下書き」</li>
                                 {% if current_type in ['amount', 'quantity'] %}

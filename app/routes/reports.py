@@ -1946,7 +1946,7 @@ def order_details_pdf():
 @login_required
 @view_permission_required
 def monthly_summary():
-    """受注月間表の表示"""
+    """受注月間表の表示（最終作業日ベース）"""
     from sqlalchemy import func, extract, case
 
     # パラメータの取得
@@ -1965,8 +1965,17 @@ def monthly_summary():
     )
     reception_types = [rt[0] for rt in reception_types]
 
+    # 各報告書の最終作業日を取得するサブクエリ
+    latest_work_date_subquery = (
+        db.session.query(
+            WorkTime.report_id,
+            func.max(WorkTime.work_date).label("latest_work_date"),
+        )
+        .group_by(WorkTime.report_id)
+        .subquery()
+    )
+
     # 月別・受付種別・完了状況の集計データを取得
-    # WorkTimeを使って実際の作業月で集計
     monthly_data = []
 
     for month in range(1, 13):
@@ -1974,14 +1983,19 @@ def monthly_summary():
 
         for reception_type in reception_types:
             if summary_type == "count":
-                # 件数ベースの集計（従来通り）
+                # 件数ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.count(Report.id))
                     .join(Property)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                     )
@@ -1992,10 +2006,15 @@ def monthly_summary():
                 pending_count = (
                     db.session.query(func.count(Report.id))
                     .join(Property)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                     )
@@ -2004,7 +2023,7 @@ def monthly_summary():
                 )
 
             elif summary_type == "quantity":
-                # 台数ベースの集計
+                # 台数ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.sum(AirConditioner.quantity))
                     .join(
@@ -2012,10 +2031,15 @@ def monthly_summary():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                     )
@@ -2030,10 +2054,15 @@ def monthly_summary():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                     )
@@ -2042,7 +2071,7 @@ def monthly_summary():
                 )
 
             elif summary_type == "amount":
-                # 金額ベースの集計
+                # 金額ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.sum(AirConditioner.total_amount))
                     .join(
@@ -2050,10 +2079,15 @@ def monthly_summary():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                         AirConditioner.total_amount.isnot(None),
@@ -2069,10 +2103,15 @@ def monthly_summary():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                         AirConditioner.total_amount.isnot(None),
@@ -2146,7 +2185,7 @@ def monthly_summary():
 @login_required
 @view_permission_required
 def monthly_summary_pdf():
-    """受注月間表のPDF出力"""
+    """受注月間表のPDF出力（最終作業日ベース）"""
     from sqlalchemy import func, extract
 
     # パラメータの取得
@@ -2165,6 +2204,16 @@ def monthly_summary_pdf():
     )
     reception_types = [rt[0] for rt in reception_types]
 
+    # 各報告書の最終作業日を取得するサブクエリ
+    latest_work_date_subquery = (
+        db.session.query(
+            WorkTime.report_id,
+            func.max(WorkTime.work_date).label("latest_work_date"),
+        )
+        .group_by(WorkTime.report_id)
+        .subquery()
+    )
+
     # 月別・受付種別・完了状況の集計データを取得（HTML版と同じロジック）
     monthly_data = []
 
@@ -2173,14 +2222,19 @@ def monthly_summary_pdf():
 
         for reception_type in reception_types:
             if summary_type == "count":
-                # 件数ベースの集計
+                # 件数ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.count(Report.id))
                     .join(Property)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                     )
@@ -2191,10 +2245,15 @@ def monthly_summary_pdf():
                 pending_count = (
                     db.session.query(func.count(Report.id))
                     .join(Property)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                     )
@@ -2203,7 +2262,7 @@ def monthly_summary_pdf():
                 )
 
             elif summary_type == "quantity":
-                # 台数ベースの集計
+                # 台数ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.sum(AirConditioner.quantity))
                     .join(
@@ -2211,10 +2270,15 @@ def monthly_summary_pdf():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                     )
@@ -2229,10 +2293,15 @@ def monthly_summary_pdf():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                     )
@@ -2241,7 +2310,7 @@ def monthly_summary_pdf():
                 )
 
             elif summary_type == "amount":
-                # 金額ベースの集計
+                # 金額ベースの集計（最終作業日ベース）
                 completed_count = (
                     db.session.query(func.sum(AirConditioner.total_amount))
                     .join(
@@ -2249,10 +2318,15 @@ def monthly_summary_pdf():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
                         AirConditioner.total_amount.isnot(None),
@@ -2268,10 +2342,15 @@ def monthly_summary_pdf():
                     )
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
-                    .join(WorkTime, Report.id == WorkTime.report_id)
+                    .join(
+                        latest_work_date_subquery,
+                        Report.id == latest_work_date_subquery.c.report_id,
+                    )
                     .filter(
-                        extract("year", WorkTime.work_date) == year,
-                        extract("month", WorkTime.work_date) == month,
+                        extract("year", latest_work_date_subquery.c.latest_work_date)
+                        == year,
+                        extract("month", latest_work_date_subquery.c.latest_work_date)
+                        == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
                         AirConditioner.total_amount.isnot(None),
@@ -2418,3 +2497,185 @@ def monthly_summary_pdf():
     )
 
     return response
+
+
+# 作業内容一覧表の新機能
+@bp.route("/work-contents")
+@login_required
+@view_permission_required
+def work_contents_list():
+    """作業内容一覧表"""
+    # 検索パラメータ取得
+    search_keyword = request.args.get("search", "")
+    work_item_filter = request.args.get("work_item", "")
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+    sort_by = request.args.get("sort", "work_date")
+    sort_order = request.args.get("order", "desc")
+
+    # ベースクエリ構築
+    # work_item_nameは計算されたプロパティなので、SQLで直接取得
+    work_item_name_case = func.coalesce(WorkItem.name, WorkDetail.work_item_text).label(
+        "work_item_name"
+    )
+
+    # 作業時間と作業内容のROW_NUMBERを取得するサブクエリ
+    work_time_subquery = db.session.query(
+        WorkTime.id.label("work_time_id"),
+        WorkTime.work_date,
+        WorkTime.start_time,
+        WorkTime.end_time,
+        WorkTime.report_id.label("wt_report_id"),
+        func.row_number()
+        .over(partition_by=WorkTime.report_id, order_by=WorkTime.id)
+        .label("wt_row_num"),
+    ).subquery()
+
+    work_detail_subquery = db.session.query(
+        WorkDetail.id.label("work_detail_id"),
+        WorkDetail.description,
+        WorkDetail.confirmation,
+        WorkDetail.report_id.label("wd_report_id"),
+        WorkDetail.air_conditioner_id,
+        WorkDetail.work_item_id,
+        WorkDetail.work_item_text,
+        func.row_number()
+        .over(partition_by=WorkDetail.report_id, order_by=WorkDetail.id)
+        .label("wd_row_num"),
+    ).subquery()
+
+    query = (
+        db.session.query(
+            work_detail_subquery.c.work_detail_id.label("id"),
+            work_time_subquery.c.work_date,
+            work_time_subquery.c.start_time,
+            work_time_subquery.c.end_time,
+            Property.name.label("property_name"),
+            Customer.name.label("customer_name"),
+            AirConditioner.manufacturer,
+            AirConditioner.model_number,
+            AirConditioner.location,
+            func.coalesce(WorkItem.name, work_detail_subquery.c.work_item_text).label(
+                "work_item_name"
+            ),
+            work_detail_subquery.c.description,
+            work_detail_subquery.c.confirmation,
+            Report.id.label("report_id"),
+            Report.title.label("report_title"),
+        )
+        .select_from(work_detail_subquery)
+        .join(
+            work_time_subquery,
+            db.and_(
+                work_detail_subquery.c.wd_report_id
+                == work_time_subquery.c.wt_report_id,
+                work_detail_subquery.c.wd_row_num == work_time_subquery.c.wt_row_num,
+            ),
+        )
+        .join(Report, work_detail_subquery.c.wd_report_id == Report.id)
+        .join(Property, Report.property_id == Property.id)
+        .join(Customer, Property.customer_id == Customer.id)
+        .outerjoin(
+            AirConditioner,
+            work_detail_subquery.c.air_conditioner_id == AirConditioner.id,
+        )
+        .outerjoin(WorkItem, work_detail_subquery.c.work_item_id == WorkItem.id)
+    )
+
+    # フィルタリング
+    if search_keyword:
+        search_filter = or_(
+            Property.name.contains(search_keyword),
+            Customer.name.contains(search_keyword),
+            AirConditioner.manufacturer.contains(search_keyword),
+            AirConditioner.model_number.contains(search_keyword),
+            work_detail_subquery.c.description.contains(search_keyword),
+            work_detail_subquery.c.work_item_text.contains(search_keyword),
+            WorkItem.name.contains(search_keyword),
+        )
+        query = query.filter(search_filter)
+
+    if work_item_filter:
+        query = query.filter(
+            or_(
+                work_detail_subquery.c.work_item_text == work_item_filter,
+                WorkItem.name == work_item_filter,
+            )
+        )
+
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            query = query.filter(work_time_subquery.c.work_date >= start_date_obj)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(work_time_subquery.c.work_date <= end_date_obj)
+        except ValueError:
+            pass
+
+    # ソート設定
+    sort_column = work_time_subquery.c.work_date  # デフォルト
+    if sort_by == "property_name":
+        sort_column = Property.name
+    elif sort_by == "customer_name":
+        sort_column = Customer.name
+    elif sort_by == "work_item":
+        # work_item_nameでソートするための処理
+        sort_column = func.coalesce(
+            WorkItem.name, work_detail_subquery.c.work_item_text
+        )
+    elif sort_by == "start_time":
+        sort_column = work_time_subquery.c.start_time
+    elif sort_by == "end_time":
+        sort_column = work_time_subquery.c.end_time
+
+    if sort_order == "desc":
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+
+    # ページネーション
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+    work_contents = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # 作業項目一覧（フィルタ用）
+    work_items_from_master = (
+        db.session.query(WorkItem.name)
+        .filter(WorkItem.is_active == True)
+        .distinct()
+        .all()
+    )
+
+    work_items_from_detail = (
+        db.session.query(WorkDetail.work_item_text)
+        .filter(WorkDetail.work_item_text.isnot(None), WorkDetail.work_item_text != "")
+        .distinct()
+        .all()
+    )
+
+    all_work_items = set()
+    for item in work_items_from_master:
+        if item[0]:
+            all_work_items.add(item[0])
+    for item in work_items_from_detail:
+        if item[0]:
+            all_work_items.add(item[0])
+
+    work_items_list = sorted(all_work_items)
+
+    return render_template(
+        "reports/work_contents_list.html",
+        work_contents=work_contents,
+        work_items_list=work_items_list,
+        search_keyword=search_keyword,
+        work_item_filter=work_item_filter,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
