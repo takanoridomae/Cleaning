@@ -237,15 +237,11 @@ def create_initial_user(force_create=False):
 
 
 if __name__ == "__main__":
-    # 本番環境でのデータベース初期化制御
-    # FORCE_DB_INIT環境変数が明示的に設定された場合のみ初期化を実行
+    # 本番環境でのデータベース初期化制御（スマート初期化）
     if os.environ.get("RENDER"):
-        if os.environ.get("FORCE_DB_INIT") == "true":
-            print("FORCE_DB_INIT環境変数により、データベース初期化を強制実行...")
-            init_database()
-        else:
-            print("Render環境: データベース初期化はスキップされます")
-            print("※初期化が必要な場合は FORCE_DB_INIT=true を設定してください")
+        print("Render環境でのデータベース状態を確認中...")
+        # 常に初期化チェックを実行（スマートロジックで必要時のみ初期化）
+        init_database()
 
     # デプロイ時はポート番号を環境変数から取得
     port = int(os.environ.get("PORT", 5000))
