@@ -100,6 +100,7 @@ def create_app(test_config=None):
         air_conditioners,
         schedules,
         notifications,
+        admin_import,
     )
 
     app.register_blueprint(main.bp)
@@ -110,6 +111,7 @@ def create_app(test_config=None):
     app.register_blueprint(air_conditioners.bp)
     app.register_blueprint(schedules.bp)
     app.register_blueprint(notifications.bp)
+    app.register_blueprint(admin_import.bp)
 
     app.add_url_rule("/", endpoint="index")
 

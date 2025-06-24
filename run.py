@@ -139,7 +139,7 @@ def start_daily_backup_thread():
 
 
 def init_database():
-    """本番環境でのデータベース初期化"""
+    """本番環境でのデータベース初期化（既存データ保護）"""
     with app.app_context():
         try:
             # データベースファイルが存在しない場合、テーブルを作成
@@ -150,26 +150,45 @@ def init_database():
                     db_path = db_path.split("?")[0]
 
             tables_created = False
+            needs_initial_data = False
+
             if not os.path.exists(db_path):
                 print("データベースファイルが存在しません。テーブルを作成します...")
                 db.create_all()
                 tables_created = True
+                needs_initial_data = True
                 print("データベースの初期化が完了しました。")
             else:
                 # テーブルが存在するかチェック
                 try:
                     from app.models.customer import Customer
+                    from app.models.user import User
 
-                    Customer.query.count()
-                    print("データベースは既に初期化済みです。")
-                except Exception:
+                    customer_count = Customer.query.count()
+                    user_count = User.query.count()
+
+                    print(
+                        f"既存データベース確認: ユーザー{user_count}件, 顧客{customer_count}件"
+                    )
+
+                    # データが存在する場合は初期化をスキップ
+                    if user_count > 0:
+                        print("既存データが検出されました。初期化をスキップします。")
+                        return  # 初期化処理を完全にスキップ
+                    else:
+                        needs_initial_data = True
+
+                except Exception as e:
+                    print(f"テーブル確認エラー: {e}")
                     print("テーブルが存在しません。テーブルを作成します...")
                     db.create_all()
                     tables_created = True
+                    needs_initial_data = True
                     print("データベースの初期化が完了しました。")
 
-            # 初期ユーザーを作成
-            create_initial_user(tables_created)
+            # 初期ユーザーを作成（データが存在しない場合のみ）
+            if needs_initial_data:
+                create_initial_user(True)
 
         except Exception as e:
             print(f"データベース初期化エラー: {e}")
@@ -184,7 +203,10 @@ def create_initial_user(force_create=False):
         # 既存のユーザーをチェック
         user_count = User.query.count()
 
-        if user_count == 0 or force_create:
+        # 既存のadminユーザーをチェック
+        existing_admin = User.query.filter_by(username="admin").first()
+
+        if user_count == 0 or (force_create and not existing_admin):
             # 管理者ユーザーを作成
             admin = User(
                 username="admin",
@@ -205,6 +227,8 @@ def create_initial_user(force_create=False):
             print("ユーザー名: admin")
             print("パスワード: admin123")
             print("※本番運用前に必ずパスワードを変更してください")
+        elif existing_admin:
+            print(f"管理者ユーザー（admin）は既に存在します")
         else:
             print(f"ユーザーは既に存在します（{user_count}人）")
 
@@ -213,10 +237,15 @@ def create_initial_user(force_create=False):
 
 
 if __name__ == "__main__":
-    # 本番環境でデータベースを初期化
+    # 本番環境でのデータベース初期化制御
+    # FORCE_DB_INIT環境変数が明示的に設定された場合のみ初期化を実行
     if os.environ.get("RENDER"):
-        print("Render環境でのデータベース初期化を開始...")
-        init_database()
+        if os.environ.get("FORCE_DB_INIT") == "true":
+            print("FORCE_DB_INIT環境変数により、データベース初期化を強制実行...")
+            init_database()
+        else:
+            print("Render環境: データベース初期化はスキップされます")
+            print("※初期化が必要な場合は FORCE_DB_INIT=true を設定してください")
 
     # デプロイ時はポート番号を環境変数から取得
     port = int(os.environ.get("PORT", 5000))
