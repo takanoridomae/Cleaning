@@ -32,10 +32,10 @@
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-sm-3">
+                    <div class="col-12 col-sm-3 mb-1 mb-sm-0">
                         <strong>説明:</strong>
                     </div>
-                    <div class="col-sm-9">
+                    <div class="col-12 col-sm-9">
                         {% if schedule.description %}
                         {{ schedule.description | nl2br }}
                         {% else %}
@@ -45,10 +45,10 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-sm-3">
+                    <div class="col-12 col-sm-3 mb-1 mb-sm-0">
                         <strong>開始日時:</strong>
                     </div>
-                    <div class="col-sm-9">
+                    <div class="col-12 col-sm-9">
                         {% if schedule.all_day %}
                         {{ schedule.start_datetime.strftime('%Y年%m月%d日') }}
                         <span class="badge bg-info ms-2">終日</span>
@@ -59,10 +59,10 @@
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-sm-3">
+                    <div class="col-12 col-sm-3 mb-1 mb-sm-0">
                         <strong>終了日時:</strong>
                     </div>
-                    <div class="col-sm-9">
+                    <div class="col-12 col-sm-9">
                         {% if schedule.all_day %}
                         {{ schedule.end_datetime.strftime('%Y年%m月%d日') }}
                         {% else %}

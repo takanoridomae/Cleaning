@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>{% block title %}エアコンクリーニング完了報告書システム{% endblock %}</title>
     <!-- Bootstrap CSS -->
@@ -17,10 +17,9 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
     <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-    <!-- PWA 対応 -->
+    <!-- モバイル対応 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="エアコン報告書">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -288,6 +287,84 @@
         document.addEventListener('dblclick', function(event) {
             event.preventDefault();
         }, { passive: false });
+
+        // iOS Safariでのドロップダウンメニュー対応
+        document.addEventListener('DOMContentLoaded', function() {
+            // iOS Safari用の追加対応
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                document.body.classList.add('ios-device');
+                
+                // iOSでBootstrapドロップダウンが動作しない問題の対策
+                const style = document.createElement('style');
+                style.textContent = `
+                    @media (max-width: 991.98px) {
+                        .ios-device .navbar-nav .dropdown-menu {
+                            display: block !important;
+                            opacity: 0;
+                            visibility: hidden;
+                            transition: opacity 0.3s ease, visibility 0.3s ease;
+                            pointer-events: none;
+                        }
+                        .ios-device .navbar-nav .dropdown.show .dropdown-menu {
+                            opacity: 1;
+                            visibility: visible;
+                            pointer-events: auto;
+                        }
+                        .ios-device .navbar-nav .dropdown-toggle {
+                            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // 横画面対応の強化
+            function handleOrientationChange() {
+                // ビューポートの高さを再計算
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', vh + 'px');
+                
+                // より確実な横画面検出
+                const isLandscape = window.innerWidth > window.innerHeight || 
+                                   window.orientation === 90 || 
+                                   window.orientation === -90 ||
+                                   screen.orientation?.angle === 90 ||
+                                   screen.orientation?.angle === 270;
+                
+                if (isLandscape) {
+                    document.body.classList.add('landscape-mode');
+                    document.body.classList.remove('portrait-mode');
+                    document.body.style.setProperty('--orientation', 'landscape');
+                } else {
+                    document.body.classList.add('portrait-mode');
+                    document.body.classList.remove('landscape-mode');
+                    document.body.style.setProperty('--orientation', 'portrait');
+                }
+                
+                // デバッグ用ログ
+                console.log('Orientation:', {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    orientation: window.orientation,
+                    screenOrientation: screen.orientation?.angle,
+                    isLandscape: isLandscape
+                });
+            }
+            
+            // 即座に実行
+            handleOrientationChange();
+            
+            // オリエンテーション変更時に実行（複数のイベントで確実に）
+            window.addEventListener('orientationchange', () => {
+                setTimeout(handleOrientationChange, 100);
+            });
+            window.addEventListener('resize', handleOrientationChange);
+            
+            // Screen Orientation API対応
+            if (screen.orientation) {
+                screen.orientation.addEventListener('change', handleOrientationChange);
+            }
+        });
     </script>
     {% block extra_js %}{% endblock %}
     {% block scripts %}{% endblock %}

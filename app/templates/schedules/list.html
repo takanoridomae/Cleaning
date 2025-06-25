@@ -3,6 +3,7 @@
 {% block title %}スケジュール管理{% endblock %}
 
 {% block content %}
+<div class="schedule-management">
 <div class="row mb-4">
     <div class="col">
         <h1 class="page-title">スケジュール管理</h1>
@@ -17,30 +18,77 @@
 
 <!-- 操作ボタンとフィルター -->
 <div class="row mb-4">
-    <div class="col-md-6">
-        <a href="{{ url_for('schedules.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus"></i> 新規スケジュール作成
-        </a>
-    </div>
-    <div class="col-md-6 text-end">
-        <!-- 表示切替ボタン -->
-        <div class="btn-group" role="group">
-            <a href="{{ url_for('schedules.list', view='month', year=current_year, month=current_month, status=status_filter) }}" 
-               class="btn btn-outline-primary {{ 'active' if view_type == 'month' else '' }}">月表示</a>
-            <a href="{{ url_for('schedules.list', view='week', status=status_filter) }}" 
-               class="btn btn-outline-primary {{ 'active' if view_type == 'week' else '' }}">週表示</a>
-            <a href="{{ url_for('schedules.list', view='list', year=current_year, month=current_month, status=status_filter) }}" 
-               class="btn btn-outline-primary {{ 'active' if view_type == 'list' else '' }}">リスト表示</a>
-        </div>
-        
-        <!-- ステータスフィルター -->
-        <div class="btn-group ms-2" role="group">
-            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='all') }}" 
-               class="btn btn-outline-secondary {{ 'active' if status_filter == 'all' else '' }}">全て</a>
-            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='pending') }}" 
-               class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' else '' }}">未完了</a>
-            <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='completed') }}" 
-               class="btn btn-outline-success {{ 'active' if status_filter == 'completed' else '' }}">完了</a>
+    <div class="col-12">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-stretch align-items-lg-center gap-3">
+            <!-- 新規作成ボタン -->
+            <div class="flex-shrink-0">
+                <a href="{{ url_for('schedules.create') }}" class="btn btn-primary btn-lg shadow-sm">
+                    <i class="bi bi-plus-circle me-2"></i>新規スケジュール作成
+                </a>
+            </div>
+            
+            <!-- フィルターコントロール -->
+            <div class="d-flex flex-column flex-md-row gap-3 align-items-stretch align-items-md-center">
+                <!-- 表示切替ボタン -->
+                <div class="btn-group shadow-sm" role="group" aria-label="表示切替">
+                    <input type="radio" class="btn-check" name="view-options" id="view-month" 
+                           {{ 'checked' if view_type == 'month' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-primary" for="view-month">
+                        <a href="{{ url_for('schedules.list', view='month', year=current_year, month=current_month, status=status_filter) }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-calendar3 me-1"></i>月表示
+                        </a>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="view-options" id="view-week" 
+                           {{ 'checked' if view_type == 'week' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-primary" for="view-week">
+                        <a href="{{ url_for('schedules.list', view='week', status=status_filter) }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-calendar-week me-1"></i>週表示
+                        </a>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="view-options" id="view-list" 
+                           {{ 'checked' if view_type == 'list' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-primary" for="view-list">
+                        <a href="{{ url_for('schedules.list', view='list', year=current_year, month=current_month, status=status_filter) }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-list-ul me-1"></i>リスト表示
+                        </a>
+                    </label>
+                </div>
+                
+                <!-- ステータスフィルター -->
+                <div class="btn-group shadow-sm" role="group" aria-label="ステータスフィルター">
+                    <input type="radio" class="btn-check" name="status-options" id="status-all" 
+                           {{ 'checked' if status_filter == 'all' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="status-all">
+                        <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='all') }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-circle me-1"></i>全て
+                        </a>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="status-options" id="status-pending" 
+                           {{ 'checked' if status_filter == 'pending' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-warning" for="status-pending">
+                        <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='pending') }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-clock me-1"></i>未完了
+                        </a>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="status-options" id="status-completed" 
+                           {{ 'checked' if status_filter == 'completed' else '' }} autocomplete="off">
+                    <label class="btn btn-outline-success" for="status-completed">
+                        <a href="{{ url_for('schedules.list', view=view_type, year=current_year, month=current_month, status='completed') }}" 
+                           class="text-decoration-none text-reset d-block">
+                            <i class="bi bi-check-circle me-1"></i>完了
+                        </a>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -142,10 +190,10 @@
                 <tbody>
                     <tr>
                         {% for date in week_dates %}
-                        <td class="week-column drop-zone" 
-                            style="vertical-align: top; height: 400px; padding: 8px;"
+                        <td class="week-column drop-zone position-relative" 
+                            style="vertical-align: top; padding: 8px;"
                             data-date="{{ date.strftime('%Y-%m-%d') }}">
-                            <div class="week-day-content">
+                            <div class="week-day-content h-100 overflow-auto">
                                 {% for schedule in week_data[date] %}
                                 <div class="schedule-item mb-2 p-2 rounded border-start border-3 
                                     {{ 'border-warning bg-warning-subtle' if schedule.status == 'pending' 
@@ -493,7 +541,7 @@ function loadScheduleEvents(year, month) {
     const daysInMonth = new Date(year, month, 0).getDate(); // 月の最終日を取得
     const endDate = year + '-' + String(month).padStart(2, '0') + '-' + String(daysInMonth).padStart(2, '0');
     
-    fetch('{{ url_for('schedules.api_events') }}?start=' + startDate + '&end=' + endDate + '&status={{ status_filter }}')
+    fetch('{{ url_for("schedules.api_events") }}?start=' + startDate + '&end=' + endDate + '&status={{ status_filter }}')
         .then(response => response.json())
         .then(events => {
             events.forEach(event => {
@@ -520,7 +568,7 @@ function loadScheduleEvents(year, month) {
                     // クリックイベント（ドラッグ中でない場合のみ）
                     eventElement.addEventListener('click', function(e) {
                         if (!this.classList.contains('dragging')) {
-                            window.location.href = '{{ url_for('schedules.view', id=0) }}'.replace('0', event.id);
+                            window.location.href = '{{ url_for("schedules.view", id=0) }}'.replace('0', event.id);
                         }
                     });
                     
@@ -739,4 +787,5 @@ function moveSchedule(scheduleId, newDate) {
     });
 }
 </script>
+</div> <!-- schedule-management終了 -->
 {% endblock %} 

@@ -1,22 +1,56 @@
-/* メインスタイルシート */
+/* エアコンクリーニング完了報告書システム - メインCSS */
 
 :root {
-  --primary-color: #0d6efd;
-  --secondary-color: #17a2b8;
-  --dark-color: #343a40;
-  --light-color: #f8f9fa;
-  --danger-color: #dc3545;
-  --warning-color: #ffc107;
-  --success-color: #28a745;
+  --primary-color: #3498db;
+  --secondary-color: #2c3e50;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
   --info-color: #17a2b8;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
 }
 
 body {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
-  color: #333;
+  color: var(--dark-color);
   background-color: #f5f5f5;
-  padding-bottom: 50px;
+}
+
+/* PC画面専用設定 */
+@media screen and (min-width: 992px) {
+  body {
+    padding: 0;
+    font-size: 1rem;
+  }
+  
+  .container,
+  .container-fluid {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: none;
+  }
+  
+  /* カレンダー専用設定 */
+  #calendar-container th,
+  #calendar-container td {
+    height: 120px;
+    min-height: 120px;
+    vertical-align: top;
+  }
+  
+  .week-column {
+    height: 400px;
+  }
+  
+  .schedule-item {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.25rem;
+  }
 }
 
 .navbar {
@@ -59,7 +93,6 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* ログイン画面のロゴ */
 .login-logo {
   max-height: 140px;
   width: auto;
@@ -145,7 +178,6 @@ footer {
   border-top: 1px solid #dee2e6;
 }
 
-/* フォーム関連 */
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -155,34 +187,46 @@ footer {
 }
 
 .form-text {
-  font-size: 0.875rem;
+  font-size: 0.875em;
   color: #6c757d;
 }
 
-/* アニメーション */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.5s ease forwards;
+  animation: fadeIn 0.5s ease-in;
 }
 
-/* レスポンシブ調整 */
+/* タブレット設定 */
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  .week-column {
+    height: 350px;
+    font-size: 0.9rem;
+  }
+  
+  .schedule-item {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+/* モバイル設定 */
 @media (max-width: 768px) {
   .container {
-    padding-left: 15px;
-    padding-right: 15px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   
   .table-responsive {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
   }
   
   .btn {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
   }
   
   .card-body {
@@ -190,7 +234,7 @@ footer {
   }
   
   h1.page-title {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
   }
   
   .lead {
@@ -203,29 +247,21 @@ footer {
   }
 }
 
-/* タブレット対応 */
-@media (min-width: 769px) and (max-width: 992px) {
-  .container {
-    max-width: 95%;
-  }
-}
-
 /* タッチデバイス最適化 */
 @media (hover: none) {
   .btn, .nav-link, a {
-    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    -webkit-tap-highlight-color: transparent;
   }
   
   input, select, textarea {
-    font-size: 16px !important; /* iOSでフォームズームを防止 */
+    font-size: 16px; /* ズーム防止 */
   }
   
   .form-control {
-    padding: 0.5rem 0.75rem;
+    -webkit-appearance: none;
   }
 }
 
-/* ユーティリティクラス */
 .cursor-pointer {
   cursor: pointer;
 }
@@ -235,100 +271,91 @@ footer {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* アラート */
 .alert {
-  margin-bottom: 20px;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
 }
 
-/* ボタン */
 .btn-group-actions {
-  white-space: nowrap;
+  gap: 0.5rem;
 }
 
-/* ユーティリティ */
 .bg-light-gray {
-  background-color: #f8f9fa;
+  background-color: #f8f9fa !important;
 }
 
 .required-label::after {
-  content: "*";
-  color: red;
-  margin-left: 4px;
+  content: " *";
+  color: #dc3545;
+  font-weight: bold;
 }
 
-/* フォーム関連 */
 .form-control:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
 }
 
-/* メニューのドロップダウンスタイル改善 */
+/* ナビゲーションドロップダウン */
 .navbar-nav .dropdown-menu {
   border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  margin-top: 8px;
-  min-width: 200px;
-  animation: fadeInDown 0.3s ease;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  border-radius: 0.375rem;
+  margin-top: 0.5rem;
+  min-width: 12rem;
 }
 
 @keyframes fadeInDown {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translate3d(0, -20px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .navbar-nav .dropdown-item {
-  padding: 10px 16px;
-  transition: all 0.2s ease;
-  border-radius: 4px;
-  margin: 2px 8px;
-  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+  border-radius: 0.25rem;
+  margin: 0.125rem 0.5rem;
 }
 
 .navbar-nav .dropdown-item:hover {
-  background-color: rgba(13, 110, 253, 0.1);
-  color: var(--primary-color);
-  transform: translateX(4px);
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateX(5px);
 }
 
 .navbar-nav .dropdown-item i {
-  width: 20px;
-  text-align: center;
+  margin-right: 0.5rem;
+  width: 1rem;
 }
 
 .navbar-nav .dropdown-header {
-  padding: 8px 16px 4px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #6c757d;
-  margin-top: 4px;
+  font-weight: 600;
+  color: var(--dark-color);
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #dee2e6;
 }
 
 .navbar-nav .dropdown-divider {
-  margin: 8px 16px;
-  border-color: rgba(0, 0, 0, 0.1);
+  margin: 0.5rem 0;
+  border-color: #dee2e6;
 }
 
-/* メニューのホバーエフェクト */
 .navbar-nav .nav-link {
-  position: relative;
-  transition: all 0.3s ease;
   font-weight: 500;
+  transition: color 0.3s ease;
 }
 
 .navbar-nav .nav-link:hover {
   color: var(--primary-color) !important;
-  transform: translateY(-1px);
 }
 
 .navbar-nav .nav-link.dropdown-toggle:after {
@@ -339,24 +366,350 @@ footer {
   transform: rotate(180deg);
 }
 
-/* レスポンシブ対応 - モバイルメニュー */
+/* モバイルナビゲーション */
 @media (max-width: 991.98px) {
   .navbar-nav .dropdown-menu {
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
     margin-top: 0;
+    padding: 0;
     border-radius: 0;
-    background-color: rgba(248, 249, 250, 0.95);
+    position: static !important;
+    transform: none !important;
+    display: none; /* デフォルトは非表示 */
+  }
+  
+  /* ドロップダウンが開いている時のメニュー表示 */
+  .navbar-nav .dropdown.show .dropdown-menu {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* iOS専用：より強力な表示設定 */
+  .ios-device .navbar-nav .dropdown.show .dropdown-menu {
+    display: block !important;
+    position: static !important;
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 0.5rem !important;
+    margin-top: 0.5rem !important;
+    padding: 0.5rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    float: none !important;
+    width: auto !important;
+    max-height: none !important;
   }
   
   .navbar-nav .dropdown-item {
-    margin: 0;
-    border-radius: 0;
-    padding-left: 24px;
+    padding: 0.5rem 1rem;
+    color: rgba(255, 255, 255, 0.75);
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 0.25rem 0;
+    border-radius: 0.25rem;
+    display: block;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* iOS専用ドロップダウンアイテム */
+  .ios-device .navbar-nav .dropdown-item {
+    color: white !important;
+    background-color: transparent !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 16px !important;
+    border: 1px solid transparent !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    display: block !important;
+  }
+  
+  .navbar-nav .dropdown-item:hover,
+  .navbar-nav .dropdown-item:focus,
+  .navbar-nav .dropdown-item:active {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    transform: none;
+  }
+  
+  .ios-device .navbar-nav .dropdown-item:active,
+  .ios-device .navbar-nav .dropdown-item:focus {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+  
+  .navbar-nav .nav-link.dropdown-toggle {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  .navbar-nav .nav-link.dropdown-toggle::after {
+    margin-left: auto;
+    transition: transform 0.3s ease;
+  }
+  
+  .navbar-nav .dropdown.show .nav-link.dropdown-toggle::after {
+    transform: rotate(180deg);
+  }
+}
+
+/* iOS専用ドロップダウン対応 */
+.ios-device .navbar-nav .dropdown-toggle {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.ios-device .navbar-nav .dropdown-item {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* iOS専用：ドロップダウンメニューの表示強制 */
+.ios-device .navbar-nav .dropdown.show .dropdown-menu {
+  display: block !important;
+  position: static !important;
+  transform: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  margin-top: 0.5rem !important;
+  padding: 0.5rem !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  border-radius: 0.5rem !important;
+  min-width: 200px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  z-index: 1000 !important;
+}
+
+.ios-device .navbar-nav .dropdown-item {
+  color: white !important;
+  background-color: transparent !important;
+  margin: 0.25rem 0 !important;
+  border-radius: 0.25rem !important;
+  display: block !important;
+  padding: 0.75rem 1rem !important;
+  text-decoration: none !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  border: 1px solid transparent !important;
+  width: 100% !important;
+}
+
+.ios-device .navbar-nav .dropdown-item:active,
+.ios-device .navbar-nav .dropdown-item:focus,
+.ios-device .navbar-nav .dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* さらに強力な表示強制（最終手段） */
+.ios-device .navbar-nav li.dropdown.show ul.dropdown-menu {
+  display: block !important;
+  position: static !important;
+  float: none !important;
+  width: auto !important;
+  margin-top: 0 !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem !important;
+}
+
+.touch-device .navbar-nav .nav-link {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.touch-device .navbar-nav .dropdown-item {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* タッチデバイスでホバー効果を無効化 */
+  .navbar-nav .nav-link:hover {
+    color: inherit;
   }
   
   .navbar-nav .dropdown-item:hover {
-    background-color: rgba(13, 110, 253, 0.1);
-    transform: none;
+    background-color: transparent;
+    color: inherit;
   }
+  
+  .navbar-nav .nav-link:active,
+  .navbar-nav .dropdown-item:active {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: var(--primary-color);
+  }
+}
+
+/* iPhone専用調整 */
+@media screen and (max-device-width: 926px) and (max-width: 926px) {
+  .week-column {
+    height: 280px;
+    font-size: 12px;
+    padding: 4px;
+  }
+  
+  .schedule-item {
+    font-size: 11px;
+    padding: 3px 6px;
+    margin-bottom: 2px;
+    line-height: 1.2;
+  }
+  
+  .calendar-cell {
+    height: 80px;
+    min-height: 80px;
+  }
+}
+
+.schedule-item {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  position: relative;
+}
+
+.schedule-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+.schedule-item.pending {
+  border-left: 4px solid var(--warning-color);
+}
+
+.schedule-item.completed {
+  border-left: 4px solid var(--success-color);
+}
+
+.schedule-item.cancelled {
+  border-left: 4px solid var(--danger-color);
+  opacity: 0.7;
+}
+
+.schedule-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.drop-zone.drag-over {
+  background-color: rgba(52, 152, 219, 0.1);
+  border: 2px dashed var(--primary-color);
+  border-radius: 0.25rem;
+}
+
+/* スケジュール管理画面専用スタイル */
+.schedule-management .btn-group {
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.schedule-management .btn-group .btn {
+  border-width: 1px;
+  transition: all 0.15s ease-in-out;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+.schedule-management .btn-group .btn:hover {
+  transform: translateY(-1px);
+  z-index: 2;
+}
+
+.schedule-management .btn-group .btn-check:checked + .btn {
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.schedule-management .btn-group .btn a {
+  padding: 0.375rem 0.75rem;
+  margin: -0.375rem -0.75rem;
+  display: block;
+}
+
+.schedule-management .btn-group .btn a:hover {
+  text-decoration: none !important;
+}
+
+/* 新規作成ボタンの強調 */
+.schedule-management .btn-primary.btn-lg {
+  background: linear-gradient(135deg, var(--primary-color) 0%, #2980b9 100%);
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  transition: all 0.3s ease;
+}
+
+.schedule-management .btn-primary.btn-lg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  background: linear-gradient(135deg, #2980b9 0%, var(--primary-color) 100%);
+}
+
+.schedule-management .btn-primary.btn-lg:active {
+  transform: translateY(0);
+}
+
+/* フィルターコントロールの配置調整 */
+@media (max-width: 767.98px) {
+  .schedule-management .btn-group {
+    width: 100%;
+  }
+  
+  .schedule-management .btn-group .btn {
+    flex: 1;
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .schedule-management .btn-group .btn {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* アクティブ状態の改善 */
+.schedule-management .btn-check:checked + .btn-outline-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.schedule-management .btn-check:checked + .btn-outline-secondary {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: white;
+}
+
+.schedule-management .btn-check:checked + .btn-outline-warning {
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+  color: white;
+}
+
+.schedule-management .btn-check:checked + .btn-outline-success {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+  color: white;
 } 
