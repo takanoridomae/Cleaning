@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}初回管理者設定{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-shield me-2"></i>
+                        初回管理者設定
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        アプリケーションの初回セットアップです。<br>
+                        管理者アカウントを作成してください。
+                    </div>
+
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">ユーザー名 *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="username" 
+                                   name="username" 
+                                   required 
+                                   maxlength="50"
+                                   value="{{ request.form.get('username', '') }}">
+                            <div class="form-text">ログイン時に使用するユーザー名</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">表示名 *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="name" 
+                                   name="name" 
+                                   required 
+                                   maxlength="100"
+                                   value="{{ request.form.get('name', '') }}">
+                            <div class="form-text">画面に表示される名前</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">メールアドレス *</label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   required 
+                                   maxlength="120"
+                                   value="{{ request.form.get('email', '') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">パスワード *</label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   minlength="6">
+                            <div class="form-text">6文字以上で設定してください</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">パスワード確認 *</label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="confirm_password" 
+                                   name="confirm_password" 
+                                   required 
+                                   minlength="6">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>
+                                管理者アカウントを作成
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    このページは管理者が存在しない場合のみアクセス可能です
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// パスワード確認のバリデーション
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (password !== confirmPassword) {
+        this.setCustomValidity('パスワードが一致しません');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %} 

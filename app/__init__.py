@@ -1,6 +1,7 @@
 from flask import Flask, render_template, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager
 from markupsafe import Markup
 import os
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ load_dotenv()
 # データベースインスタンスの作成
 db = SQLAlchemy()
 migrate = Migrate()
+login_manager = LoginManager()
 
 
 def create_app(test_config=None):
@@ -70,6 +72,18 @@ def create_app(test_config=None):
     # データベース初期化
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Flask-Loginの初期化
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "ログインが必要です。"
+    login_manager.login_message_category = "warning"
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        from app.models.user import User
+
+        return User.query.get(int(user_id))
 
     # Jinja2フィルターの登録
     @app.template_filter("nl2br")
