@@ -1,0 +1,24 @@
+# Render.yaml - Infrastructure as Code (参考用)
+# このファイルは参考用です。実際の設定はRenderのダッシュボードで行ってください。
+
+services:
+- type: web
+  name: aircon-report
+  env: python
+  buildCommand: "./build.sh"
+  startCommand: "gunicorn --config gunicorn.conf.py wsgi:app"
+  plan: free # または starter, standard, pro
+  
+  # 環境変数設定（Renderダッシュボードで設定してください）
+  envVars:
+  - key: FLASK_ENV
+    value: production
+  - key: SECRET_KEY
+    generateValue: true # ランダムキーを生成
+  - key: PRESERVE_DATA
+    value: "true" # データ保護モードを有効にする場合
+  - key: PYTHONPATH
+    value: "."
+  
+  # 静的ファイルの配信設定（オプション）
+  staticPublishPath: ./app/static 

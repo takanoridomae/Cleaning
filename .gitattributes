@@ -1,0 +1,20 @@
+# Git attributes for proper line ending handling
+
+# Shell scripts should always use LF
+*.sh text eol=lf
+
+# Python files use the repository default
+*.py text
+
+# Config files use the repository default  
+*.conf text
+*.yaml text
+*.yml text
+*.md text
+
+# Binary files
+*.db binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.pdf binary 
