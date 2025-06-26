@@ -17,7 +17,7 @@
 #### 基本設定
 - **Name**: `aircon-report` (任意)
 - **Environment**: `Python 3`
-- **Build Command**: `./build.sh`
+- **Build Command**: `./build.sh` (推奨) または `pip install -r requirements.txt` (シンプル)
 - **Start Command**: `gunicorn --config gunicorn.conf.py wsgi:app`
 
 #### 環境変数設定
@@ -96,3 +96,16 @@
 
 ### 更新されたファイル
 - `requirements.txt`: gunicorn追加 
+
+#### Build Commandの選択肢
+
+**推奨: `./build.sh`**
+- データベースの自動初期化
+- [データ保護モード対応][[memory:4470672458899265998]]
+- ディレクトリの自動作成
+- エラーハンドリング
+
+**シンプル: `pip install -r requirements.txt`**
+- 依存関係のインストールのみ
+- 手動でのデータベース初期化が必要
+- 初回デプロイ後に手動セットアップが必要 
