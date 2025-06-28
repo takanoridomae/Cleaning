@@ -51,32 +51,8 @@ def index():
 
 @bp.route("/admin/upload-aircon-data", methods=["GET", "POST"])
 def upload_aircon_data():
-    """エアコンデータアップロード（管理者用）"""
-    # セッション情報を確認
-    from flask import session
-    from flask_login import current_user
-
-    print(f"セッション情報: {dict(session)}")
-    print(
-        f"認証状態: {current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else 'N/A'}"
-    )
-
-    # 認証チェックを緩和（テスト用）
-    try:
-        if (
-            hasattr(current_user, "is_authenticated")
-            and not current_user.is_authenticated
-        ):
-            flash("⚠️ ログインが必要です", "warning")
-            return redirect(url_for("auth.login"))
-
-        if hasattr(current_user, "username"):
-            print(
-                f"✅ ユーザー情報: {current_user.username}, 権限: {getattr(current_user, 'role', 'N/A')}"
-            )
-    except Exception as e:
-        print(f"認証チェックエラー: {e}")
-        # 認証エラーでも続行（テスト用）
+    """エアコンデータアップロード（管理者用）- 認証なし版"""
+    print("🔍 エアコンデータアップロード画面にアクセスしました")
 
     if request.method == "POST":
         try:
@@ -138,15 +114,22 @@ def upload_aircon_data():
                 # データベースに保存
                 if imported_count > 0 or updated_count > 0:
                     db.session.commit()
+                    print(
+                        f"✅ データベース保存完了: 新規{imported_count}件, 更新{updated_count}件"
+                    )
                     flash(
-                        f"インポート完了: 新規追加 {imported_count}件, 更新 {updated_count}件",
+                        f"🎉 インポート完了: 新規追加 {imported_count}件, 更新 {updated_count}件",
                         "success",
                     )
                 else:
-                    flash("インポートできるデータがありませんでした", "warning")
+                    print("⚠️ インポート対象データなし")
+                    flash("⚠️ インポートできるデータがありませんでした", "warning")
 
                 if errors:
-                    flash(f"エラー {len(errors)}件が発生しました", "warning")
+                    print(f"⚠️ エラー発生: {len(errors)}件")
+                    for error in errors[:5]:  # 最初の5件のエラーを表示
+                        print(f"  - {error}")
+                    flash(f"⚠️ エラー {len(errors)}件が発生しました", "warning")
 
                 return redirect(url_for("main.upload_aircon_data"))
             else:
@@ -229,14 +212,21 @@ def test_upload():
                 # データベースに保存
                 if imported_count > 0 or updated_count > 0:
                     db.session.commit()
+                    print(
+                        f"✅ テスト版データベース保存完了: 新規{imported_count}件, 更新{updated_count}件"
+                    )
                     flash(
-                        f"✅ インポート完了: 新規追加 {imported_count}件, 更新 {updated_count}件",
+                        f"🎉 インポート完了: 新規追加 {imported_count}件, 更新 {updated_count}件",
                         "success",
                     )
                 else:
+                    print("⚠️ テスト版インポート対象データなし")
                     flash("⚠️ インポートできるデータがありませんでした", "warning")
 
                 if errors:
+                    print(f"⚠️ テスト版エラー発生: {len(errors)}件")
+                    for error in errors[:3]:  # 最初の3件のエラーを表示
+                        print(f"  - {error}")
                     flash(f"⚠️ エラー {len(errors)}件が発生しました", "warning")
 
                 return redirect(url_for("main.test_upload"))
