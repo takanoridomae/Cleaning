@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ファイルアップロードテスト</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>ファイルアップロードテスト</h1>
+        
+        <!-- テスト1: 基本的なファイル入力 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>テスト1: 基本的なファイル入力</h5>
+            </div>
+            <div class="card-body">
+                <form>
+                    <input type="file" accept=".json">
+                    <button type="button" class="btn btn-primary mt-2">テストボタン</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- テスト2: Bootstrap形式 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>テスト2: Bootstrap形式</h5>
+            </div>
+            <div class="card-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="file1" class="form-label">ファイル選択</label>
+                        <input type="file" class="form-control" id="file1" accept=".json">
+                    </div>
+                    <button type="button" class="btn btn-success">テストボタン</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- テスト3: スタイル付き -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>テスト3: スタイル付き</h5>
+            </div>
+            <div class="card-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="file2" class="form-label">ファイル選択</label>
+                        <input type="file" 
+                               class="form-control form-control-lg" 
+                               id="file2" 
+                               accept=".json"
+                               style="border: 2px solid #0d6efd; padding: 10px;">
+                    </div>
+                    <button type="button" class="btn btn-warning">テストボタン</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- テスト4: 実際のアップロードフォーム -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>テスト4: 実際のアップロードフォーム</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" action="/admin/upload-aircon-data">
+                    <div class="mb-3">
+                        <label for="aircon_file" class="form-label">エアコンデータファイル (JSON)</label>
+                        <input type="file" 
+                               class="form-control" 
+                               id="aircon_file" 
+                               name="aircon_file" 
+                               accept=".json" 
+                               required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> アップロード実行
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ファイル選択時のイベントリスナー
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            input.addEventListener('change', function(e) {
+                console.log('ファイルが選択されました:', e.target.files[0]?.name);
+                const file = e.target.files[0];
+                if (file) {
+                    alert(`ファイルが選択されました: ${file.name}`);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

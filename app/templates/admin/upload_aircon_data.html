@@ -6,66 +6,111 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">エアコンデータアップロード</h3>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <h5><i class="bi bi-info-circle me-2"></i> 現在の状況</h5>
-                        現在のエアコン登録数: <strong>{{ current_count }}件</strong>
-                    </div>
+            <h2>エアコンデータアップロード</h2>
+            
+            <div class="alert alert-info">
+                <strong>現在のエアコン登録数:</strong> {{ current_count }}件
+            </div>
 
-                    <div class="alert alert-warning">
-                        <h5><i class="bi bi-exclamation-triangle me-2"></i> 注意事項</h5>
-                        <ul>
-                            <li>JSONファイルのみアップロード可能です</li>
-                            <li>重複データは自動的に更新されます（property_id, manufacturer, model_numberで判定）</li>
-                            <li>アップロード前に必ずバックアップを取得してください</li>
-                            <li>大量データの場合、処理に時間がかかる場合があります</li>
-                        </ul>
-                    </div>
+            <div class="alert alert-warning">
+                <strong>注意事項:</strong>
+                <ul>
+                    <li>JSONファイルのみアップロード可能です</li>
+                    <li>重複データは自動的に更新されます</li>
+                    <li>アップロード前に必ずバックアップを取得してください</li>
+                </ul>
+            </div>
 
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label for="aircon_file" class="form-label">エアコンデータファイル (JSON)</label>
-                            <input type="file" class="form-control" id="aircon_file" name="aircon_file" accept=".json" required>
-                            <div class="form-text">
-                                aircon_export_*.json ファイルを選択してください
-                            </div>
-                        </div>
+            <!-- メインのアップロードフォーム -->
+            <div style="border: 2px solid #007bff; padding: 20px; border-radius: 10px; background-color: #f8f9fa;">
+                <h4>ファイルアップロード</h4>
+                <form method="POST" enctype="multipart/form-data">
+                    <table>
+                        <tr>
+                            <td style="padding: 10px;">
+                                <strong>ファイル選択:</strong>
+                            </td>
+                            <td style="padding: 10px;">
+                                <input type="file" 
+                                       name="aircon_file" 
+                                       accept=".json" 
+                                       required
+                                       style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td style="padding: 10px;">
+                                <button type="submit" 
+                                        style="background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                                    📤 アップロード実行
+                                </button>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
 
-                        <div class="mb-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-upload"></i> アップロード実行
-                            </button>
-                            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> 戻る
-                            </a>
-                        </div>
-                    </form>
+            <!-- 代替フォーム -->
+            <div style="margin-top: 20px; border: 1px solid #28a745; padding: 15px; border-radius: 5px;">
+                <h5>代替フォーム（シンプル版）</h5>
+                <form method="POST" enctype="multipart/form-data">
+                    <p>
+                        <label>ファイル選択:</label><br>
+                        <input type="file" name="aircon_file" accept=".json" required>
+                    </p>
+                    <p>
+                        <input type="submit" value="アップロード" style="background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 3px;">
+                    </p>
+                </form>
+            </div>
 
-                    <div class="mt-4">
-                        <h5>使用方法</h5>
-                        <ol>
-                            <li>ローカルで生成された <code>aircon_export_20250628_210003.json</code> ファイルを選択</li>
-                            <li>「アップロード実行」ボタンをクリック</li>
-                            <li>処理完了まで待機</li>
-                            <li>結果メッセージを確認</li>
-                        </ol>
-                    </div>
+            <!-- HTML5基本フォーム -->
+            <div style="margin-top: 20px; border: 1px solid #ffc107; padding: 15px; border-radius: 5px;">
+                <h5>HTML5基本フォーム</h5>
+                <form method="POST" enctype="multipart/form-data">
+                    ファイル: <input type="file" name="aircon_file" accept=".json" required><br><br>
+                    <input type="submit" value="送信">
+                </form>
+            </div>
 
-                    <div class="mt-3">
-                        <h6>対象ファイル</h6>
-                        <code>aircon_export_20250628_210003.json</code>
-                        <br>
-                        <small class="text-muted">114件のエアコンデータが含まれています</small>
-                    </div>
-                </div>
+            <div style="margin-top: 20px;">
+                <h5>対象ファイル情報</h5>
+                <ul>
+                    <li><strong>ファイル名:</strong> aircon_export_20250628_210003.json</li>
+                    <li><strong>データ件数:</strong> 114件</li>
+                    <li><strong>ファイルサイズ:</strong> 約47KB</li>
+                </ul>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <a href="{{ url_for('main.index') }}" style="background-color: #6c757d; color: white; padding: 8px 16px; text-decoration: none; border-radius: 3px;">
+                    ← ダッシュボードに戻る
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('ページが読み込まれました');
+    
+    // すべてのファイル入力要素を取得
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    console.log('ファイル入力要素数:', fileInputs.length);
+    
+    fileInputs.forEach((input, index) => {
+        console.log(`ファイル入力${index + 1}:`, input);
+        
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                console.log('選択されたファイル:', file.name);
+                alert(`ファイルが選択されました: ${file.name}`);
+            }
+        });
+    });
+});
+</script>
 {% endblock %} 
