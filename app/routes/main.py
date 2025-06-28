@@ -307,6 +307,7 @@ def upload_all_data():
                 from app.models.work_time import WorkTime
                 from app.models.work_detail import WorkDetail
                 from app.models.work_item import WorkItem
+                from app.models.schedule import Schedule
 
                 content = file.read().decode("utf-8")
                 all_data = json.loads(content)
@@ -322,6 +323,10 @@ def upload_all_data():
                     ("work_times", WorkTime),
                     ("work_details", WorkDetail),
                     ("work_items", WorkItem),
+                    (
+                        "schedules",
+                        Schedule,
+                    ),  # 追加：他テーブルへの外部キー参照があるため最後に配置
                 ]
 
                 total_imported = 0
@@ -455,6 +460,7 @@ def upload_all_data():
         from app.models.work_time import WorkTime
         from app.models.work_detail import WorkDetail
         from app.models.work_item import WorkItem
+        from app.models.schedule import Schedule
 
         table_counts = {
             "users": User.query.count(),
@@ -466,6 +472,7 @@ def upload_all_data():
             "work_times": WorkTime.query.count(),
             "work_details": WorkDetail.query.count(),
             "work_items": WorkItem.query.count(),
+            "schedules": Schedule.query.count(),  # 追加
         }
     except Exception as e:
         print(f"⚠️ テーブルカウント取得エラー: {e}")

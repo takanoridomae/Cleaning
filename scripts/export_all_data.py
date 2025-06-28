@@ -22,6 +22,7 @@ from app.models.air_conditioner import AirConditioner
 from app.models.work_time import WorkTime
 from app.models.work_detail import WorkDetail
 from app.models.work_item import WorkItem
+from app.models.schedule import Schedule
 
 
 def serialize_datetime(obj):
@@ -79,6 +80,7 @@ def export_all_data():
             (WorkTime, "work_times"),
             (WorkDetail, "work_details"),
             (WorkItem, "work_items"),
+            (Schedule, "schedules"),
         ]
 
         all_data = {}
