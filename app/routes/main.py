@@ -70,6 +70,7 @@ def upload_aircon_data():
                 # JSONファイルを読み込み
                 import json
                 from app.models.air_conditioner import AirConditioner
+                from datetime import datetime
 
                 content = file.read().decode("utf-8")
                 data = json.loads(content)
@@ -82,6 +83,20 @@ def upload_aircon_data():
                     try:
                         # IDを除いてデータを準備
                         item_data = {k: v for k, v in item.items() if k != "id"}
+
+                        # 日付フィールドの変換（デプロイ環境対応）
+                        for date_field in ["created_at", "updated_at"]:
+                            if date_field in item_data and item_data[date_field]:
+                                try:
+                                    if isinstance(item_data[date_field], str):
+                                        # 文字列から日付オブジェクトに変換
+                                        item_data[date_field] = datetime.fromisoformat(
+                                            item_data[date_field].replace("Z", "+00:00")
+                                        )
+                                except (ValueError, AttributeError) as e:
+                                    print(f"⚠️ 日付変換エラー {date_field}: {e}")
+                                    # 現在の日時を設定
+                                    item_data[date_field] = datetime.now()
 
                         # 必須フィールドの確認
                         if not item_data.get("property_id"):
@@ -168,6 +183,7 @@ def test_upload():
                 # JSONファイルを読み込み
                 import json
                 from app.models.air_conditioner import AirConditioner
+                from datetime import datetime
 
                 content = file.read().decode("utf-8")
                 data = json.loads(content)
@@ -180,6 +196,20 @@ def test_upload():
                     try:
                         # IDを除いてデータを準備
                         item_data = {k: v for k, v in item.items() if k != "id"}
+
+                        # 日付フィールドの変換（デプロイ環境対応）
+                        for date_field in ["created_at", "updated_at"]:
+                            if date_field in item_data and item_data[date_field]:
+                                try:
+                                    if isinstance(item_data[date_field], str):
+                                        # 文字列から日付オブジェクトに変換
+                                        item_data[date_field] = datetime.fromisoformat(
+                                            item_data[date_field].replace("Z", "+00:00")
+                                        )
+                                except (ValueError, AttributeError) as e:
+                                    print(f"⚠️ テスト版日付変換エラー {date_field}: {e}")
+                                    # 現在の日時を設定
+                                    item_data[date_field] = datetime.now()
 
                         # 必須フィールドの確認
                         if not item_data.get("property_id"):
