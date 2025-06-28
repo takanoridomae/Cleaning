@@ -97,7 +97,7 @@
         <!-- メインアップロードセクション -->
         <div class="upload-section">
             <h2>📤 ファイルアップロード</h2>
-            <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.upload_aircon_data') }}">
+                         <form method="POST" enctype="multipart/form-data">
                 <p><strong>ステップ1:</strong> 下のボタンをクリックしてファイルを選択してください</p>
                 <p>
                     <input type="file" name="aircon_file" accept=".json" required id="main-file">
