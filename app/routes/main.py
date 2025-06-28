@@ -404,9 +404,23 @@ def upload_all_data():
                         except Exception as e:
                             errors.append(f"Item {i}: {str(e)}")
                             print(f"❌ {table_name}テーブル Item {i} エラー: {e}")
-                            # エラー発生時はセッションをロールバック
-                            db.session.rollback()
+                            # エラー発生時は個別ロールバックではなく、エラーログのみ記録
+                            # db.session.rollback() を削除（これが原因でテーブル全体がロールバックされていた）
                             continue
+
+                    # テーブル毎にコミットを実行（エラーがあっても成功分は保存）
+                    try:
+                        if imported_count > 0 or updated_count > 0:
+                            db.session.commit()
+                            print(
+                                f"  💾 {table_name}テーブル保存完了: 新規{imported_count}件, 更新{updated_count}件"
+                            )
+                    except Exception as commit_error:
+                        db.session.rollback()
+                        print(f"  ❌ {table_name}テーブル保存エラー: {commit_error}")
+                        # コミットエラーの場合は該当テーブルの成功カウントをリセット
+                        imported_count = 0
+                        updated_count = 0
 
                     # テーブル毎の結果を記録
                     results[table_name] = {
@@ -423,14 +437,13 @@ def upload_all_data():
                         f"  ✅ {table_name}: 新規{imported_count}件, 更新{updated_count}件, エラー{len(errors)}件"
                     )
 
-                # データベースに保存
-                if total_imported > 0 or total_updated > 0:
-                    db.session.commit()
-                    print(
-                        f"✅ 全データベース保存完了: 新規{total_imported}件, 更新{total_updated}件"
-                    )
+                # 最終結果の表示（テーブル毎にコミット済みなので、ここでの追加コミットは不要）
+                print(
+                    f"✅ 全データインポート処理完了: 新規{total_imported}件, 更新{total_updated}件"
+                )
 
-                    # 詳細結果をフラッシュメッセージに
+                # 詳細結果をフラッシュメッセージに
+                if total_imported > 0 or total_updated > 0:
                     result_msg = f"🎉 全データインポート完了!<br>"
                     result_msg += (
                         f"📊 総計: 新規{total_imported}件, 更新{total_updated}件<br>"
