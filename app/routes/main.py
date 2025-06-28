@@ -354,7 +354,7 @@ def upload_all_data():
                             # 日付フィールドの変換（デプロイ環境対応）
                             for field_name, field_value in item_data.items():
                                 if field_value and isinstance(field_value, str):
-                                    # 日付っぽい文字列を変換（より広範囲なフィールドに対応）
+                                    # datetime型フィールドの変換
                                     if any(
                                         keyword in field_name.lower()
                                         for keyword in [
@@ -363,9 +363,6 @@ def upload_all_data():
                                             "last_login",  # 追加
                                             "start_datetime",  # schedules用
                                             "end_datetime",  # schedules用
-                                            "recurrence_end",  # schedules用
-                                            "date",
-                                            "time",
                                         ]
                                     ):
                                         try:
@@ -377,6 +374,47 @@ def upload_all_data():
                                             )
                                         except (ValueError, AttributeError):
                                             # 変換できない場合はそのまま
+                                            pass
+
+                                    # date型フィールドの変換（work_dateなど）
+                                    elif any(
+                                        keyword in field_name.lower()
+                                        for keyword in ["work_date", "recurrence_end"]
+                                    ):
+                                        try:
+                                            from datetime import date
+
+                                            # ISO形式の日付文字列をdateオブジェクトに変換
+                                            item_data[field_name] = (
+                                                datetime.fromisoformat(
+                                                    field_value
+                                                ).date()
+                                            )
+                                        except (ValueError, AttributeError):
+                                            pass
+
+                                    # time型フィールドの変換（start_time, end_timeなど）
+                                    elif any(
+                                        keyword in field_name.lower()
+                                        for keyword in ["start_time", "end_time"]
+                                    ):
+                                        try:
+                                            from datetime import time
+
+                                            # HH:MM:SS形式の時間文字列をtimeオブジェクトに変換
+                                            time_parts = field_value.split(":")
+                                            if len(time_parts) >= 2:
+                                                hour = int(time_parts[0])
+                                                minute = int(time_parts[1])
+                                                second = (
+                                                    int(time_parts[2])
+                                                    if len(time_parts) > 2
+                                                    else 0
+                                                )
+                                                item_data[field_name] = time(
+                                                    hour, minute, second
+                                                )
+                                        except (ValueError, AttributeError, IndexError):
                                             pass
 
                             # 既存レコードの確認（IDベース）
