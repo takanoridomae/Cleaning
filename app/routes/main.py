@@ -354,17 +354,22 @@ def upload_all_data():
                             # 日付フィールドの変換（デプロイ環境対応）
                             for field_name, field_value in item_data.items():
                                 if field_value and isinstance(field_value, str):
-                                    # 日付っぽい文字列を変換
+                                    # 日付っぽい文字列を変換（より広範囲なフィールドに対応）
                                     if any(
                                         keyword in field_name.lower()
                                         for keyword in [
                                             "created_at",
                                             "updated_at",
+                                            "last_login",  # 追加
+                                            "start_datetime",  # schedules用
+                                            "end_datetime",  # schedules用
+                                            "recurrence_end",  # schedules用
                                             "date",
                                             "time",
                                         ]
                                     ):
                                         try:
+                                            # ISO形式の文字列をdatetimeオブジェクトに変換
                                             item_data[field_name] = (
                                                 datetime.fromisoformat(
                                                     field_value.replace("Z", "+00:00")
@@ -398,6 +403,9 @@ def upload_all_data():
 
                         except Exception as e:
                             errors.append(f"Item {i}: {str(e)}")
+                            print(f"❌ {table_name}テーブル Item {i} エラー: {e}")
+                            # エラー発生時はセッションをロールバック
+                            db.session.rollback()
                             continue
 
                     # テーブル毎の結果を記録
