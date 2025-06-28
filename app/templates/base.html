@@ -95,6 +95,11 @@
                                 <li><a class="dropdown-item" href="{{ url_for('notifications.dashboard') }}">
                                     <i class="bi bi-bell me-2"></i>通知管理
                                 </a></li>
+                                {% if g.user.role == 'admin' %}
+                                <li><a class="dropdown-item" href="{{ url_for('main.upload_aircon_data') }}">
+                                    <i class="bi bi-upload me-2"></i>エアコンデータアップロード
+                                </a></li>
+                                {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header">PDF出力</h6></li>
                                 <li><a class="dropdown-item" href="{{ url_for('reports.list') }}">
