@@ -12,12 +12,12 @@
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <h5><i class="icon fas fa-info"></i> 現在の状況</h5>
+                        <h5><i class="bi bi-info-circle me-2"></i> 現在の状況</h5>
                         現在のエアコン登録数: <strong>{{ current_count }}件</strong>
                     </div>
 
                     <div class="alert alert-warning">
-                        <h5><i class="icon fas fa-exclamation-triangle"></i> 注意事項</h5>
+                        <h5><i class="bi bi-exclamation-triangle me-2"></i> 注意事項</h5>
                         <ul>
                             <li>JSONファイルのみアップロード可能です</li>
                             <li>重複データは自動的に更新されます（property_id, manufacturer, model_numberで判定）</li>
@@ -27,25 +27,20 @@
                     </div>
 
                     <form method="POST" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <label for="aircon_file">エアコンデータファイル (JSON)</label>
-                            <div class="input-group">
-                                <div class="custom-file">
-                                    <input type="file" class="custom-file-input" id="aircon_file" name="aircon_file" accept=".json" required>
-                                    <label class="custom-file-label" for="aircon_file">ファイルを選択...</label>
-                                </div>
-                            </div>
-                            <small class="form-text text-muted">
+                        <div class="mb-3">
+                            <label for="aircon_file" class="form-label">エアコンデータファイル (JSON)</label>
+                            <input type="file" class="form-control" id="aircon_file" name="aircon_file" accept=".json" required>
+                            <div class="form-text">
                                 aircon_export_*.json ファイルを選択してください
-                            </small>
+                            </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="mb-3">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload"></i> アップロード実行
+                                <i class="bi bi-upload"></i> アップロード実行
                             </button>
                             <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> 戻る
+                                <i class="bi bi-arrow-left"></i> 戻る
                             </a>
                         </div>
                     </form>
@@ -72,12 +67,5 @@
     </div>
 </div>
 
-<script>
-// ファイル選択時にファイル名を表示
-document.querySelector('.custom-file-input').addEventListener('change', function(e) {
-    var fileName = e.target.files[0].name;
-    var nextSibling = e.target.nextElementSibling;
-    nextSibling.innerText = fileName;
-});
-</script>
+
 {% endblock %} 
