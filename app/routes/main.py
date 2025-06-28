@@ -379,7 +379,11 @@ def upload_all_data():
                                     # date型フィールドの変換（work_dateなど）
                                     elif any(
                                         keyword in field_name.lower()
-                                        for keyword in ["work_date", "recurrence_end"]
+                                        for keyword in [
+                                            "work_date",
+                                            "recurrence_end",
+                                            "date",
+                                        ]
                                     ):
                                         try:
                                             from datetime import date
