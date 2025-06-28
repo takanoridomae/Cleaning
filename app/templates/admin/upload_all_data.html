@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全データアップロード - エアコンクリーニング完了報告書システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .table-count {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input {
+            opacity: 0;
+            position: absolute;
+            z-index: -1;
+        }
+        .file-input-button {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            text-align: center;
+        }
+        .file-input-button:hover {
+            background: #0056b3;
+        }
+        .file-name {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+        .alert {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <i class="bi bi-database-up"></i> 全データベースアップロード
+                </h1>
+                
+                <!-- 現在のデータ状況表示 -->
+                <div class="table-count">
+                    <h3><i class="bi bi-info-circle"></i> 現在のデータ状況</h3>
+                    {% if table_counts %}
+                    <div class="row">
+                        {% for table_name, count in table_counts.items() %}
+                        <div class="col-md-3 col-sm-6 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ table_name }}:</span>
+                                <strong>{{ count }}件</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">データ状況の取得に失敗しました</p>
+                    {% endif %}
+                </div>
+
+                <!-- アップロード機能 -->
+                <div class="upload-section">
+                    <h2>📤 全データファイルアップロード</h2>
+                    <div class="alert alert-info">
+                        <strong>📋 重要事項:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>全テーブル（users, customers, properties, reports, photos, air_conditioners, work_times, work_details, work_items）のデータを一括インポートします</li>
+                            <li>既存のIDと一致するレコードは更新され、新しいIDのレコードは追加されます</li>
+                            <li>データ量が多い場合、処理に時間がかかる場合があります</li>
+                            <li>必ず <code>scripts/export_all_data.py</code> で作成されたJSONファイルを使用してください</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <p><strong>ステップ1:</strong> 全データJSONファイルを選択してください</p>
+                        
+                        <div class="file-input-wrapper">
+                            <input type="file" 
+                                   id="all_data_file" 
+                                   name="all_data_file" 
+                                   accept=".json"
+                                   class="file-input"
+                                   onchange="updateFileName(this)">
+                            <label for="all_data_file" class="file-input-button">
+                                <i class="bi bi-file-earmark-arrow-up"></i> 全データJSONファイルを選択
+                            </label>
+                        </div>
+                        <div id="fileName" class="file-name"></div>
+
+                        <div class="mt-4">
+                            <p><strong>ステップ2:</strong> アップロードを開始してください</p>
+                            <button type="submit" 
+                                    class="btn btn-success btn-lg" 
+                                    id="uploadButton"
+                                    disabled>
+                                <i class="bi bi-cloud-upload"></i> 全データアップロード開始
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 処理中表示 -->
+                    <div id="processing" class="alert alert-warning mt-3" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span>データをアップロード中です... しばらくお待ちください</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン -->
+                <div class="mt-4">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> ダッシュボードに戻る
+                    </a>
+                    <a href="{{ url_for('main.upload_aircon_data') }}" class="btn btn-primary ms-2">
+                        <i class="bi bi-upload"></i> エアコンデータのみアップロード
+                    </a>
+                </div>
+
+                <!-- フラッシュメッセージ表示 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mt-3" role="alert">
+                                {{ message|safe }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function updateFileName(input) {
+            const fileNameDiv = document.getElementById('fileName');
+            const uploadButton = document.getElementById('uploadButton');
+            
+            if (input.files && input.files[0]) {
+                const fileName = input.files[0].name;
+                const fileSize = (input.files[0].size / (1024 * 1024)).toFixed(2);
+                fileNameDiv.innerHTML = `<i class="bi bi-file-earmark-check text-success"></i> 選択されたファイル: <strong>${fileName}</strong> (${fileSize}MB)`;
+                uploadButton.disabled = false;
+                
+                // ファイル名の検証
+                if (!fileName.includes('all_data_export_') || !fileName.endsWith('.json')) {
+                    fileNameDiv.innerHTML += '<br><span class="text-warning"><i class="bi bi-exclamation-triangle"></i> 警告: 正しい全データエクスポートファイルか確認してください</span>';
+                }
+            } else {
+                fileNameDiv.innerHTML = '';
+                uploadButton.disabled = true;
+            }
+        }
+
+        // フォーム送信時の処理
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('all_data_file');
+            if (!fileInput.files || !fileInput.files[0]) {
+                e.preventDefault();
+                alert('ファイルを選択してください');
+                return;
+            }
+
+            // 処理中表示
+            document.getElementById('processing').style.display = 'block';
+            document.getElementById('uploadButton').disabled = true;
+            document.getElementById('uploadButton').innerHTML = '<i class="bi bi-hourglass-split"></i> アップロード中...';
+        });
+
+        // ページ読み込み時のデバッグ情報
+        console.log('全データアップロード画面が読み込まれました');
+        console.log('現在のURL:', window.location.href);
+    </script>
+</body>
+</html> 

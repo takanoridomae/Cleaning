@@ -275,3 +275,200 @@ def test_upload():
     current_count = AirConditioner.query.count()
 
     return render_template("admin/upload_aircon_data.html", current_count=current_count)
+
+
+@bp.route("/admin/upload-all-data", methods=["GET", "POST"])
+def upload_all_data():
+    """全テーブルデータアップロード（管理者用）"""
+    print("🔍 全データアップロード画面にアクセスしました")
+
+    if request.method == "POST":
+        try:
+            # JSONファイルのアップロード処理
+            if "all_data_file" not in request.files:
+                flash("ファイルが選択されていません", "error")
+                return redirect(request.url)
+
+            file = request.files["all_data_file"]
+            if file.filename == "":
+                flash("ファイルが選択されていません", "error")
+                return redirect(request.url)
+
+            if file and file.filename.endswith(".json"):
+                # JSONファイルを読み込み
+                import json
+                from datetime import datetime
+                from app.models.user import User
+                from app.models.customer import Customer
+                from app.models.property import Property
+                from app.models.report import Report
+                from app.models.photo import Photo
+                from app.models.air_conditioner import AirConditioner
+                from app.models.work_time import WorkTime
+                from app.models.work_detail import WorkDetail
+                from app.models.work_item import WorkItem
+
+                content = file.read().decode("utf-8")
+                all_data = json.loads(content)
+
+                # インポート順序（依存関係を考慮）
+                import_config = [
+                    ("users", User),
+                    ("customers", Customer),
+                    ("properties", Property),
+                    ("reports", Report),
+                    ("photos", Photo),
+                    ("air_conditioners", AirConditioner),
+                    ("work_times", WorkTime),
+                    ("work_details", WorkDetail),
+                    ("work_items", WorkItem),
+                ]
+
+                total_imported = 0
+                total_updated = 0
+                total_errors = 0
+                results = {}
+
+                for table_name, model_class in import_config:
+                    if table_name not in all_data:
+                        print(f"⚠️ {table_name}テーブルのデータが見つかりません")
+                        continue
+
+                    print(f"📋 {table_name}テーブルをインポート中...")
+                    table_data = all_data[table_name]
+
+                    imported_count = 0
+                    updated_count = 0
+                    errors = []
+
+                    for i, item in enumerate(table_data):
+                        try:
+                            # IDを除いてデータを準備
+                            item_data = {k: v for k, v in item.items() if k != "id"}
+
+                            # 日付フィールドの変換（デプロイ環境対応）
+                            for field_name, field_value in item_data.items():
+                                if field_value and isinstance(field_value, str):
+                                    # 日付っぽい文字列を変換
+                                    if any(
+                                        keyword in field_name.lower()
+                                        for keyword in [
+                                            "created_at",
+                                            "updated_at",
+                                            "date",
+                                            "time",
+                                        ]
+                                    ):
+                                        try:
+                                            item_data[field_name] = (
+                                                datetime.fromisoformat(
+                                                    field_value.replace("Z", "+00:00")
+                                                )
+                                            )
+                                        except (ValueError, AttributeError):
+                                            # 変換できない場合はそのまま
+                                            pass
+
+                            # 既存レコードの確認（IDベース）
+                            original_id = item.get("id")
+                            existing = None
+                            if original_id:
+                                existing = model_class.query.filter_by(
+                                    id=original_id
+                                ).first()
+
+                            if existing:
+                                # 既存レコードを更新
+                                for key, value in item_data.items():
+                                    if hasattr(existing, key):
+                                        setattr(existing, key, value)
+                                updated_count += 1
+                            else:
+                                # 新規レコードを作成（IDも含める）
+                                if original_id:
+                                    item_data["id"] = original_id
+                                new_record = model_class(**item_data)
+                                db.session.add(new_record)
+                                imported_count += 1
+
+                        except Exception as e:
+                            errors.append(f"Item {i}: {str(e)}")
+                            continue
+
+                    # テーブル毎の結果を記録
+                    results[table_name] = {
+                        "imported": imported_count,
+                        "updated": updated_count,
+                        "errors": len(errors),
+                    }
+
+                    total_imported += imported_count
+                    total_updated += updated_count
+                    total_errors += len(errors)
+
+                    print(
+                        f"  ✅ {table_name}: 新規{imported_count}件, 更新{updated_count}件, エラー{len(errors)}件"
+                    )
+
+                # データベースに保存
+                if total_imported > 0 or total_updated > 0:
+                    db.session.commit()
+                    print(
+                        f"✅ 全データベース保存完了: 新規{total_imported}件, 更新{total_updated}件"
+                    )
+
+                    # 詳細結果をフラッシュメッセージに
+                    result_msg = f"🎉 全データインポート完了!<br>"
+                    result_msg += (
+                        f"📊 総計: 新規{total_imported}件, 更新{total_updated}件<br>"
+                    )
+                    for table_name, result in results.items():
+                        result_msg += f"• {table_name}: 新規{result['imported']}件, 更新{result['updated']}件<br>"
+
+                    flash(result_msg, "success")
+                else:
+                    print("⚠️ インポート対象データなし")
+                    flash("⚠️ インポートできるデータがありませんでした", "warning")
+
+                if total_errors > 0:
+                    flash(f"⚠️ 合計{total_errors}件のエラーが発生しました", "warning")
+
+                return redirect(url_for("main.upload_all_data"))
+            else:
+                flash("❌ JSONファイルを選択してください", "error")
+                return redirect(request.url)
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ 全データアップロードエラー: {e}")
+            flash(f"❌ アップロードエラー: {str(e)}", "error")
+            return redirect(request.url)
+
+    # 現在の各テーブルのレコード数を表示
+    try:
+        from app.models.user import User
+        from app.models.customer import Customer
+        from app.models.property import Property
+        from app.models.report import Report
+        from app.models.photo import Photo
+        from app.models.air_conditioner import AirConditioner
+        from app.models.work_time import WorkTime
+        from app.models.work_detail import WorkDetail
+        from app.models.work_item import WorkItem
+
+        table_counts = {
+            "users": User.query.count(),
+            "customers": Customer.query.count(),
+            "properties": Property.query.count(),
+            "reports": Report.query.count(),
+            "photos": Photo.query.count(),
+            "air_conditioners": AirConditioner.query.count(),
+            "work_times": WorkTime.query.count(),
+            "work_details": WorkDetail.query.count(),
+            "work_items": WorkItem.query.count(),
+        }
+    except Exception as e:
+        print(f"⚠️ テーブルカウント取得エラー: {e}")
+        table_counts = {}
+
+    return render_template("admin/upload_all_data.html", table_counts=table_counts)
