@@ -89,3 +89,6 @@ $RECYCLE.BIN/
 htmlcov/
 .tox/
 .pytest_cache/ 
+# Photo migration files (temporary)
+photo_migration/*.zip
+photo_migration/*.part*

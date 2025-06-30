@@ -9,6 +9,50 @@ pip install -r requirements.txt
 # データベースディレクトリの作成
 mkdir -p instance
 
+# Persistent Disk設定の確認と初期化
+PERSISTENT_DISK_PATH="/opt/render/project/src/uploads"
+
+echo "=== Persistent Disk 設定確認 ==="
+
+if [ -d "$PERSISTENT_DISK_PATH" ]; then
+    echo "✅ Persistent Diskが検出されました: $PERSISTENT_DISK_PATH"
+    
+    # 必要なサブディレクトリが存在しない場合は作成
+    mkdir -p "$PERSISTENT_DISK_PATH/before"
+    mkdir -p "$PERSISTENT_DISK_PATH/after" 
+    mkdir -p "$PERSISTENT_DISK_PATH/thumbnails"
+    mkdir -p "$PERSISTENT_DISK_PATH/PDF"
+    
+    # 権限設定
+    chmod -R 755 "$PERSISTENT_DISK_PATH"
+    
+    # 既存ファイル数の確認
+    BEFORE_COUNT=$(find "$PERSISTENT_DISK_PATH/before" -type f 2>/dev/null | wc -l)
+    AFTER_COUNT=$(find "$PERSISTENT_DISK_PATH/after" -type f 2>/dev/null | wc -l)
+    
+    echo "📁 既存写真データ:"
+    echo "   - 施工前写真: ${BEFORE_COUNT}件"
+    echo "   - 施工後写真: ${AFTER_COUNT}件"
+    
+    if [ $((BEFORE_COUNT + AFTER_COUNT)) -gt 0 ]; then
+        echo "🔄 既存の写真データが保護されます"
+    else
+        echo "📂 新規Persistent Diskです"
+    fi
+else
+    echo "⚠️  Persistent Diskが検出されませんでした"
+    echo "   デフォルトの一時的なuploadsディレクトリを作成します"
+    echo "   ※ 再デプロイ時にファイルが削除される可能性があります"
+    
+    # フォールバック用のディレクトリ作成
+    mkdir -p uploads/before
+    mkdir -p uploads/after
+    mkdir -p uploads/thumbnails
+    mkdir -p uploads/PDF
+fi
+
+echo "=== データベース初期化 ==="
+
 # 環境変数の確認とデータ保護モード
 if [ "${PRESERVE_DATA}" = "true" ]; then
     echo "PRESERVE_DATA=true が設定されています。既存データ保護モードで実行します。"

@@ -18,8 +18,14 @@ login_manager = LoginManager()
 def create_app(test_config=None):
     # アプリケーションの作成と設定
     app = Flask(__name__, instance_relative_config=True)
+
+    # デフォルト設定
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev"),
+        DATABASE=os.path.join(app.instance_path, "aircon_report.db"),
+        # Persistent Disk対応のアップロードフォルダ設定
+        UPLOAD_FOLDER=_get_upload_folder_path(app),
+        MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # 16MB
         SQLALCHEMY_DATABASE_URI="sqlite:///"
         + os.path.join(app.instance_path, "aircon_report.db"),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -32,7 +38,6 @@ def create_app(test_config=None):
                 "check_same_thread": False,  # マルチスレッド対応
             },
         },
-        UPLOAD_FOLDER=os.path.join(os.path.dirname(app.root_path), "uploads"),
         # Mail設定
         MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
         MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
@@ -152,3 +157,29 @@ def create_app(test_config=None):
             print(f"スケジューラー開始エラー: {e}")
 
     return app
+
+
+def _get_upload_folder_path(app):
+    """
+    Persistent Disk対応のアップロードフォルダパスを取得
+
+    Returns:
+        str: アップロードフォルダのパス
+    """
+    # Renderの本番環境でPersistent Diskがマウントされている場合
+    persistent_disk_path = "/opt/render/project/src/uploads"
+
+    # 環境変数でカスタムパスが指定されている場合
+    custom_upload_path = os.environ.get("UPLOAD_FOLDER")
+    if custom_upload_path:
+        return custom_upload_path
+
+    # Persistent Diskが存在する場合
+    if os.path.exists(persistent_disk_path):
+        print(f"Persistent Diskを検出: {persistent_disk_path}")
+        return persistent_disk_path
+
+    # デフォルトパス（開発環境など）
+    default_path = os.path.join(os.path.dirname(app.root_path), "uploads")
+    print(f"デフォルトアップロードフォルダを使用: {default_path}")
+    return default_path
