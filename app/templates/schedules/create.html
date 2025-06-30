@@ -174,7 +174,7 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="property_id" class="form-label">関連物件</label>
+                            <label for="property_id" class="form-label">関連案件</label>
                             <select class="form-select" id="property_id" name="property_id">
                                 <option value="">-- 選択してください --</option>
                                 {% for property in properties %}
@@ -197,7 +197,7 @@
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">報告書を選択すると、関連する顧客・物件が自動的に設定されます</div>
+                            <div class="form-text">報告書を選択すると、関連する顧客・案件が自動的に設定されます</div>
                         </div>
                     </div>
 
@@ -228,7 +228,7 @@
                 <ul class="small">
                     <li>タイトルは必須項目です</li>
                     <li>終日の場合は時刻設定は無視されます</li>
-                    <li>関連顧客・物件を設定すると報告書との連携が可能です</li>
+                    <li>関連顧客・案件を設定すると報告書との連携が可能です</li>
                     <li>優先度により表示色が変わります</li>
                     <li><strong>通知設定により自動リマインダーが送信されます</strong></li>
                 </ul>
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notificationPreview.textContent = previewText;
     }
 
-    // 顧客選択時に関連物件をフィルタリング
+    // 顧客選択時に関連案件をフィルタリング
     customerSelect.addEventListener('change', function() {
         const selectedCustomerId = this.value;
         const propertyOptions = propertySelect.querySelectorAll('option');
@@ -416,14 +416,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // 現在選択されている物件が非表示になった場合はリセット
+        // 現在選択されている案件が非表示になった場合はリセット
         const currentPropertyOption = propertySelect.querySelector('option:checked');
         if (currentPropertyOption && currentPropertyOption.style.display === 'none') {
             propertySelect.value = '';
         }
     });
 
-    // 物件選択時に顧客を自動選択
+    // 案件選択時に顧客を自動選択
     propertySelect.addEventListener('change', function() {
         if (this.value) {
             const selectedOption = this.querySelector('option:checked');
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 報告書選択時に顧客・物件を自動選択
+    // 報告書選択時に顧客・案件を自動選択
     const reportSelect = document.getElementById('report_id');
     if (reportSelect) {
         reportSelect.addEventListener('change', function() {

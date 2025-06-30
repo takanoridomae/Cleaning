@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}物件編集 - {{ property.name }}{% endblock %}
+{% block title %}案件編集 - {{ property.name }}{% endblock %}
 
 {% block content %}
 <style>
@@ -12,11 +12,11 @@
 
 <div class="row mb-4">
     <div class="col">
-        <h1 class="page-title">物件編集</h1>
+        <h1 class="page-title">案件編集</h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">案件一覧</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('properties.view', id=property.id) }}">{{ property.name }}</a></li>
                 <li class="breadcrumb-item active" aria-current="page">編集</li>
             </ol>
@@ -33,7 +33,7 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label for="name" class="form-label required">物件名</label>
+                        <label for="name" class="form-label required">案件名</label>
                         <input type="text" class="form-control" id="name" name="name" value="{{ property.name }}" required>
                     </div>
                     
@@ -171,7 +171,7 @@
                 </div>
                 <div class="card-body">
                     <p class="small mb-0">
-                        物件情報を編集できます。<br>
+                        案件情報を編集できます。<br>
                         エアコン情報は「追加」ボタンから追加、各エアコンの編集ボタンから編集できます。<br>
                         <span class="text-danger">※ 「*」のついた項目は必須入力です。</span>
                     </p>
@@ -258,12 +258,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = value;
     });
     
-    // 物件名重複チェック機能
+    // 案件名重複チェック機能
     const propertyNameInput = document.getElementById('name');
     const currentPropertyId = {{ property.id|tojson }};
     let duplicateCheckTimeout;
     
-    // 物件名入力時のリアルタイム重複チェック
+    // 案件名入力時のリアルタイム重複チェック
     propertyNameInput.addEventListener('input', function() {
         // 入力が止まってから500ms後にチェック実行
         clearTimeout(duplicateCheckTimeout);

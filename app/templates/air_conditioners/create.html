@@ -9,7 +9,7 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">案件一覧</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('properties.view', id=property.id) }}">{{ property.name }}</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('air_conditioners.list_by_property', property_id=property.id) }}">エアコン一覧</a></li>
                 <li class="breadcrumb-item active" aria-current="page">新規登録</li>
@@ -89,11 +89,11 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">物件情報</h5>
+                <h5 class="mb-0">案件情報</h5>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-4 fw-bold text-muted">物件名</div>
+                    <div class="col-md-4 fw-bold text-muted">案件名</div>
                     <div class="col-md-8">{{ property.name }}</div>
                 </div>
                 <div class="row mb-3">
@@ -112,7 +112,7 @@
             <div class="card-footer">
                 <div class="d-grid">
                     <a href="{{ url_for('properties.view', id=property.id) }}" class="btn btn-outline-primary">
-                        <i class="bi bi-building"></i> 物件詳細に戻る
+                        <i class="bi bi-building"></i> 案件詳細に戻る
                     </a>
                 </div>
             </div>

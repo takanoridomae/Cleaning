@@ -35,8 +35,8 @@
                         
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="property_id" class="form-label mb-0">物件</label>
-                                <div class="btn-group btn-group-sm" role="group" aria-label="物件ソート">
+                                <label for="property_id" class="form-label mb-0">案件</label>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="案件ソート">
                                     <input type="radio" class="btn-check" name="property_sort" id="sort_latest" value="latest" checked>
                                     <label class="btn btn-outline-primary" for="sort_latest">登録最新順</label>
                                     <input type="radio" class="btn-check" name="property_sort" id="sort_name" value="name">
@@ -930,11 +930,11 @@
     function updateAirConditioners() {
         const propertyId = document.getElementById('property_id').value;
         if (!propertyId) {
-            console.log('updateAirConditioners: 物件IDがありません');
+            console.log('updateAirConditioners: 案件IDがありません');
             return;
         }
 
-        console.log(`updateAirConditioners: 物件ID ${propertyId} のエアコン情報を取得中...`);
+        console.log(`updateAirConditioners: 案件ID ${propertyId} のエアコン情報を取得中...`);
         
         // 作業詳細タブのエアコン選択セレクトボックスを更新
         fetch(`/reports/api/properties/${propertyId}/air_conditioners`)
@@ -979,7 +979,7 @@
             .catch(error => console.error('エアコン情報の取得に失敗しました:', error));
     }
 
-    // 物件選択時に住所を自動設定とエアコン情報を取得
+    // 案件選択時に住所を自動設定とエアコン情報を取得
     document.getElementById('property_id').addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const propertyId = this.value;
@@ -1045,7 +1045,7 @@
                     });
             }
         } else {
-            // 物件が選択されていない場合はエアコン選択をクリア
+            // 案件が選択されていない場合はエアコン選択をクリア
             document.querySelectorAll('.air-conditioner-select').forEach(select => {
                 select.innerHTML = '<option value="">選択してください</option>';
             });
@@ -1128,7 +1128,7 @@
             handleAirconSelectChangeEdit(this);
         });
         
-        // 物件が選択されている場合、エアコン情報を設定
+        // 案件が選択されている場合、エアコン情報を設定
         const propertyId = document.getElementById('property_id').value;
         if (propertyId) {
             const allAcSelects = document.querySelectorAll('.air-conditioner-select');
@@ -1235,14 +1235,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOMContentLoaded: 初期化開始');
         
-        // 物件選択済みの場合はエアコン情報も取得
+        // 案件選択済みの場合はエアコン情報も取得
         const propertySelect = document.getElementById('property_id');
         if (propertySelect.value) {
-            console.log(`物件が選択済み: ${propertySelect.value}`);
+            console.log(`案件が選択済み: ${propertySelect.value}`);
             // 直接updateAirConditioners関数を呼び出す
             updateAirConditioners();
         } else {
-            console.log('物件が未選択');
+            console.log('案件が未選択');
         }
         
         // 既存の削除ボタンにイベントリスナーを追加
@@ -2214,7 +2214,7 @@
         function initializeAirConditionerSelect() {
             const airConditionerSelect = document.getElementById('air_conditioner_id');
             
-            // 物件IDを取得
+            // 案件IDを取得
             const propertySelect = document.getElementById('property_id');
             const propertyId = propertySelect ? propertySelect.value : null;
             
@@ -2282,7 +2282,7 @@
             });
         });
         
-        // 物件選択時にもエアコン選択肢を更新
+        // 案件選択時にもエアコン選択肢を更新
         const propertySelect = document.getElementById('property_id');
         if (propertySelect) {
             propertySelect.addEventListener('change', function() {
@@ -2298,7 +2298,7 @@
             });
         }
         
-        // 物件ソート機能
+        // 案件ソート機能
         function sortProperties() {
             const sortType = document.querySelector('input[name="property_sort"]:checked').value;
             const propertySelect = document.getElementById('property_id');
@@ -2316,7 +2316,7 @@
                     return dateB - dateA;
                 });
             } else if (sortType === 'name') {
-                // あいうえお順（顧客名 + 物件名で昇順）
+                // あいうえお順（顧客名 + 案件名で昇順）
                 options.sort((a, b) => {
                     const nameA = (a.getAttribute('data-customer-name') + ' ' + a.getAttribute('data-property-name')).toLowerCase();
                     const nameB = (b.getAttribute('data-customer-name') + ' ' + b.getAttribute('data-property-name')).toLowerCase();

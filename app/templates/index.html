@@ -35,7 +35,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title">物件数</h6>
+                        <h6 class="card-title">案件数</h6>
                         <h2 class="mb-0">{{ stats.property_count }}</h2>
                     </div>
                     <i class="bi bi-building fs-1"></i>
@@ -90,7 +90,7 @@
                             <thead>
                                 <tr>
                                     <th>日付</th>
-                                    <th>物件名</th>
+                                    <th>案件名</th>
                                     <th>状態</th>
                                     <th>操作</th>
                                 </tr>
@@ -137,7 +137,7 @@
                             <thead>
                                 <tr>
                                     <th>お客様名</th>
-                                    <th>物件数</th>
+                                    <th>案件数</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
@@ -166,7 +166,7 @@
     <div class="col-md-4">
         <div class="card recent-data-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">最近の物件</h5>
+                <h5 class="mb-0">最近の案件</h5>
                 <a href="{{ url_for('properties.list') }}" class="btn btn-sm btn-outline-primary">全て表示</a>
             </div>
             <div class="card-body">
@@ -175,7 +175,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>物件名</th>
+                                    <th>案件名</th>
                                     <th>お客様名</th>
                                     <th>操作</th>
                                 </tr>
@@ -196,7 +196,7 @@
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted">物件情報はありません。</p>
+                    <p class="text-muted">案件情報はありません。</p>
                 {% endif %}
             </div>
         </div>
@@ -220,7 +220,7 @@
                     <div class="col-md-3 mb-3">
                         <a href="{{ url_for('properties.create') }}" class="btn btn-lg btn-outline-success w-100 h-100 d-flex flex-column justify-content-center align-items-center p-4">
                             <i class="bi bi-building-add fs-1 mb-2"></i>
-                            <span>新規物件登録</span>
+                            <span>新規案件登録</span>
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">

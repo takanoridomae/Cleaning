@@ -12,8 +12,8 @@
             <form method="post">
                 <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label for="property_id" class="form-label mb-0">物件</label>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="物件ソート">
+                        <label for="property_id" class="form-label mb-0">案件</label>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="案件ソート">
                             <input type="radio" class="btn-check" name="property_sort" id="sort_latest" value="latest" checked>
                             <label class="btn btn-outline-primary" for="sort_latest">登録最新順</label>
                             <input type="radio" class="btn-check" name="property_sort" id="sort_name" value="name">
@@ -191,7 +191,7 @@
 </div>
 
 <script>
-    // 物件選択時に住所を自動設定とエアコン情報を取得
+    // 案件選択時に住所を自動設定とエアコン情報を取得
     document.getElementById('property_id').addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         const propertyId = this.value;
@@ -236,7 +236,7 @@
                 })
                 .catch(error => console.error('エアコン情報の取得に失敗しました:', error));
         } else {
-            // 物件が選択されていない場合、エアコン選択をクリア
+            // 案件が選択されていない場合、エアコン選択をクリア
             document.querySelectorAll('.aircon-select').forEach(select => {
                 select.innerHTML = '<option value="">選択してください</option>';
                 // 変更イベントを発火
@@ -295,7 +295,7 @@
         }
     }
     
-    // 初期表示時に選択済みの物件の住所を設定
+            // 初期表示時に選択済みの案件の住所を設定
     document.addEventListener('DOMContentLoaded', function() {
         // 報告書日付に本日の日付を自動設定
         const dateInput = document.getElementById('date');
@@ -329,7 +329,7 @@
                 workAddressInput.value = address || '';
             }
             
-            // 物件が選択済みの場合、エアコン情報も取得
+            // 案件が選択済みの場合、エアコン情報も取得
             propertySelect.dispatchEvent(new Event('change'));
         }
         
@@ -872,7 +872,7 @@
         }
     });
 
-    // 物件ソート機能
+    // 案件ソート機能
     function sortProperties() {
         const sortType = document.querySelector('input[name="property_sort"]:checked').value;
         const propertySelect = document.getElementById('property_id');
@@ -890,7 +890,7 @@
                 return dateB - dateA;
             });
         } else if (sortType === 'name') {
-            // あいうえお順（顧客名 + 物件名で昇順）
+            // あいうえお順（顧客名 + 案件名で昇順）
             options.sort((a, b) => {
                 const nameA = (a.getAttribute('data-customer-name') + ' ' + a.getAttribute('data-property-name')).toLowerCase();
                 const nameB = (b.getAttribute('data-customer-name') + ' ' + b.getAttribute('data-property-name')).toLowerCase();

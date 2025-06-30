@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}新規物件登録{% endblock %}
+{% block title %}新規案件登録{% endblock %}
 
 {% block content %}
 <style>
@@ -31,11 +31,11 @@
 
 <div class="row mb-4">
     <div class="col">
-        <h1 class="page-title">新規物件登録</h1>
+        <h1 class="page-title">新規案件登録</h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">案件一覧</a></li>
                 <li class="breadcrumb-item active" aria-current="page">新規登録</li>
             </ol>
         </nav>
@@ -51,7 +51,7 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label for="name" class="form-label required">物件名</label>
+                        <label for="name" class="form-label required">案件名</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     
@@ -156,8 +156,8 @@
                 </div>
                 <div class="card-body">
                     <p class="small mb-0">
-                        物件情報と共にエアコン情報も登録できます。<br>
-                        物件登録後も、詳細画面からエアコン情報を追加・編集できます。<br>
+                                        案件情報と共にエアコン情報も登録できます。<br>
+                案件登録後も、詳細画面からエアコン情報を追加・編集できます。<br>
                         <span class="text-danger">※ 「*」のついた項目は必須入力です。</span>
                     </p>
                 </div>
@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // どんな場合でも必ず物件名を設定
+        // どんな場合でも必ず案件名を設定
         if (parsedData.customerName && parsedData.customerName !== '一般') {
             nameInput.value = parsedData.customerName + '様　自宅';
         } else {
@@ -441,9 +441,9 @@ document.addEventListener('DOMContentLoaded', function() {
         let message = '以下の情報を自動入力しました：\n';
         message += '• お客様: 一般\n';
         if (parsedData.customerName && parsedData.customerName !== '一般') {
-            message += `• 物件名: ${parsedData.customerName}様　自宅\n`;
+            message += `• 案件名: ${parsedData.customerName}様　自宅\n`;
         } else {
-            message += '• 物件名: 一般様　自宅\n';
+            message += '• 案件名: 一般様　自宅\n';
         }
         if (parsedData.postalCode) message += `• 郵便番号: ${parsedData.postalCode}\n`;
         if (parsedData.address) message += `• 住所: ${parsedData.address}\n`;
@@ -599,11 +599,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
     
-    // 物件名重複チェック機能
+    // 案件名重複チェック機能
     const propertyNameInput = document.getElementById('name');
     let duplicateCheckTimeout;
     
-    // 物件名入力時のリアルタイム重複チェック
+    // 案件名入力時のリアルタイム重複チェック
     propertyNameInput.addEventListener('input', function() {
         // 入力が止まってから500ms後にチェック実行
         clearTimeout(duplicateCheckTimeout);

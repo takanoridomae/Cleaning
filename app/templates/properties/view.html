@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}{{ property.name }} - 物件詳細{% endblock %}
+{% block title %}{{ property.name }} - 案件詳細{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col">
-        <h1 class="page-title">物件詳細</h1>
+        <h1 class="page-title">案件詳細</h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ホーム</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">物件一覧</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('properties.list') }}">案件一覧</a></li>
                 <li class="breadcrumb-item active" aria-current="page">{{ property.name }}</li>
             </ol>
         </nav>
@@ -29,7 +29,7 @@
                 <table class="table table-striped">
                     <tbody>
                         <tr>
-                            <th style="width: 150px;">物件名</th>
+                            <th style="width: 150px;">案件名</th>
                             <td>{{ property.name }}</td>
                         </tr>
                         <tr>

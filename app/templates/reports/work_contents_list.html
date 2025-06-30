@@ -22,7 +22,7 @@
                     <div class="col-md-3">
                         <label for="search" class="form-label">キーワード検索</label>
                         <input type="text" class="form-control" id="search" name="search" 
-                               value="{{ search_keyword }}" placeholder="物件名、顧客名、作業内容など">
+                               value="{{ search_keyword }}" placeholder="案件名、顧客名、作業内容など">
                     </div>
                     <div class="col-md-3">
                         <label for="work_item" class="form-label">作業項目</label>
@@ -69,7 +69,7 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='work_date', order='desc') }}">作業日 (新しい順)</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='work_date', order='asc') }}">作業日 (古い順)</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='property_name', order='asc') }}">物件名 (A-Z)</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='property_name', order='asc') }}">案件名 (A-Z)</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='customer_name', order='asc') }}">顧客名 (A-Z)</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('reports.work_contents_list', search=search_keyword, work_item=work_item_filter, start_date=start_date, end_date=end_date, sort='work_item', order='asc') }}">作業項目名 (A-Z)</a></li>
                     </ul>
@@ -86,7 +86,7 @@
                                 <th>開始時間</th>
                                 <th>終了時間</th>
                                 <th>顧客名</th>
-                                <th>物件名</th>
+                                <th>案件名</th>
                                 <th>エアコン情報</th>
                                 <th>作業項目</th>
                                 <th>作業内容</th>

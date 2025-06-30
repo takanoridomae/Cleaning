@@ -41,7 +41,7 @@
                                        id="search"
                                        name="search" 
                                        value="{{ current_search }}" 
-                                       placeholder="顧客名、物件名、住所、受付種別、ステータスで検索...">
+                                       placeholder="顧客名、案件名、住所、受付種別、ステータスで検索...">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -123,7 +123,7 @@
                                                 {% endif %}
                                             </a>
                                         </th>
-                                        <th>物件ID</th>
+                                        <th>案件ID</th>
                                         <th>
                                             <a href="{{ url_for('reports.order_details_list', 
                                                 search=current_search, 
@@ -152,7 +152,7 @@
                                                 sort='property', 
                                                 order='desc' if current_sort == 'property' and current_order == 'asc' else 'asc') }}" 
                                                class="text-decoration-none text-dark">
-                                                物件名
+                                                案件名
                                                 {% if current_sort == 'property' %}
                                                     {% if current_order == 'asc' %}
                                                         <i class="bi bi-arrow-up"></i>
@@ -293,7 +293,7 @@
                                                 </a>
                                                 <a href="{{ url_for('properties.view', id=detail.property.id) }}" 
                                                    class="btn btn-sm btn-outline-primary" 
-                                                   title="物件詳細">
+                                                   title="案件詳細">
                                                     <i class="bi bi-building"></i>
                                                 </a>
                                                 <a href="{{ url_for('customers.view', id=detail.customer.id) }}" 
@@ -413,7 +413,7 @@
                             <div class="col-md-3">
                                 <div class="text-center">
                                     <h4 class="text-info">{{ grand_totals.unique_properties }}</h4>
-                                    <small class="text-muted">対象物件数</small>
+                                    <small class="text-muted">対象案件数</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
