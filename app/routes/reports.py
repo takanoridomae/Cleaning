@@ -367,6 +367,7 @@ def create():
         work_item_texts = request.form.getlist("work_item_texts[]")
         descriptions = request.form.getlist("descriptions[]")
         confirmations = request.form.getlist("confirmations[]")
+        work_amounts = request.form.getlist("work_amounts[]")
         air_conditioner_ids = request.form.getlist("air_conditioner_ids[]")
 
         error = None
@@ -459,6 +460,14 @@ def create():
                                 )
                                 air_conditioner_id = None
 
+                    # 作業金額の設定
+                    work_amount = 0
+                    if i < len(work_amounts) and work_amounts[i]:
+                        try:
+                            work_amount = int(work_amounts[i])
+                        except (ValueError, TypeError):
+                            work_amount = 0
+
                     work_detail = WorkDetail(
                         report_id=report.id,
                         property_id=property_id,  # 常に物件IDを設定
@@ -467,6 +476,7 @@ def create():
                         work_item_text=work_item_text,
                         description=descriptions[i],
                         confirmation=confirmations[i] if i < len(confirmations) else "",
+                        work_amount=work_amount,
                     )
                     db.session.add(work_detail)
 
@@ -692,11 +702,12 @@ def edit(id):
                     work_item_texts = request.form.getlist("work_item_texts[]")
                     descriptions = request.form.getlist("descriptions[]")
                     confirmations = request.form.getlist("confirmations[]")
+                    work_amounts = request.form.getlist("work_amounts[]")
                     work_detail_ids = request.form.getlist("work_detail_ids[]")
                     air_conditioner_ids = request.form.getlist("air_conditioner_ids[]")
 
                     print(
-                        f"作業内容データ: work_detail_ids={work_detail_ids}, air_conditioner_ids={air_conditioner_ids}"
+                        f"作業内容データ: work_detail_ids={work_detail_ids}, air_conditioner_ids={air_conditioner_ids}, work_amounts={work_amounts}"
                     )
 
                     # 既存の作業内容を更新または削除
@@ -747,6 +758,11 @@ def edit(id):
                                         if i < len(confirmations)
                                         else ""
                                     )
+                                    work_detail.work_amount = (
+                                        int(work_amounts[i])
+                                        if i < len(work_amounts) and work_amounts[i]
+                                        else 0
+                                    )
                                     work_detail.air_conditioner_id = air_conditioner_id
                                     work_detail.property_id = property_id
                                     print(
@@ -765,6 +781,11 @@ def edit(id):
                                         confirmations[i]
                                         if i < len(confirmations)
                                         else ""
+                                    ),
+                                    work_amount=(
+                                        int(work_amounts[i])
+                                        if i < len(work_amounts) and work_amounts[i]
+                                        else 0
                                     ),
                                 )
                                 db.session.add(work_detail)
@@ -1061,8 +1082,15 @@ def add_work_item():
         flash(f"「{name}」は既に登録されています", "warning")
         return redirect(url_for("reports.work_items", back_url=referer))
 
+    work_amount = request.form.get("work_amount", 0)
+
     # 新規作業項目を追加
-    item = WorkItem(name=name, description=description, is_active=True)
+    item = WorkItem(
+        name=name,
+        description=description,
+        work_amount=int(work_amount) if work_amount else 0,
+        is_active=True,
+    )
     db.session.add(item)
     db.session.commit()
 
@@ -1118,6 +1146,7 @@ def edit_work_item(id):
     """作業項目の編集"""
     name = request.form.get("name", "").strip()
     description = request.form.get("description", "").strip()
+    work_amount = request.form.get("work_amount", 0)
     referer = request.form.get("referer", url_for("reports.work_items"))  # 戻り先URL
 
     if not name:
@@ -1134,6 +1163,7 @@ def edit_work_item(id):
     item = WorkItem.query.get_or_404(id)
     item.name = name
     item.description = description
+    item.work_amount = int(work_amount) if work_amount else 0
     db.session.commit()
 
     flash(f"作業項目「{name}」を更新しました", "success")
@@ -1275,6 +1305,7 @@ def api_property_air_conditioners(property_id):
                 "manufacturer": ac.manufacturer,
                 "model_number": ac.model_number,
                 "location": ac.location,
+                "total_amount": ac.total_amount,
             }
         )
 
@@ -1569,10 +1600,9 @@ def order_details_list():
             or 0
         )
 
-        # 金額の合計（この報告書で作業したエアコンのみ）
+        # 金額の合計（作業詳細の作業金額から計算）
         total_amount = (
-            db.session.query(db.func.sum(AirConditioner.total_amount))
-            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            db.session.query(db.func.sum(WorkDetail.work_amount))
             .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
@@ -1684,10 +1714,9 @@ def order_details_list():
         # 作業内容の総数
         work_detail_count = WorkDetail.query.filter_by(report_id=report.id).count()
 
-        # 金額の合計
+        # 金額の合計（作業詳細の作業金額から計算）
         total_amount = (
-            db.session.query(db.func.sum(AirConditioner.total_amount))
-            .join(WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id)
+            db.session.query(db.func.sum(WorkDetail.work_amount))
             .filter(WorkDetail.report_id == report.id)
             .scalar()
             or 0
@@ -2071,12 +2100,9 @@ def monthly_summary():
                 )
 
             elif summary_type == "amount":
-                # 金額ベースの集計（最終作業日ベース）
+                # 金額ベースの集計（作業詳細の作業金額から計算）
                 completed_count = (
-                    db.session.query(func.sum(AirConditioner.total_amount))
-                    .join(
-                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
-                    )
+                    db.session.query(func.sum(WorkDetail.work_amount))
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
                     .join(
@@ -2090,17 +2116,14 @@ def monthly_summary():
                         == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
-                        AirConditioner.total_amount.isnot(None),
+                        WorkDetail.work_amount.isnot(None),
                     )
                     .scalar()
                     or 0
                 )
 
                 pending_count = (
-                    db.session.query(func.sum(AirConditioner.total_amount))
-                    .join(
-                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
-                    )
+                    db.session.query(func.sum(WorkDetail.work_amount))
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
                     .join(
@@ -2114,7 +2137,7 @@ def monthly_summary():
                         == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
-                        AirConditioner.total_amount.isnot(None),
+                        WorkDetail.work_amount.isnot(None),
                     )
                     .scalar()
                     or 0
@@ -2312,10 +2335,7 @@ def monthly_summary_pdf():
             elif summary_type == "amount":
                 # 金額ベースの集計（最終作業日ベース）
                 completed_count = (
-                    db.session.query(func.sum(AirConditioner.total_amount))
-                    .join(
-                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
-                    )
+                    db.session.query(func.sum(WorkDetail.work_amount))
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
                     .join(
@@ -2329,17 +2349,14 @@ def monthly_summary_pdf():
                         == month,
                         Property.reception_type == reception_type,
                         Report.status == "completed",
-                        AirConditioner.total_amount.isnot(None),
+                        WorkDetail.work_amount.isnot(None),
                     )
                     .scalar()
                     or 0
                 )
 
                 pending_count = (
-                    db.session.query(func.sum(AirConditioner.total_amount))
-                    .join(
-                        WorkDetail, AirConditioner.id == WorkDetail.air_conditioner_id
-                    )
+                    db.session.query(func.sum(WorkDetail.work_amount))
                     .join(Report, WorkDetail.report_id == Report.id)
                     .join(Property, Report.property_id == Property.id)
                     .join(
@@ -2353,7 +2370,7 @@ def monthly_summary_pdf():
                         == month,
                         Property.reception_type == reception_type,
                         Report.status.in_(["pending", "draft"]),
-                        AirConditioner.total_amount.isnot(None),
+                        WorkDetail.work_amount.isnot(None),
                     )
                     .scalar()
                     or 0

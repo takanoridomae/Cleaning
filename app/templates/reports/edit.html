@@ -234,30 +234,35 @@
                                         </div>
                                         <div class="col-md-3 mb-2">
                                             <label class="form-label">作業項目</label>
-                                            <select class="form-select work-item-select" name="work_item_ids[]">
+                                            <select class="form-select work-item-select" name="work_item_ids[]" data-work-amount="{{ work_detail.work_item.work_amount if work_detail.work_item else 0 }}">
                                                 <option value="">選択してください</option>
                                                 {% for item in work_items %}
-                                                <option value="{{ item.id }}" {% if work_detail.work_item_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+                                                <option value="{{ item.id }}" data-work-amount="{{ item.work_amount or 0 }}" {% if work_detail.work_item_id == item.id %}selected{% endif %}>{{ item.name }}</option>
                                                 {% endfor %}
-                                                <option value="other" {% if not work_detail.work_item_id and work_detail.work_item_text %}selected{% endif %}>その他（手入力）</option>
+                                                <option value="other" data-work-amount="0" {% if not work_detail.work_item_id and work_detail.work_item_text %}selected{% endif %}>その他（手入力）</option>
                                             </select>
                                             <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" 
                                                    placeholder="作業項目を入力" 
                                                    value="{{ work_detail.work_item_text or '' }}" 
                                                    style="display: {% if not work_detail.work_item_id and work_detail.work_item_text %}block{% else %}none{% endif %};">
                                         </div>
-                                        <div class="col-md-4 mb-2">
+                                        <div class="col-md-2 mb-2">
+                                            <label class="form-label">作業金額</label>
+                                            <input type="number" class="form-control work-amount-input" name="work_amounts[]" 
+                                                   min="0" value="{{ work_detail.work_amount or 0 }}" placeholder="0">
+                                        </div>
+                                        <div class="col-md-3 mb-2">
                                             <label class="form-label">作業内容</label>
                                             <textarea class="form-control" name="descriptions[]" rows="2" required>{{ work_detail.description }}</textarea>
                                             <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
                                                 <i class="bi bi-clock-history"></i> 過去のデータから選択
                                             </button>
                                         </div>
-                                        <div class="col-md-2 mb-2">
-                                            <label class="form-label">作業確認</label>
-                                            <div class="d-flex">
-                                                <input type="text" class="form-control" name="confirmations[]" value="{{ work_detail.confirmation or '' }}">
-                                                <button type="button" class="btn btn-danger remove-work-detail ms-1" {% if loop.index == 1 and work_details|length == 1 %}disabled{% endif %}>削除</button>
+                                        <div class="col-md-1 mb-2">
+                                            <label class="form-label">確認</label>
+                                            <div class="d-flex flex-column">
+                                                <input type="text" class="form-control mb-1" name="confirmations[]" value="{{ work_detail.confirmation or '' }}" placeholder="OK等">
+                                                <button type="button" class="btn btn-danger btn-sm remove-work-detail" {% if loop.index == 1 and work_details|length == 1 %}disabled{% endif %}>削除</button>
                                             </div>
                                         </div>
                                     </div>
@@ -278,24 +283,29 @@
                                             <select class="form-select work-item-select" name="work_item_ids[]">
                                                 <option value="">選択してください</option>
                                                 {% for item in work_items %}
-                                                <option value="{{ item.id }}">{{ item.name }}</option>
+                                                <option value="{{ item.id }}" data-work-amount="{{ item.work_amount or 0 }}">{{ item.name }}</option>
                                                 {% endfor %}
-                                                <option value="other">その他（手入力）</option>
+                                                <option value="other" data-work-amount="0">その他（手入力）</option>
                                             </select>
                                             <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" placeholder="作業項目を入力" style="display: none;">
                                         </div>
-                                        <div class="col-md-4 mb-2">
+                                        <div class="col-md-2 mb-2">
+                                            <label class="form-label">作業金額</label>
+                                            <input type="number" class="form-control work-amount-input" name="work_amounts[]" 
+                                                   min="0" value="0" placeholder="0">
+                                        </div>
+                                        <div class="col-md-3 mb-2">
                                             <label class="form-label">作業内容</label>
                                             <textarea class="form-control" name="descriptions[]" rows="2" required></textarea>
                                             <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
                                                 <i class="bi bi-clock-history"></i> 過去のデータから選択
                                             </button>
                                         </div>
-                                        <div class="col-md-2 mb-2">
-                                            <label class="form-label">作業確認</label>
-                                            <div class="d-flex">
-                                                <input type="text" class="form-control" name="confirmations[]">
-                                                <button type="button" class="btn btn-danger remove-work-detail ms-1" disabled>削除</button>
+                                        <div class="col-md-1 mb-2">
+                                            <label class="form-label">確認</label>
+                                            <div class="d-flex flex-column">
+                                                <input type="text" class="form-control mb-1" name="confirmations[]" placeholder="OK等">
+                                                <button type="button" class="btn btn-danger btn-sm remove-work-detail" disabled>削除</button>
                                             </div>
                                         </div>
                                     </div>
@@ -948,6 +958,7 @@
                             const option = document.createElement('option');
                             option.value = ac.id;
                             option.textContent = `${ac.manufacturer || '不明'} ${ac.model_number || '不明'} (${ac.location || '不明'})`;
+                            option.dataset.totalAmount = ac.total_amount || 0;
                             
                             // 元の値と一致する場合は選択状態にする
                             if (currentValue && currentValue == ac.id) {
@@ -997,6 +1008,7 @@
                             data.air_conditioners.forEach(ac => {
                                 const option = document.createElement('option');
                                 option.value = ac.id;
+                                option.dataset.totalAmount = ac.total_amount || 0;
                                 
                                 // エアコン情報を整形して表示名を作成
                                 let acInfo = '';
@@ -1110,9 +1122,10 @@
         // エアコン選択セレクトボックスにイベントリスナーを追加
         const newSelect = newEntry.querySelector('.air-conditioner-select');
         
-        // 新しいイベントリスナーを追加
+        // 新しいイベントリスナーを追加（作業金額自動設定を含む）
         newSelect.addEventListener('change', function() {
             console.log(`エアコン選択変更: セレクト値=${this.value}`);
+            handleAirconSelectChangeEdit(this);
         });
         
         // 物件が選択されている場合、エアコン情報を設定
@@ -1194,14 +1207,27 @@
     function handleWorkItemSelectChange(selectElement) {
         const parentRow = selectElement.closest('.work-detail-entry');
         const textInput = parentRow.querySelector('.work-item-text');
+        const workAmountInput = parentRow.querySelector('.work-amount-input');
         
         if (selectElement.value === 'other') {
             textInput.style.display = 'block';
             textInput.required = true;
+            // その他の場合は作業金額を0に設定
+            if (workAmountInput) {
+                workAmountInput.value = 0;
+            }
         } else {
             textInput.style.display = 'none';
             textInput.required = false;
             textInput.value = '';
+            
+            // 選択された作業項目の金額を自動設定
+            if (workAmountInput && selectElement.selectedOptions.length > 0) {
+                const selectedOption = selectElement.selectedOptions[0];
+                const workAmount = selectedOption.getAttribute('data-work-amount') || 0;
+                workAmountInput.value = workAmount;
+                console.log(`作業金額を自動設定: ${workAmount}`);
+            }
         }
     }
 
@@ -2085,10 +2111,104 @@
         });
     }
 
+    // 作業項目選択時に作業金額を自動設定する関数
+    function handleWorkItemSelectChange(selectElement) {
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const workAmount = selectedOption.getAttribute('data-work-amount') || 0;
+        
+        // 同じ行の作業金額フィールドを取得
+        const workDetailEntry = selectElement.closest('.work-detail-entry');
+        const workAmountInput = workDetailEntry.querySelector('.work-amount-input');
+        
+        if (workAmountInput) {
+            // 既に金額が入力されている場合（エアコン選択で設定済み等）は上書きしない
+            if (!workAmountInput.value || workAmountInput.value == '0') {
+                workAmountInput.value = workAmount;
+                console.log(`作業項目選択により作業金額を ${workAmount} に設定しました`);
+            } else {
+                console.log(`作業金額は既に ${workAmountInput.value} に設定済みのため、作業項目選択では上書きしません`);
+            }
+        }
+        
+        // その他選択時の処理
+        const workItemText = workDetailEntry.querySelector('.work-item-text');
+        if (selectElement.value === 'other') {
+            workItemText.style.display = 'block';
+            workItemText.focus();
+        } else {
+            workItemText.style.display = 'none';
+            workItemText.value = '';
+        }
+    }
+
+    // エアコン選択時に作業金額を自動設定する関数（編集画面用）
+    function handleAirconSelectChangeEdit(selectElement) {
+        console.log('エアコン選択変更: handleAirconSelectChangeEdit関数が呼ばれました');
+        
+        if (selectElement.value) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const totalAmount = selectedOption.dataset.totalAmount || 0;
+            
+            // 同じ作業詳細エントリ内の作業金額フィールドを取得
+            const workDetailEntry = selectElement.closest('.work-detail-entry');
+            const workAmountInput = workDetailEntry.querySelector('.work-amount-input');
+            
+            if (workAmountInput) {
+                // 既に金額が入力されている場合は上書きしない
+                if (!workAmountInput.value || workAmountInput.value == '0') {
+                    workAmountInput.value = totalAmount;
+                    console.log(`エアコン選択により作業金額を ${totalAmount} 円に設定しました`);
+                }
+            }
+        } else {
+            // エアコンが選択解除された場合、作業金額をクリア
+            const workDetailEntry = selectElement.closest('.work-detail-entry');
+            const workAmountInput = workDetailEntry.querySelector('.work-amount-input');
+            
+            if (workAmountInput) {
+                workAmountInput.value = '0';
+                console.log('エアコン選択解除により作業金額を0円に設定しました');
+            }
+        }
+    }
+
     // 写真のアップロードフォーム送信時の処理
     document.addEventListener('DOMContentLoaded', function() {
         const photoForm = document.querySelector('form[name="upload_photo"]');
         const photoUploadButton = document.getElementById('photo-upload-button');
+        
+        // 作業項目選択時のイベントリスナーを設定
+        function attachWorkItemSelectListeners() {
+            document.querySelectorAll('.work-item-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    handleWorkItemSelectChange(this);
+                });
+            });
+        }
+        
+        // エアコン選択時のイベントリスナーを設定
+        function attachAirconSelectListeners() {
+            document.querySelectorAll('.air-conditioner-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    handleAirconSelectChangeEdit(this);
+                });
+            });
+        }
+        
+        // 初期設定
+        attachWorkItemSelectListeners();
+        attachAirconSelectListeners();
+        
+        // 作業詳細追加時にも新しい要素にイベントリスナーを設定
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('add-work-detail')) {
+                // 少し遅延して新しい要素が追加されてからイベントリスナーを設定
+                setTimeout(function() {
+                    attachWorkItemSelectListeners();
+                    attachAirconSelectListeners();
+                }, 100);
+            }
+        });
         
         // エアコン選択肢をロードする関数
         function initializeAirConditionerSelect() {

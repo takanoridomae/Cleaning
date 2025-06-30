@@ -14,6 +14,7 @@ class WorkDetail(db.Model):
     work_item_text = db.Column(db.String(100))  # 作業項目テキスト (手動入力用)
     description = db.Column(db.Text, nullable=False)  # 作業内容
     confirmation = db.Column(db.String(100))  # 作業確認
+    work_amount = db.Column(db.Integer, default=0)  # 作業金額
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -52,6 +53,7 @@ class WorkDetail(db.Model):
             "work_item_name": self.work_item_name,
             "description": self.description,
             "confirmation": self.confirmation,
+            "work_amount": self.work_amount,
             "report_id": self.report_id,
             "property_id": self.property_id,
             "air_conditioner_id": self.air_conditioner_id,

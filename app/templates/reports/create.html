@@ -111,18 +111,23 @@
                                     <div class="work-detail-entry mb-3 p-3 border border-light rounded">
                                         <input type="hidden" name="air_conditioner_ids[]" class="work-detail-ac-id" value="">
                                         <div class="row">
-                                            <div class="col-md-4 mb-2">
+                                            <div class="col-md-3 mb-2">
                                                 <label class="form-label">作業項目</label>
                                                 <select class="form-select work-item-select" name="work_item_ids[]">
                                                     <option value="">選択してください</option>
                                                     {% for item in work_items %}
-                                                    <option value="{{ item.id }}">{{ item.name }}</option>
+                                                    <option value="{{ item.id }}" data-work-amount="{{ item.work_amount or 0 }}">{{ item.name }}</option>
                                                     {% endfor %}
-                                                    <option value="other">その他（手入力）</option>
+                                                    <option value="other" data-work-amount="0">その他（手入力）</option>
                                                 </select>
                                                 <input type="text" class="form-control mt-2 work-item-text" name="work_item_texts[]" placeholder="作業項目を入力" style="display: none;">
                                             </div>
-                                            <div class="col-md-6 mb-2">
+                                            <div class="col-md-2 mb-2">
+                                                <label class="form-label">作業金額</label>
+                                                <input type="number" class="form-control work-amount-input" name="work_amounts[]" 
+                                                       min="0" value="0" placeholder="0">
+                                            </div>
+                                            <div class="col-md-5 mb-2">
                                                 <label class="form-label">作業内容</label>
                                                 <textarea class="form-control" name="descriptions[]" rows="2" required></textarea>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-1 show-past-descriptions" data-bs-toggle="modal" data-bs-target="#pastDescriptionsModal">
@@ -216,6 +221,7 @@
                             option.dataset.manufacturer = ac.manufacturer || '';
                             option.dataset.location = ac.location || '';
                             option.dataset.modelNumber = ac.model_number || '';
+                            option.dataset.totalAmount = ac.total_amount || 0;
                             select.appendChild(option);
                             
                             // 元の値を保持
@@ -257,6 +263,16 @@
             acLocationSpan.textContent = selectedOption.dataset.location || '';
             airconInfo.classList.remove('d-none');
             
+            // エアコンの作業金額を取得して、同じセクション内の作業金額フィールドに設定
+            const totalAmount = selectedOption.dataset.totalAmount || 0;
+            airconSection.querySelectorAll('.work-amount-input').forEach(workAmountInput => {
+                // 既に金額が入力されている場合は上書きしない
+                if (!workAmountInput.value || workAmountInput.value == '0') {
+                    workAmountInput.value = totalAmount;
+                    console.log(`エアコン選択により作業金額を ${totalAmount} 円に設定しました`);
+                }
+            });
+            
             // このセクション内の全ての作業内容エントリのエアコンIDを設定
             airconSection.querySelectorAll('.work-detail-ac-id').forEach(hiddenInput => {
                 hiddenInput.value = select.value;
@@ -270,6 +286,11 @@
             airconSection.querySelectorAll('.work-detail-ac-id').forEach(hiddenInput => {
                 hiddenInput.value = '';
                 console.log(`エアコンセレクト変更: セクション内のhiddenInput値をクリア`);
+            });
+            
+            // 作業金額をクリア（0に設定）
+            airconSection.querySelectorAll('.work-amount-input').forEach(workAmountInput => {
+                workAmountInput.value = '0';
             });
         }
     }
@@ -691,7 +712,22 @@
     function handleWorkItemSelectChange(selectElement) {
         const parentRow = selectElement.closest('.work-detail-entry');
         const textInput = parentRow.querySelector('.work-item-text');
+        const workAmountInput = parentRow.querySelector('.work-amount-input');
         
+        // 作業金額の自動設定（既に金額が設定されている場合は上書きしない）
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const workAmount = selectedOption.getAttribute('data-work-amount') || 0;
+        if (workAmountInput) {
+            // 既に金額が入力されている場合（エアコン選択で設定済み等）は上書きしない
+            if (!workAmountInput.value || workAmountInput.value == '0') {
+                workAmountInput.value = workAmount;
+                console.log(`作業項目選択により作業金額を ${workAmount} に設定しました`);
+            } else {
+                console.log(`作業金額は既に ${workAmountInput.value} に設定済みのため、作業項目選択では上書きしません`);
+            }
+        }
+        
+        // その他選択時の処理
         if (selectElement.value === 'other') {
             textInput.style.display = 'block';
             textInput.required = true;

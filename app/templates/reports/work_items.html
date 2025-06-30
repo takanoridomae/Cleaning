@@ -31,6 +31,10 @@
                             <label for="description" class="form-label">説明</label>
                             <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                         </div>
+                        <div class="mb-3">
+                            <label for="work_amount" class="form-label">作業金額（円）</label>
+                            <input type="number" class="form-control" id="work_amount" name="work_amount" min="0" value="0">
+                        </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">登録</button>
                         </div>
@@ -53,6 +57,7 @@
                                     <tr>
                                         <th>作業項目名</th>
                                         <th>状態</th>
+                                        <th>作業金額</th>
                                         <th>説明</th>
                                         <th>操作</th>
                                     </tr>
@@ -66,6 +71,13 @@
                                                 <span class="badge bg-success">有効</span>
                                             {% else %}
                                                 <span class="badge bg-secondary">無効</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.work_amount and item.work_amount > 0 %}
+                                                <span class="text-success fw-bold">¥{{ "{:,}".format(item.work_amount) }}</span>
+                                            {% else %}
+                                                <span class="text-muted">¥0</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ item.description or '説明なし' }}</td>
@@ -107,6 +119,11 @@
                                                                     <label for="edit_description{{ item.id }}" class="form-label">説明</label>
                                                                     <textarea class="form-control" id="edit_description{{ item.id }}" 
                                                                               name="description" rows="3">{{ item.description or '' }}</textarea>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label for="edit_work_amount{{ item.id }}" class="form-label">作業金額（円）</label>
+                                                                    <input type="number" class="form-control" id="edit_work_amount{{ item.id }}" 
+                                                                           name="work_amount" min="0" value="{{ item.work_amount or 0 }}">
                                                                 </div>
                                                             </div>
                                                             <div class="modal-footer">
