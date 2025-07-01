@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime, time
+import pytz
 
 
 class WorkTime(db.Model):
@@ -11,9 +12,14 @@ class WorkTime(db.Model):
     work_date = db.Column(db.Date, nullable=False)  # 作業日
     start_time = db.Column(db.Time, nullable=False)  # 作業開始時間
     end_time = db.Column(db.Time, nullable=False)  # 作業終了時間
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
 
     # 外部キー

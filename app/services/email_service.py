@@ -13,6 +13,7 @@ from email import encoders
 from datetime import datetime, timedelta
 from typing import List, Optional
 import logging
+import pytz
 
 from app import db
 from app.models.schedule import Schedule
@@ -30,6 +31,9 @@ class EmailService:
         self.password = os.getenv("MAIL_PASSWORD")
         self.default_sender = os.getenv("MAIL_DEFAULT_SENDER")
         self.enabled = os.getenv("NOTIFICATION_ENABLED", "True").lower() == "true"
+
+        # タイムゾーン設定
+        self.jst = pytz.timezone("Asia/Tokyo")
 
         # ログ設定
         self.logger = logging.getLogger(__name__)
@@ -283,7 +287,8 @@ class EmailService:
             return 0
 
         sent_count = 0
-        now = datetime.now()
+        # 日本時間で現在時刻を取得
+        now = datetime.now(self.jst).replace(tzinfo=None)
 
         try:
             # 通知が有効なスケジュールを取得
@@ -397,7 +402,7 @@ class EmailService:
         title = schedule.title
         start_time = schedule.start_datetime.strftime("%Y年%m月%d日 %H:%M")
         end_time = schedule.end_datetime.strftime("%Y年%m月%d日 %H:%M")
-        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+        current_time = datetime.now(self.jst).strftime("%Y年%m月%d日 %H:%M:%S")
 
         # 詳細情報の組み立て
         schedule_details = []

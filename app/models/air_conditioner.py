@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+import pytz
 
 
 class AirConditioner(db.Model):
@@ -26,9 +27,14 @@ class AirConditioner(db.Model):
 
     # その他
     note = db.Column(db.Text)  # 備考
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
 
     def __repr__(self):

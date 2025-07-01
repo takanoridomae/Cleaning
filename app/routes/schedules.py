@@ -14,6 +14,7 @@ from app.routes.auth import (
 from sqlalchemy import or_, and_
 from datetime import datetime, date, timedelta
 import calendar
+import pytz
 
 bp = Blueprint("schedules", __name__, url_prefix="/schedules")
 
@@ -25,8 +26,11 @@ def list():
     """スケジュール一覧画面表示（月表示）"""
     # パラメータの取得
     view_type = request.args.get("view", "month")  # month, week, list
-    year = request.args.get("year", datetime.now().year, type=int)
-    month = request.args.get("month", datetime.now().month, type=int)
+    # 日本時間での現在時刻を使用
+    jst = pytz.timezone("Asia/Tokyo")
+    now_jst = datetime.now(jst)
+    year = request.args.get("year", now_jst.year, type=int)
+    month = request.args.get("month", now_jst.month, type=int)
     week_start = request.args.get("week_start")  # 週表示用の開始日（YYYY-MM-DD形式）
     status_filter = request.args.get("status", "all")  # all, pending, completed
 
@@ -475,7 +479,8 @@ def api_events():
 
         except ValueError:
             # フォールバック：現在月のデータを取得
-            now = datetime.now()
+            jst = pytz.timezone("Asia/Tokyo")
+            now = datetime.now(jst)
             start_dt = datetime(now.year, now.month, 1)
             end_dt = datetime(
                 now.year,

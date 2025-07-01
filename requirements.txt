@@ -15,4 +15,5 @@ PyPDF2==3.0.1
 weasyprint==61.2
 Flask-Mail==0.10.0
 APScheduler==3.10.4
+pytz==2024.1
 gunicorn==23.0.0 

@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+import pytz
 
 
 class Customer(db.Model):
@@ -15,9 +16,14 @@ class Customer(db.Model):
     postal_code = db.Column(db.String(8))  # 郵便番号（ハイフンあり8文字）
     address = db.Column(db.String(200))
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
 
     # リレーションシップ

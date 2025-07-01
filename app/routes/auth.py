@@ -10,6 +10,7 @@ from flask import (
     current_app,
 )
 from werkzeug.security import check_password_hash
+import pytz
 from app.models.user import User
 from app import db
 from datetime import datetime
@@ -127,7 +128,9 @@ def login():
             session["user_id"] = user.id
 
             # 最終ログイン日時を更新
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(pytz.timezone("Asia/Tokyo")).replace(
+                tzinfo=None
+            )
             db.session.commit()
 
             return redirect(url_for("main.index"))
@@ -447,8 +450,12 @@ def setup_admin():
                 name=name,
                 role="admin",
                 active=True,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(pytz.timezone("Asia/Tokyo")).replace(
+                    tzinfo=None
+                ),
+                updated_at=datetime.now(pytz.timezone("Asia/Tokyo")).replace(
+                    tzinfo=None
+                ),
             )
             admin.set_password(password)
 

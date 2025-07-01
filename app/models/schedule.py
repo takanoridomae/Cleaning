@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+import pytz
 
 
 class Schedule(db.Model):
@@ -37,9 +38,14 @@ class Schedule(db.Model):
 
     # システム項目
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
 
     # リレーションシップ

@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+import pytz
 
 
 class Photo(db.Model):
@@ -16,9 +17,14 @@ class Photo(db.Model):
     photo_set_id = db.Column(db.String(50))  # 施工前後の写真をグループ化するID
     aircon_model = db.Column(db.String(100))  # エアコン機種
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
     filepath = db.Column(db.String(500))  # 階層化されたファイルパス（相対パス）
 

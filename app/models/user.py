@@ -2,6 +2,7 @@ from app import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import pytz
 
 
 class User(UserMixin, db.Model):
@@ -32,9 +33,14 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default="viewer")  # デフォルトを閲覧のみに変更
     active = db.Column(db.Boolean, default=True)
     last_login = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+    )
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(pytz.timezone("Asia/Tokyo")).replace(tzinfo=None),
     )
 
     def __repr__(self):

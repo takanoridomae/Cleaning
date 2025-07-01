@@ -10,6 +10,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.executors.pool import ThreadPoolExecutor
+import pytz
 
 from app.services.email_service import email_service
 
@@ -22,6 +23,7 @@ class SchedulerService:
         self.logger = logging.getLogger(__name__)
         self.check_interval = int(os.getenv("NOTIFICATION_CHECK_INTERVAL", 60))  # 秒
         self.enabled = os.getenv("NOTIFICATION_ENABLED", "True").lower() == "true"
+        self.jst = pytz.timezone("Asia/Tokyo")
 
     def init_scheduler(self):
         """スケジューラーを初期化"""
@@ -149,10 +151,10 @@ class SchedulerService:
                     self.logger.debug("メール設定が不完全のため通知チェックをスキップ")
                     return
 
-                # 通知チェック実行
-                start_time = datetime.now()
+                # 通知チェック実行（日本時間）
+                start_time = datetime.now(self.jst)
                 sent_count = email_service.check_and_send_notifications()
-                end_time = datetime.now()
+                end_time = datetime.now(self.jst)
 
                 processing_time = (end_time - start_time).total_seconds()
 
@@ -173,9 +175,9 @@ class SchedulerService:
     def trigger_manual_check(self) -> dict:
         """手動で通知チェックを実行"""
         try:
-            start_time = datetime.now()
+            start_time = datetime.now(self.jst)
             sent_count = email_service.check_and_send_notifications()
-            end_time = datetime.now()
+            end_time = datetime.now(self.jst)
 
             processing_time = (end_time - start_time).total_seconds()
 
@@ -194,7 +196,7 @@ class SchedulerService:
             return {
                 "success": False,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(self.jst).isoformat(),
             }
 
 

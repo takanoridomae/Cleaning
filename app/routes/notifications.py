@@ -16,6 +16,7 @@ from flask import (
     session,
 )
 from datetime import datetime, timedelta
+import pytz
 
 from app import db
 from app.models.schedule import Schedule
@@ -33,8 +34,9 @@ bp = Blueprint("notifications", __name__, url_prefix="/notifications")
 def dashboard():
     """通知ダッシュボード"""
     try:
-        # 今後24時間以内の通知対象スケジュール
-        now = datetime.now()
+        # 今後24時間以内の通知対象スケジュール（日本時間）
+        jst = pytz.timezone("Asia/Tokyo")
+        now = datetime.now(jst).replace(tzinfo=None)
         tomorrow = now + timedelta(days=1)
 
         upcoming_schedules = (
@@ -110,7 +112,8 @@ def send_test_email():
             return redirect(url_for("notifications.dashboard"))
 
         subject = "【テスト】通知機能動作確認（全ユーザー宛）"
-        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+        jst = pytz.timezone("Asia/Tokyo")
+        current_time = datetime.now(jst).strftime("%Y年%m月%d日 %H:%M:%S")
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -212,7 +215,7 @@ def api_status():
             "username": (
                 email_service.username[:5] + "*****" if email_service.username else None
             ),
-            "check_time": datetime.now().isoformat(),
+            "check_time": datetime.now(pytz.timezone("Asia/Tokyo")).isoformat(),
         }
 
         return jsonify(status)
@@ -311,8 +314,9 @@ def send_all_reminder():
             flash("メールアドレスが設定されているユーザーが見つかりません。", "warning")
             return redirect(url_for("notifications.dashboard"))
 
-        # 今後24時間以内の通知対象スケジュール数を取得
-        now = datetime.now()
+        # 今後24時間以内の通知対象スケジュール数を取得（日本時間）
+        jst = pytz.timezone("Asia/Tokyo")
+        now = datetime.now(jst).replace(tzinfo=None)
         tomorrow = now + timedelta(days=1)
         upcoming_count = Schedule.query.filter(
             Schedule.notification_enabled == True,
@@ -324,7 +328,7 @@ def send_all_reminder():
         subject = (
             "【一括リマインダー】スケジュール通知 - エアコンクリーニング報告書システム"
         )
-        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+        current_time = datetime.now(jst).strftime("%Y年%m月%d日 %H:%M:%S")
 
         html_body = f"""
         <!DOCTYPE html>
