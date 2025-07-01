@@ -552,6 +552,9 @@ def upload_all_data():
         }
     except Exception as e:
         print(f"⚠️ テーブルカウント取得エラー: {e}")
+        import traceback
+
+        traceback.print_exc()
         table_counts = {}
 
     return render_template("admin/upload_all_data.html", table_counts=table_counts)
@@ -700,23 +703,103 @@ def export_database():
 
     # 現在の各テーブルのレコード数を表示
     try:
-        table_counts = {
-            "users": User.query.count(),
-            "customers": Customer.query.count(),
-            "properties": Property.query.count(),
-            "reports": Report.query.count(),
-            "photos": Photo.query.count(),
-            "air_conditioners": AirConditioner.query.count(),
-            "work_times": WorkTime.query.count(),
-            "work_details": WorkDetail.query.count(),
-            "work_items": WorkItem.query.count(),
-            "schedules": Schedule.query.count(),
-        }
+        print("🔍 データ統計取得開始...")
+
+        # モデルのインポート（GET処理でも必要）
+        from app.models.user import User
+        from app.models.customer import Customer
+        from app.models.property import Property
+        from app.models.report import Report
+        from app.models.photo import Photo
+        from app.models.air_conditioner import AirConditioner
+        from app.models.work_time import WorkTime
+        from app.models.work_detail import WorkDetail
+        from app.models.work_item import WorkItem
+        from app.models.schedule import Schedule
+
+        print("✅ モデルインポート完了")
+
+        # 各テーブルのカウントを個別に取得してエラー箇所を特定
+        table_counts = {}
+
+        try:
+            table_counts["users"] = User.query.count()
+            print(f"  ✅ users: {table_counts['users']}件")
+        except Exception as e:
+            print(f"  ❌ users取得エラー: {e}")
+            table_counts["users"] = 0
+
+        try:
+            table_counts["customers"] = Customer.query.count()
+            print(f"  ✅ customers: {table_counts['customers']}件")
+        except Exception as e:
+            print(f"  ❌ customers取得エラー: {e}")
+            table_counts["customers"] = 0
+
+        try:
+            table_counts["properties"] = Property.query.count()
+            print(f"  ✅ properties: {table_counts['properties']}件")
+        except Exception as e:
+            print(f"  ❌ properties取得エラー: {e}")
+            table_counts["properties"] = 0
+
+        try:
+            table_counts["reports"] = Report.query.count()
+            print(f"  ✅ reports: {table_counts['reports']}件")
+        except Exception as e:
+            print(f"  ❌ reports取得エラー: {e}")
+            table_counts["reports"] = 0
+
+        try:
+            table_counts["photos"] = Photo.query.count()
+            print(f"  ✅ photos: {table_counts['photos']}件")
+        except Exception as e:
+            print(f"  ❌ photos取得エラー: {e}")
+            table_counts["photos"] = 0
+
+        try:
+            table_counts["air_conditioners"] = AirConditioner.query.count()
+            print(f"  ✅ air_conditioners: {table_counts['air_conditioners']}件")
+        except Exception as e:
+            print(f"  ❌ air_conditioners取得エラー: {e}")
+            table_counts["air_conditioners"] = 0
+
+        try:
+            table_counts["work_times"] = WorkTime.query.count()
+            print(f"  ✅ work_times: {table_counts['work_times']}件")
+        except Exception as e:
+            print(f"  ❌ work_times取得エラー: {e}")
+            table_counts["work_times"] = 0
+
+        try:
+            table_counts["work_details"] = WorkDetail.query.count()
+            print(f"  ✅ work_details: {table_counts['work_details']}件")
+        except Exception as e:
+            print(f"  ❌ work_details取得エラー: {e}")
+            table_counts["work_details"] = 0
+
+        try:
+            table_counts["work_items"] = WorkItem.query.count()
+            print(f"  ✅ work_items: {table_counts['work_items']}件")
+        except Exception as e:
+            print(f"  ❌ work_items取得エラー: {e}")
+            table_counts["work_items"] = 0
+
+        try:
+            table_counts["schedules"] = Schedule.query.count()
+            print(f"  ✅ schedules: {table_counts['schedules']}件")
+        except Exception as e:
+            print(f"  ❌ schedules取得エラー: {e}")
+            table_counts["schedules"] = 0
 
         total_records = sum(table_counts.values())
+        print(f"🎉 データ統計取得完了: 総計{total_records}件")
 
     except Exception as e:
         print(f"⚠️ テーブルカウント取得エラー: {e}")
+        import traceback
+
+        traceback.print_exc()
         table_counts = {}
         total_records = 0
 

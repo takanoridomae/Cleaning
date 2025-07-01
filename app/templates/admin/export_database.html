@@ -24,32 +24,41 @@
                             <i class="bi bi-info-circle me-2"></i>現在のデータ統計
                         </h5>
                         <div class="row">
-                            {% if table_counts %}
+                            {% if table_counts and table_counts|length > 0 %}
                             <div class="col-md-6">
                                 <ul class="list-unstyled mb-0">
-                                    <li><strong>ユーザー:</strong> {{ table_counts.users }}件</li>
-                                    <li><strong>顧客:</strong> {{ table_counts.customers }}件</li>
-                                    <li><strong>物件:</strong> {{ table_counts.properties }}件</li>
-                                    <li><strong>報告書:</strong> {{ table_counts.reports }}件</li>
-                                    <li><strong>写真:</strong> {{ table_counts.photos }}件</li>
+                                    <li><strong>ユーザー:</strong> {{ table_counts.users|default("取得失敗", true) }}件</li>
+                                    <li><strong>顧客:</strong> {{ table_counts.customers|default("取得失敗", true) }}件</li>
+                                    <li><strong>物件:</strong> {{ table_counts.properties|default("取得失敗", true) }}件</li>
+                                    <li><strong>報告書:</strong> {{ table_counts.reports|default("取得失敗", true) }}件</li>
+                                    <li><strong>写真:</strong> {{ table_counts.photos|default("取得失敗", true) }}件</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <ul class="list-unstyled mb-0">
-                                    <li><strong>エアコン:</strong> {{ table_counts.air_conditioners }}件</li>
-                                    <li><strong>作業時間:</strong> {{ table_counts.work_times }}件</li>
-                                    <li><strong>作業詳細:</strong> {{ table_counts.work_details }}件</li>
-                                    <li><strong>作業項目:</strong> {{ table_counts.work_items }}件</li>
-                                    <li><strong>スケジュール:</strong> {{ table_counts.schedules }}件</li>
+                                    <li><strong>エアコン:</strong> {{ table_counts.air_conditioners|default("取得失敗", true) }}件</li>
+                                    <li><strong>作業時間:</strong> {{ table_counts.work_times|default("取得失敗", true) }}件</li>
+                                    <li><strong>作業詳細:</strong> {{ table_counts.work_details|default("取得失敗", true) }}件</li>
+                                    <li><strong>作業項目:</strong> {{ table_counts.work_items|default("取得失敗", true) }}件</li>
+                                    <li><strong>スケジュール:</strong> {{ table_counts.schedules|default("取得失敗", true) }}件</li>
                                 </ul>
                             </div>
                             <div class="col-12 mt-2">
                                 <hr>
-                                <strong>総レコード数: {{ total_records }}件</strong>
+                                <strong>総レコード数: {{ total_records|default(0) }}件</strong>
+                                {% if total_records == 0 %}
+                                <small class="text-muted d-block">（一部のテーブルでデータ取得に失敗している可能性があります。詳細はサーバーログを確認してください。）</small>
+                                {% endif %}
                             </div>
                             {% else %}
                             <div class="col-12">
-                                <p class="mb-0">データ統計の取得に失敗しました。</p>
+                                <p class="mb-0 text-warning">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    データ統計の取得に失敗しました。サーバーログで詳細を確認してください。
+                                </p>
+                                <p class="mb-0 text-muted small">
+                                    エクスポート機能は正常に動作する可能性があります。
+                                </p>
                             </div>
                             {% endif %}
                         </div>
