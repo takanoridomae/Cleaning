@@ -11,30 +11,6 @@
       "last_login": "2025-06-30T10:21:00.431569",
       "created_at": "2025-05-15T08:46:37.175447",
       "updated_at": "2025-06-30T10:21:00.433074"
-    },
-    {
-      "id": 2,
-      "username": "dotaka",
-      "email": "dotaka565@gmail.com",
-      "password_hash": "scrypt:32768:8:1$aDGtZbkovk6Wyzfe$48e3c17cf848cecaaf0980b697cccdf8753233a4c1d05ca179dce07bfe60207b8b4ed5dae6117294c77e861c8f660cb32eccb7b260c6793cc4141eebe337f77a",
-      "name": "熊吉太郎",
-      "role": "viewer",
-      "active": true,
-      "last_login": "2025-06-03T12:10:16.103676",
-      "created_at": "2025-06-03T11:40:29.686422",
-      "updated_at": "2025-06-03T12:10:16.104320"
-    },
-    {
-      "id": 3,
-      "username": "kumacaputen",
-      "email": "kumacaputen@example.com",
-      "password_hash": "scrypt:32768:8:1$SDLSLNpHQNn0g7dT$bb7a198da4aa7dc3d48f58620e493f4fd2a3988faddf2567ece7b5bc29d35a48d74ca9be32f8b60f12e2a8e30161120eb145a431fc7b58de677991616bf4f685",
-      "name": "管理者",
-      "role": "admin",
-      "active": true,
-      "last_login": null,
-      "created_at": "2025-06-28T12:36:31.744785",
-      "updated_at": "2025-06-28T12:36:31.744790"
     }
   ],
   "customers": [

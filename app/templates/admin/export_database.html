@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}データベースエクスポート - エアコンクリーニング完了報告書システム{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-download me-2"></i>データベースエクスポート
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        データベース全体をJSONファイルとしてエクスポートします。
+                        バックアップや他環境への移行時に使用してください。
+                    </p>
+
+                    <!-- 現在のデータ統計 -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-info-circle me-2"></i>現在のデータ統計
+                        </h5>
+                        <div class="row">
+                            {% if table_counts %}
+                            <div class="col-md-6">
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>ユーザー:</strong> {{ table_counts.users }}件</li>
+                                    <li><strong>顧客:</strong> {{ table_counts.customers }}件</li>
+                                    <li><strong>物件:</strong> {{ table_counts.properties }}件</li>
+                                    <li><strong>報告書:</strong> {{ table_counts.reports }}件</li>
+                                    <li><strong>写真:</strong> {{ table_counts.photos }}件</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>エアコン:</strong> {{ table_counts.air_conditioners }}件</li>
+                                    <li><strong>作業時間:</strong> {{ table_counts.work_times }}件</li>
+                                    <li><strong>作業詳細:</strong> {{ table_counts.work_details }}件</li>
+                                    <li><strong>作業項目:</strong> {{ table_counts.work_items }}件</li>
+                                    <li><strong>スケジュール:</strong> {{ table_counts.schedules }}件</li>
+                                </ul>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <hr>
+                                <strong>総レコード数: {{ total_records }}件</strong>
+                            </div>
+                            {% else %}
+                            <div class="col-12">
+                                <p class="mb-0">データ統計の取得に失敗しました。</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- エクスポート実行フォーム -->
+                    <form method="POST" class="mt-4">
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle me-2"></i>注意事項
+                            </h6>
+                            <ul class="mb-0">
+                                <li>エクスポートには時間がかかる場合があります</li>
+                                <li>データ量が多い場合、ファイルサイズが大きくなります</li>
+                                <li>写真データも含まれるため、数MB〜数十MBになる可能性があります</li>
+                                <li>ネットワーク環境によってはダウンロードに時間がかかる場合があります</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-download me-2"></i>データベースをエクスポート
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- ヘルプ情報 -->
+                    <div class="mt-4">
+                        <h6>エクスポートファイルについて</h6>
+                        <ul class="text-muted small">
+                            <li>ファイル名：<code>all_data_export_YYYYMMDD_HHMMSS.json</code></li>
+                            <li>形式：JSON形式（UTF-8エンコード）</li>
+                            <li>内容：全テーブルのデータ（依存関係順）</li>
+                            <li>用途：バックアップ、データ移行、開発環境への復元</li>
+                        </ul>
+                    </div>
+
+                    <!-- 戻るボタン -->
+                    <div class="mt-4">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>ダッシュボードに戻る
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- エクスポート実行時のローディング表示 -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="POST"]');
+    const submitButton = form.querySelector('button[type="submit"]');
+    
+    form.addEventListener('submit', function() {
+        // ボタンを無効化し、ローディング表示
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>エクスポート中...';
+        
+        // 10秒後にボタンを再有効化（万が一の場合）
+        setTimeout(function() {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="bi bi-download me-2"></i>データベースをエクスポート';
+        }, 10000);
+    });
+});
+</script>
+{% endblock %} 

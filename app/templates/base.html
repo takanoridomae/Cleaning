@@ -102,6 +102,11 @@
                                 <li><a class="dropdown-item" href="{{ url_for('main.upload_all_data') }}">
                                     <i class="bi bi-database-up me-2"></i>全データアップロード
                                 </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">データ管理</h6></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.export_database') }}">
+                                    <i class="bi bi-download me-2"></i>データベースエクスポート
+                                </a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header">PDF出力</h6></li>

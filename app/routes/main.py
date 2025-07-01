@@ -6,12 +6,25 @@ from flask import (
     flash,
     request,
     current_app,
+    send_file,
+    make_response,
 )
+from datetime import datetime, date, time
 from app.models.customer import Customer
 from app.models.property import Property
 from app.models.report import Report
+from app.models.user import User
+from app.models.photo import Photo
+from app.models.air_conditioner import AirConditioner
+from app.models.work_time import WorkTime
+from app.models.work_detail import WorkDetail
+from app.models.work_item import WorkItem
+from app.models.schedule import Schedule
 from app import db
 from flask_login import login_required
+import json
+import os
+import tempfile
 
 bp = Blueprint("main", __name__)
 
@@ -542,3 +555,173 @@ def upload_all_data():
         table_counts = {}
 
     return render_template("admin/upload_all_data.html", table_counts=table_counts)
+
+
+@bp.route("/admin/export-database", methods=["GET", "POST"])
+def export_database():
+    """データベース全体をJSONファイルとしてエクスポート（管理者用）"""
+    print("🔍 データベースエクスポート画面にアクセスしました")
+
+    if request.method == "POST":
+        try:
+            # モデルのインポート（関数内で明示的にインポート）
+            from app.models.user import User
+            from app.models.customer import Customer
+            from app.models.property import Property
+            from app.models.report import Report
+            from app.models.photo import Photo
+            from app.models.air_conditioner import AirConditioner
+            from app.models.work_time import WorkTime
+            from app.models.work_detail import WorkDetail
+            from app.models.work_item import WorkItem
+            from app.models.schedule import Schedule
+
+            def serialize_datetime(obj):
+                """日付・時刻オブジェクトを文字列に変換"""
+                if isinstance(obj, (datetime, date)):
+                    return obj.isoformat()
+                elif isinstance(obj, time):
+                    return obj.isoformat()
+                raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+            def export_table_data(model_class, table_name):
+                """指定されたテーブルのデータをエクスポート"""
+                try:
+                    print(f"📋 {table_name}テーブルをエクスポート中...")
+
+                    # 全データを取得
+                    records = model_class.query.all()
+                    data = []
+
+                    for record in records:
+                        # モデルインスタンスを辞書に変換
+                        record_dict = {}
+                        for column in record.__table__.columns:
+                            value = getattr(record, column.name)
+                            record_dict[column.name] = value
+                        data.append(record_dict)
+
+                    print(f"  ✅ {len(data)}件のデータを取得")
+                    return data
+
+                except Exception as e:
+                    print(f"  ❌ エラー: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+                    return []
+
+            print("🚀 全テーブルデータエクスポート開始...")
+
+            # エクスポート対象テーブル（依存関係順）
+            export_config = [
+                (User, "users"),
+                (Customer, "customers"),
+                (Property, "properties"),
+                (Report, "reports"),
+                (Photo, "photos"),
+                (AirConditioner, "air_conditioners"),
+                (WorkTime, "work_times"),
+                (WorkDetail, "work_details"),
+                (WorkItem, "work_items"),
+                (Schedule, "schedules"),
+            ]
+
+            all_data = {}
+            total_records = 0
+
+            for model_class, table_name in export_config:
+                table_data = export_table_data(model_class, table_name)
+                all_data[table_name] = table_data
+                total_records += len(table_data)
+
+            # ファイル名生成
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"all_data_export_{timestamp}.json"
+
+            # 一時ファイルに保存
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".json", encoding="utf-8"
+            ) as tmp_file:
+                json.dump(
+                    all_data,
+                    tmp_file,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=serialize_datetime,
+                )
+                temp_file_path = tmp_file.name
+
+            # ファイルサイズ取得
+            file_size = os.path.getsize(temp_file_path)
+            file_size_mb = file_size / (1024 * 1024)
+
+            print(f"\n🎉 エクスポート完了!")
+            print(f"📁 ファイル名: {filename}")
+            print(f"📊 総レコード数: {total_records}件")
+            print(f"💾 ファイルサイズ: {file_size_mb:.2f}MB")
+
+            # テーブル別サマリー
+            print(f"\n📋 テーブル別データ数:")
+            for table_name, table_data in all_data.items():
+                print(f"  • {table_name}: {len(table_data)}件")
+
+            flash(
+                f"✅ データベースエクスポート完了: {total_records}件 ({file_size_mb:.2f}MB)",
+                "success",
+            )
+
+            # ファイルをダウンロードとして送信
+            def remove_file(response):
+                try:
+                    os.unlink(temp_file_path)
+                except Exception:
+                    pass
+                return response
+
+            response = make_response(
+                send_file(
+                    temp_file_path,
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype="application/json",
+                )
+            )
+            response.call_on_close(remove_file)
+            return response
+
+        except Exception as e:
+            print(f"❌ エクスポートエラー: {e}")
+            import traceback
+
+            traceback.print_exc()
+            flash(f"❌ エクスポートエラー: {str(e)}", "error")
+            return redirect(request.url)
+
+    # 現在の各テーブルのレコード数を表示
+    try:
+        table_counts = {
+            "users": User.query.count(),
+            "customers": Customer.query.count(),
+            "properties": Property.query.count(),
+            "reports": Report.query.count(),
+            "photos": Photo.query.count(),
+            "air_conditioners": AirConditioner.query.count(),
+            "work_times": WorkTime.query.count(),
+            "work_details": WorkDetail.query.count(),
+            "work_items": WorkItem.query.count(),
+            "schedules": Schedule.query.count(),
+        }
+
+        total_records = sum(table_counts.values())
+
+    except Exception as e:
+        print(f"⚠️ テーブルカウント取得エラー: {e}")
+        table_counts = {}
+        total_records = 0
+
+    return render_template(
+        "admin/export_database.html",
+        table_counts=table_counts,
+        total_records=total_records,
+    )
