@@ -169,7 +169,7 @@
                 <thead class="table-light">
                     <tr>
                         {% for date in week_dates %}
-                        <th class="text-center week-column">
+                        <th class="text-center week-column" style="width: 14.28%; max-width: 14.28%;">
                             <div class="fw-bold">
                                 {% if date.weekday() == 0 %}月
                                 {% elif date.weekday() == 1 %}火
@@ -191,7 +191,7 @@
                     <tr>
                         {% for date in week_dates %}
                         <td class="week-column drop-zone position-relative" 
-                            style="vertical-align: top; padding: 8px;"
+                            style="vertical-align: top; padding: 8px; width: 14.28%; max-width: 14.28%;"
                             data-date="{{ date.strftime('%Y-%m-%d') }}">
                             <div class="week-day-content h-100 overflow-auto">
                                 {% for schedule in week_data[date] %}
@@ -203,7 +203,7 @@
                                     data-schedule-id="{{ schedule.id }}"
                                     draggable="true">
                                     
-                                    <div class="fw-bold text-truncate small">
+                                    <div class="fw-bold small" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
                                         {{ schedule.title }}
                                     </div>
                                     
@@ -219,13 +219,13 @@
                                     {% endif %}
                                     
                                     {% if schedule.customer %}
-                                    <div class="small text-muted text-truncate">
+                                    <div class="small text-muted" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
                                         <i class="bi bi-person"></i> {{ schedule.customer.name }}
                                     </div>
                                     {% endif %}
                                     
                                     {% if schedule.schedule_property %}
-                                    <div class="small text-muted text-truncate">
+                                    <div class="small text-muted" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">
                                         <i class="bi bi-building"></i> {{ schedule.schedule_property.name }}
                                     </div>
                                     {% endif %}
@@ -361,6 +361,7 @@
 /* 週表示用のスタイル */
 .week-column {
     width: 14.28%;
+    max-width: 14.28%;
     min-width: 120px;
 }
 
@@ -441,6 +442,9 @@
 
 .schedule-event {
     transition: transform 0.2s ease, opacity 0.2s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 .schedule-event:hover {
@@ -451,6 +455,21 @@
 .schedule-event.dragging {
     opacity: 0.5;
     transform: rotate(3deg);
+}
+
+/* 日付表示の固定 */
+.calendar-cell .date-number {
+    position: sticky;
+    top: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    z-index: 10;
+    padding: 2px 0;
+    margin-bottom: 5px;
+}
+
+.calendar-cell .schedule-events {
+    overflow-y: auto;
+    max-height: 90px;
 }
 </style>
 
@@ -495,22 +514,45 @@ function generateCalendar(year, month) {
         for (let day = 0; day < 7; day++) {
             const cell = document.createElement('td');
             cell.style.width = '14.28%';
+            cell.style.maxWidth = '14.28%';
             cell.style.height = '120px';
             cell.style.verticalAlign = 'top';
             cell.style.padding = '5px';
+            cell.style.overflow = 'hidden';
             
             if ((week === 0 && day < firstDay) || date > daysInMonth) {
                 // 空のセル
                 cell.innerHTML = '';
+                cell.className = '';
             } else {
                 // 日付セル（ドロップゾーンとして設定）
                 const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(date).padStart(2, '0');
                 cell.className = 'calendar-cell drop-zone';
                 cell.setAttribute('data-date', dateStr);
-                cell.innerHTML = '<div class="fw-bold mb-1">' + date + '</div>' +
-                    '<div class="schedule-events" data-date="' + dateStr + '">' +
-                    '<!-- スケジュールはAJAXで取得 -->' +
-                    '</div>';
+                
+                // 日付表示部分を先に作成
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'date-number fw-bold mb-1';
+                dateDiv.textContent = date;
+                dateDiv.style.fontSize = '16px';
+                dateDiv.style.fontWeight = 'bold';
+                dateDiv.style.marginBottom = '5px';
+                dateDiv.style.position = 'sticky';
+                dateDiv.style.top = '0';
+                dateDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                dateDiv.style.zIndex = '10';
+                dateDiv.style.padding = '2px 0';
+                
+                // スケジュールイベント用コンテナ
+                const eventsDiv = document.createElement('div');
+                eventsDiv.className = 'schedule-events';
+                eventsDiv.setAttribute('data-date', dateStr);
+                eventsDiv.style.overflowY = 'auto';
+                eventsDiv.style.maxHeight = '90px';
+                
+                // セルに追加
+                cell.appendChild(dateDiv);
+                cell.appendChild(eventsDiv);
                 
                 // 今日の日付をハイライト
                 const today = new Date();
@@ -544,35 +586,66 @@ function loadScheduleEvents(year, month) {
     fetch('{{ url_for("schedules.api_events") }}?start=' + startDate + '&end=' + endDate + '&status={{ status_filter }}')
         .then(response => response.json())
         .then(events => {
+            // 日付ごとにイベントをグループ化し、時間順にソート
+            const eventsByDate = {};
+            
             events.forEach(event => {
                 const eventDate = event.start.split('T')[0];
-                const eventContainer = document.querySelector('[data-date="' + eventDate + '"]');
+                if (!eventsByDate[eventDate]) {
+                    eventsByDate[eventDate] = [];
+                }
+                eventsByDate[eventDate].push(event);
+            });
+            
+            // 各日のイベントを時間順にソート
+            Object.keys(eventsByDate).forEach(dateKey => {
+                eventsByDate[dateKey].sort((a, b) => {
+                    // 終日イベントは最初に表示
+                    if (a.allDay && !b.allDay) return -1;
+                    if (!a.allDay && b.allDay) return 1;
+                    if (a.allDay && b.allDay) return 0;
+                    
+                    // 開始時間で比較
+                    const timeA = new Date(a.start).getTime();
+                    const timeB = new Date(b.start).getTime();
+                    return timeA - timeB;
+                });
                 
+                // ソート済みイベントを表示
+                const eventContainer = document.querySelector('.schedule-events[data-date="' + dateKey + '"]');
                 if (eventContainer) {
-                    const eventElement = document.createElement('div');
-                    eventElement.className = 'schedule-event mb-1 p-1 rounded';
-                    eventElement.style.fontSize = '0.75rem';
-                    eventElement.style.backgroundColor = event.backgroundColor + '40';
-                    eventElement.style.borderLeft = '3px solid ' + event.backgroundColor;
-                    eventElement.style.cursor = 'move';
+                    // 既存のスケジュールイベントのみクリア（日付表示は保持）
+                    eventContainer.innerHTML = '';
                     
-                    // ドラッグ&ドロップ属性を設定
-                    eventElement.setAttribute('draggable', 'true');
-                    eventElement.setAttribute('data-schedule-id', event.id);
-                    
-                    const timeStr = event.allDay ? '' : new Date(event.start).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
-                    const titleDiv = '<div class="fw-bold text-truncate">' + event.title + '</div>';
-                    const timeDiv = timeStr ? '<small class="text-muted">' + timeStr + '</small>' : '';
-                    eventElement.innerHTML = titleDiv + timeDiv;
-                    
-                    // クリックイベント（ドラッグ中でない場合のみ）
-                    eventElement.addEventListener('click', function(e) {
-                        if (!this.classList.contains('dragging')) {
-                            window.location.href = '{{ url_for("schedules.view", id=0) }}'.replace('0', event.id);
-                        }
+                    eventsByDate[dateKey].forEach(event => {
+                        const eventElement = document.createElement('div');
+                        eventElement.className = 'schedule-event mb-1 p-1 rounded';
+                        eventElement.style.fontSize = '0.75rem';
+                        eventElement.style.backgroundColor = event.backgroundColor + '40';
+                        eventElement.style.borderLeft = '3px solid ' + event.backgroundColor;
+                        eventElement.style.cursor = 'move';
+                        eventElement.style.wordWrap = 'break-word';
+                        eventElement.style.overflowWrap = 'break-word';
+                        eventElement.style.whiteSpace = 'normal';
+                        
+                        // ドラッグ&ドロップ属性を設定
+                        eventElement.setAttribute('draggable', 'true');
+                        eventElement.setAttribute('data-schedule-id', event.id);
+                        
+                        const timeStr = event.allDay ? '' : new Date(event.start).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+                        const titleDiv = '<div class="fw-bold" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;">' + event.title + '</div>';
+                        const timeDiv = timeStr ? '<small class="text-muted">' + timeStr + '</small>' : '';
+                        eventElement.innerHTML = titleDiv + timeDiv;
+                        
+                        // クリックイベント（ドラッグ中でない場合のみ）
+                        eventElement.addEventListener('click', function(e) {
+                            if (!this.classList.contains('dragging')) {
+                                window.location.href = '{{ url_for("schedules.view", id=0) }}'.replace('0', event.id);
+                            }
+                        });
+                        
+                        eventContainer.appendChild(eventElement);
                     });
-                    
-                    eventContainer.appendChild(eventElement);
                 }
             });
             

@@ -94,6 +94,15 @@ def list():
             if schedule_date in week_data:
                 week_data[schedule_date].append(schedule)
 
+        # 各日のスケジュールを開始時間順にソート
+        for date_key in week_data:
+            week_data[date_key].sort(
+                key=lambda s: (
+                    s.all_day is False,  # 終日イベントを最初に
+                    s.start_datetime.time(),  # 開始時間順
+                )
+            )
+
     # ナビゲーション用の前月・次月計算
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
