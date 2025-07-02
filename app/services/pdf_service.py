@@ -330,6 +330,14 @@ class PDFService:
             ["作業場所", report.property.name if report.property else "不明"],
             ["住所", address],
         ]
+
+        # 案件詳細の基本情報の備考がある場合は追加
+        if report.property and report.property.note:
+            property_note_para = Paragraph(
+                report.property.note, styles["JapaneseNormal"]
+            )
+            customer_data.append(["備考", property_note_para])
+
         customer_table = Table(customer_data, colWidths=[100, 400])
         customer_table.setStyle(
             TableStyle(
@@ -342,6 +350,7 @@ class PDFService:
                     ("FONTSIZE", (0, 0), (-1, -1), 10),
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("WORDWRAP", (0, 0), (-1, -1), True),  # テキスト折り返しを有効化
                 ]
             )
         )

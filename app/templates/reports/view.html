@@ -91,13 +91,28 @@
                 </div>
             </div>
             
-            {% if report.note %}
+            {% if report.property.note or report.note %}
                 <h4 class="mt-4">備考</h4>
+                {% if report.property.note %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">案件詳細の基本情報の備考</h6>
+                    </div>
+                    <div class="card-body">
+                        {{ report.property.note|nl2br }}
+                    </div>
+                </div>
+                {% endif %}
+                {% if report.note %}
                 <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">報告書詳細の基本情報の備考</h6>
+                    </div>
                     <div class="card-body">
                         {{ report.note|nl2br }}
                     </div>
                 </div>
+                {% endif %}
             {% endif %}
         </div>
     </div>
