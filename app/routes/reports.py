@@ -2530,73 +2530,66 @@ def work_contents_list():
     sort_by = request.args.get("sort", "work_date")
     sort_order = request.args.get("order", "desc")
 
-    # ベースクエリ構築
-    # work_item_nameは計算されたプロパティなので、SQLで直接取得
-    work_item_name_case = func.coalesce(WorkItem.name, WorkDetail.work_item_text).label(
-        "work_item_name"
-    )
-
-    # 作業時間と作業内容のROW_NUMBERを取得するサブクエリ
-    work_time_subquery = db.session.query(
-        WorkTime.id.label("work_time_id"),
+    # 各報告書の最初の作業時間情報を取得するサブクエリ
+    # （作業日でソートするため、各報告書の代表的な作業日を取得）
+    first_work_time_subquery = db.session.query(
         WorkTime.work_date,
         WorkTime.start_time,
         WorkTime.end_time,
         WorkTime.report_id.label("wt_report_id"),
         func.row_number()
-        .over(partition_by=WorkTime.report_id, order_by=WorkTime.id)
-        .label("wt_row_num"),
+        .over(
+            partition_by=WorkTime.report_id,
+            order_by=[WorkTime.work_date.asc(), WorkTime.start_time.asc()],
+        )
+        .label("rn"),
     ).subquery()
 
-    work_detail_subquery = db.session.query(
-        WorkDetail.id.label("work_detail_id"),
-        WorkDetail.description,
-        WorkDetail.confirmation,
-        WorkDetail.report_id.label("wd_report_id"),
-        WorkDetail.air_conditioner_id,
-        WorkDetail.work_item_id,
-        WorkDetail.work_item_text,
-        func.row_number()
-        .over(partition_by=WorkDetail.report_id, order_by=WorkDetail.id)
-        .label("wd_row_num"),
-    ).subquery()
+    # 最初の作業時間のみをフィルタリング
+    representative_work_time = (
+        db.session.query(
+            first_work_time_subquery.c.work_date,
+            first_work_time_subquery.c.start_time,
+            first_work_time_subquery.c.end_time,
+            first_work_time_subquery.c.wt_report_id,
+        )
+        .filter(first_work_time_subquery.c.rn == 1)
+        .subquery()
+    )
 
+    # メインクエリ：すべての作業内容を取得し、代表的な作業時間情報を付与
     query = (
         db.session.query(
-            work_detail_subquery.c.work_detail_id.label("id"),
-            work_time_subquery.c.work_date,
-            work_time_subquery.c.start_time,
-            work_time_subquery.c.end_time,
+            WorkDetail.id.label("id"),
+            representative_work_time.c.work_date,
+            representative_work_time.c.start_time,
+            representative_work_time.c.end_time,
             Property.name.label("property_name"),
             Customer.name.label("customer_name"),
             AirConditioner.manufacturer,
             AirConditioner.model_number,
             AirConditioner.location,
-            func.coalesce(WorkItem.name, work_detail_subquery.c.work_item_text).label(
+            func.coalesce(WorkItem.name, WorkDetail.work_item_text).label(
                 "work_item_name"
             ),
-            work_detail_subquery.c.description,
-            work_detail_subquery.c.confirmation,
+            WorkDetail.description,
+            WorkDetail.confirmation,
             Report.id.label("report_id"),
             Report.title.label("report_title"),
         )
-        .select_from(work_detail_subquery)
-        .join(
-            work_time_subquery,
-            db.and_(
-                work_detail_subquery.c.wd_report_id
-                == work_time_subquery.c.wt_report_id,
-                work_detail_subquery.c.wd_row_num == work_time_subquery.c.wt_row_num,
-            ),
-        )
-        .join(Report, work_detail_subquery.c.wd_report_id == Report.id)
+        .select_from(WorkDetail)
+        .join(Report, WorkDetail.report_id == Report.id)
         .join(Property, Report.property_id == Property.id)
         .join(Customer, Property.customer_id == Customer.id)
         .outerjoin(
-            AirConditioner,
-            work_detail_subquery.c.air_conditioner_id == AirConditioner.id,
+            representative_work_time,
+            WorkDetail.report_id == representative_work_time.c.wt_report_id,
         )
-        .outerjoin(WorkItem, work_detail_subquery.c.work_item_id == WorkItem.id)
+        .outerjoin(
+            AirConditioner,
+            WorkDetail.air_conditioner_id == AirConditioner.id,
+        )
+        .outerjoin(WorkItem, WorkDetail.work_item_id == WorkItem.id)
     )
 
     # フィルタリング
@@ -2606,8 +2599,8 @@ def work_contents_list():
             Customer.name.contains(search_keyword),
             AirConditioner.manufacturer.contains(search_keyword),
             AirConditioner.model_number.contains(search_keyword),
-            work_detail_subquery.c.description.contains(search_keyword),
-            work_detail_subquery.c.work_item_text.contains(search_keyword),
+            WorkDetail.description.contains(search_keyword),
+            WorkDetail.work_item_text.contains(search_keyword),
             WorkItem.name.contains(search_keyword),
         )
         query = query.filter(search_filter)
@@ -2615,7 +2608,7 @@ def work_contents_list():
     if work_item_filter:
         query = query.filter(
             or_(
-                work_detail_subquery.c.work_item_text == work_item_filter,
+                WorkDetail.work_item_text == work_item_filter,
                 WorkItem.name == work_item_filter,
             )
         )
@@ -2623,32 +2616,30 @@ def work_contents_list():
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(work_time_subquery.c.work_date >= start_date_obj)
+            query = query.filter(representative_work_time.c.work_date >= start_date_obj)
         except ValueError:
             pass
 
     if end_date:
         try:
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(work_time_subquery.c.work_date <= end_date_obj)
+            query = query.filter(representative_work_time.c.work_date <= end_date_obj)
         except ValueError:
             pass
 
     # ソート設定
-    sort_column = work_time_subquery.c.work_date  # デフォルト
+    sort_column = representative_work_time.c.work_date  # デフォルト
     if sort_by == "property_name":
         sort_column = Property.name
     elif sort_by == "customer_name":
         sort_column = Customer.name
     elif sort_by == "work_item":
         # work_item_nameでソートするための処理
-        sort_column = func.coalesce(
-            WorkItem.name, work_detail_subquery.c.work_item_text
-        )
+        sort_column = func.coalesce(WorkItem.name, WorkDetail.work_item_text)
     elif sort_by == "start_time":
-        sort_column = work_time_subquery.c.start_time
+        sort_column = representative_work_time.c.start_time
     elif sort_by == "end_time":
-        sort_column = work_time_subquery.c.end_time
+        sort_column = representative_work_time.c.end_time
 
     if sort_order == "desc":
         query = query.order_by(sort_column.desc())
