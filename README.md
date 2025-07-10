@@ -90,7 +90,18 @@ eacon_report/
 │   ├── migrations/               # マイグレーション関連
 │   ├── backup/                   # バックアップ・復元関連
 │   ├── db_tools/                 # データベース操作・修正
-│   └── development/              # 開発・テスト用スクリプト
+│   ├── development/              # 開発・テスト用スクリプト
+│   └── utilities/                # ユーティリティスクリプト
+├── docs/                         # ドキュメント
+│   ├── README.md                 # ドキュメント一覧
+│   ├── AIRCON_DATA_IMPORT_GUIDE.md
+│   ├── ALL_DATA_IMPORT_GUIDE.md
+│   ├── NOTIFICATION_SETUP.md
+│   ├── RENDER_DEPLOY.md
+│   ├── RENDER_EXECUTION_GUIDE.md
+│   ├── RENDER_FILE_UPLOAD_GUIDE.md
+│   ├── RENDER_SETUP_GUIDE.md
+│   └── RENDER_SHELL_COMMANDS.md
 ├── db_backups/                   # データベースバックアップ
 ├── venv/                         # 仮想環境（gitignore対象）
 ├── .gitignore                    # Gitの除外設定

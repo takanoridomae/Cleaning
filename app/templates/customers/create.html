@@ -27,16 +27,19 @@
           <input type="text" class="form-control" id="company_name" name="company_name">
         </div>
         
+        {% if current_user.can_view_sensitive_info() %}
         <div class="col-md-6">
           <label for="phone" class="form-label">電話番号</label>
           <input type="tel" class="form-control" id="phone" name="phone">
         </div>
+        {% endif %}
         
         <div class="col-md-6">
           <label for="email" class="form-label">メールアドレス</label>
           <input type="email" class="form-control" id="email" name="email">
         </div>
         
+        {% if current_user.can_view_sensitive_info() %}
         <div class="col-md-4">
           <label for="postal_code" class="form-label">郵便番号</label>
           <div class="input-group">
@@ -50,6 +53,7 @@
           <label for="address" class="form-label">住所</label>
           <input type="text" class="form-control" id="address" name="address">
         </div>
+        {% endif %}
         
         <div class="col-12">
           <label for="note" class="form-label">備考</label>

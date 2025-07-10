@@ -1,8 +1,18 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    session,
+)
 from app.models.schedule import Schedule
 from app.models.customer import Customer
 from app.models.property import Property
 from app.models.report import Report
+from app.models.user import User
 from app import db
 from app.routes.auth import (
     login_required,
@@ -240,7 +250,10 @@ def create():
 def view(id):
     """スケジュール詳細表示"""
     schedule = Schedule.query.get_or_404(id)
-    return render_template("schedules/view.html", schedule=schedule)
+    current_user = User.query.get(session["user_id"])
+    return render_template(
+        "schedules/view.html", schedule=schedule, current_user=current_user
+    )
 
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))

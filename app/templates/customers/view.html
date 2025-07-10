@@ -36,6 +36,7 @@
               <th scope="row">メールアドレス</th>
               <td>{{ customer.email or '未設定' }}</td>
             </tr>
+            {% if current_user.can_view_sensitive_info() %}
             <tr>
               <th scope="row">電話番号</th>
               <td>{{ customer.phone or '未設定' }}</td>
@@ -48,6 +49,7 @@
               <th scope="row">住所</th>
               <td>{{ customer.address or '未設定' }}</td>
             </tr>
+            {% endif %}
             <tr>
               <th scope="row">備考</th>
               <td>{{ customer.note or '未設定' }}</td>

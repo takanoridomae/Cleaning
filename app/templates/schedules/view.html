@@ -36,10 +36,14 @@
                         <strong>説明:</strong>
                     </div>
                     <div class="col-12 col-sm-9">
+                        {% if current_user.can_view_sensitive_info() %}
                         {% if schedule.description %}
                         {{ schedule.description | nl2br }}
                         {% else %}
                         <span class="text-muted">なし</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">（閲覧権限なし）</span>
                         {% endif %}
                     </div>
                 </div>
@@ -97,7 +101,7 @@
                         <a href="{{ url_for('properties.view', id=schedule.schedule_property.id) }}" class="text-decoration-none">
                             {{ schedule.schedule_property.name }}
                         </a>
-                        {% if schedule.schedule_property.address %}
+                        {% if current_user.can_view_sensitive_info() and schedule.schedule_property.address %}
                         <br><small class="text-muted">{{ schedule.schedule_property.address }}</small>
                         {% endif %}
                         {% else %}

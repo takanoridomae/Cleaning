@@ -1,4 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    session,
+)
 from app.models.property import Property
 from app.models.customer import Customer
 from app.models.air_conditioner import AirConditioner
@@ -6,6 +15,7 @@ from app.models.report import Report
 from app.models.photo import Photo
 from app.models.work_time import WorkTime
 from app.models.work_detail import WorkDetail
+from app.models.user import User
 from app import db
 from app.routes.auth import (
     login_required,
@@ -117,6 +127,7 @@ def list():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     properties = pagination.items
 
+    current_user = User.query.get(session["user_id"])
     return render_template(
         "properties/list.html",
         properties=properties,
@@ -124,6 +135,7 @@ def list():
         current_search=search,
         current_sort=sort_by,
         current_order=order,
+        current_user=current_user,
     )
 
 
@@ -133,7 +145,10 @@ def list():
 def view(id):
     """物件詳細画面表示"""
     property = Property.query.get_or_404(id)
-    return render_template("properties/view.html", property=property)
+    current_user = User.query.get(session["user_id"])
+    return render_template(
+        "properties/view.html", property=property, current_user=current_user
+    )
 
 
 @bp.route("/create", methods=("GET", "POST"))
@@ -142,13 +157,21 @@ def view(id):
 def create():
     """新規物件登録"""
     customers = Customer.query.order_by(Customer.name).all()
+    current_user = User.query.get(session["user_id"])
 
     if request.method == "POST":
         name = request.form["name"]
         customer_id = request.form["customer_id"]
-        address = request.form.get("address", "")
-        postal_code = request.form.get("postal_code", "")
-        note = request.form.get("note", "")
+
+        # 機密情報は権限のあるユーザーのみ取得
+        if current_user.can_view_sensitive_info():
+            address = request.form.get("address", "")
+            postal_code = request.form.get("postal_code", "")
+            note = request.form.get("note", "")
+        else:
+            address = ""
+            postal_code = ""
+            note = ""
         reception_type = request.form.get("reception_type", "")
         reception_detail = request.form.get("reception_detail", "")
 
@@ -229,7 +252,9 @@ def create():
             flash("物件が正常に登録されました", "success")
             return redirect(url_for("properties.view", id=property.id))
 
-    return render_template("properties/create.html", customers=customers)
+    return render_template(
+        "properties/create.html", customers=customers, current_user=current_user
+    )
 
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
@@ -239,13 +264,22 @@ def edit(id):
     """物件情報編集"""
     property = Property.query.get_or_404(id)
     customers = Customer.query.order_by(Customer.name).all()
+    current_user = User.query.get(session["user_id"])
 
     if request.method == "POST":
         name = request.form["name"]
         customer_id = request.form["customer_id"]
-        address = request.form.get("address", "")
-        postal_code = request.form.get("postal_code", "")
-        note = request.form.get("note", "")
+
+        # 機密情報は権限のあるユーザーのみ取得・更新
+        if current_user.can_view_sensitive_info():
+            address = request.form.get("address", "")
+            postal_code = request.form.get("postal_code", "")
+            note = request.form.get("note", "")
+        else:
+            # 権限がない場合は既存の値を保持
+            address = property.address
+            postal_code = property.postal_code
+            note = property.note
         reception_type = request.form.get("reception_type", "")
         reception_detail = request.form.get("reception_detail", "")
 
@@ -280,7 +314,10 @@ def edit(id):
             return redirect(url_for("properties.view", id=property.id))
 
     return render_template(
-        "properties/edit.html", property=property, customers=customers
+        "properties/edit.html",
+        property=property,
+        customers=customers,
+        current_user=current_user,
     )
 
 

@@ -15,12 +15,14 @@
             </a>
         </div>
         <div class="btn-group">
+            {% if current_user.can_export_pdf() %}
             <a href="{{ url_for('reports.download_pdf', id=report.id) }}" class="btn btn-success" target="_blank" title="PDFをブラウザで表示・ダウンロードします">
                 <i class="bi bi-file-earmark-pdf"></i> PDF出力（閲覧用）
             </a>
             <a href="{{ url_for('reports.download_pdf', id=report.id, save=1) }}" class="btn btn-info" title="PDFをサーバー上に保存します（ダウンロードはされません）">
                 <i class="bi bi-save"></i> PDF保存（ファイル保存のみ）
             </a>
+            {% endif %}
             <a href="{{ url_for('reports.edit', id=report.id) }}" class="btn btn-primary">
                 <i class="bi bi-pencil"></i> 編集
             </a>
@@ -54,10 +56,12 @@
                                 <th>顧客</th>
                                 <td>{{ report.property.customer.name }}</td>
                             </tr>
+                            {% if current_user.can_view_sensitive_info() %}
                             <tr>
                                 <th>作業住所</th>
                                 <td>{{ report.work_address or '未設定' }}</td>
                             </tr>
+                            {% endif %}
                             <tr>
                                 <th>ステータス</th>
                                 <td>
@@ -91,7 +95,7 @@
                 </div>
             </div>
             
-            {% if report.property.note or report.note %}
+            {% if current_user.can_view_sensitive_info() and (report.property.note or report.note) %}
                 <h4 class="mt-4">備考</h4>
                 {% if report.property.note %}
                 <div class="card mb-3">

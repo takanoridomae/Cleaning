@@ -109,6 +109,7 @@
                                                 {% endif %}
                                             </a>
                                         </th>
+                                        {% if current_user.can_view_sensitive_info() %}
                                         <th>
                                             <a href="{{ url_for('properties.list', search=current_search, sort='address', order='desc' if current_sort == 'address' and current_order == 'asc' else 'asc') }}" 
                                                class="text-decoration-none text-dark">
@@ -124,6 +125,7 @@
                                                 {% endif %}
                                             </a>
                                         </th>
+                                        {% endif %}
                                         <th>
                                             <a href="{{ url_for('properties.list', search=current_search, sort='reception_type', order='desc' if current_sort == 'reception_type' and current_order == 'asc' else 'asc') }}" 
                                                class="text-decoration-none text-dark">
@@ -173,7 +175,9 @@
                                                 {{ property.customer.name }}
                                             </a>
                                         </td>
+                                        {% if current_user.can_view_sensitive_info() %}
                                         <td>{{ property.address or '未設定' }}</td>
+                                        {% endif %}
                                         <td>
                                             {% if property.reception_type %}
                                                 <span class="badge bg-primary">{{ property.reception_type }}</span>

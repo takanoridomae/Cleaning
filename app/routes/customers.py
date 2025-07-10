@@ -1,8 +1,15 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from app.models.customer import Customer
 from app.models.property import Property
+from app.models.user import User
 from app import db
-from app.routes.auth import login_required, view_permission_required, edit_permission_required, create_permission_required, delete_permission_required
+from app.routes.auth import (
+    login_required,
+    view_permission_required,
+    edit_permission_required,
+    create_permission_required,
+    delete_permission_required,
+)
 from sqlalchemy import or_
 
 bp = Blueprint("customers", __name__, url_prefix="/customers")
@@ -14,7 +21,10 @@ bp = Blueprint("customers", __name__, url_prefix="/customers")
 def list():
     """顧客一覧画面表示"""
     customers = Customer.query.order_by(Customer.created_at.desc()).all()
-    return render_template("customers/list.html", customers=customers)
+    current_user = User.query.get(session["user_id"])
+    return render_template(
+        "customers/list.html", customers=customers, current_user=current_user
+    )
 
 
 @bp.route("/<int:id>")
@@ -23,7 +33,10 @@ def list():
 def view(id):
     """顧客詳細画面表示"""
     customer = Customer.query.get_or_404(id)
-    return render_template("customers/view.html", customer=customer)
+    current_user = User.query.get(session["user_id"])
+    return render_template(
+        "customers/view.html", customer=customer, current_user=current_user
+    )
 
 
 @bp.route("/create", methods=("GET", "POST"))
@@ -31,13 +44,23 @@ def view(id):
 @create_permission_required
 def create():
     """新規顧客登録"""
+    current_user = User.query.get(session["user_id"])
+
     if request.method == "POST":
         name = request.form["name"]
         company_name = request.form.get("company_name", "")
         email = request.form.get("email", "")
-        phone = request.form.get("phone", "")
-        postal_code = request.form.get("postal_code", "")
-        address = request.form.get("address", "")
+
+        # 機密情報は権限のあるユーザーのみ取得
+        if current_user.can_view_sensitive_info():
+            phone = request.form.get("phone", "")
+            postal_code = request.form.get("postal_code", "")
+            address = request.form.get("address", "")
+        else:
+            phone = ""
+            postal_code = ""
+            address = ""
+
         note = request.form.get("note", "")
 
         error = None
@@ -64,7 +87,7 @@ def create():
             flash("顧客が正常に登録されました", "success")
             return redirect(url_for("customers.list"))
 
-    return render_template("customers/create.html")
+    return render_template("customers/create.html", current_user=current_user)
 
 
 @bp.route("/<int:id>/edit", methods=("GET", "POST"))
@@ -73,14 +96,23 @@ def create():
 def edit(id):
     """顧客情報編集"""
     customer = Customer.query.get_or_404(id)
+    current_user = User.query.get(session["user_id"])
 
     if request.method == "POST":
         name = request.form["name"]
         company_name = request.form.get("company_name", "")
         email = request.form.get("email", "")
-        phone = request.form.get("phone", "")
-        postal_code = request.form.get("postal_code", "")
-        address = request.form.get("address", "")
+
+        # 機密情報は権限のあるユーザーのみ取得
+        if current_user.can_view_sensitive_info():
+            phone = request.form.get("phone", "")
+            postal_code = request.form.get("postal_code", "")
+            address = request.form.get("address", "")
+        else:
+            phone = ""
+            postal_code = ""
+            address = ""
+
         note = request.form.get("note", "")
 
         error = None
@@ -105,7 +137,9 @@ def edit(id):
             flash("顧客情報が正常に更新されました", "success")
             return redirect(url_for("customers.list"))
 
-    return render_template("customers/edit.html", customer=customer)
+    return render_template(
+        "customers/edit.html", customer=customer, current_user=current_user
+    )
 
 
 @bp.route("/<int:id>/delete")

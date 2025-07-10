@@ -10,6 +10,7 @@ from flask import (
     send_file,
     Response,
     make_response,
+    session,
 )
 from app.models.report import Report
 from app.models.property import Property
@@ -20,6 +21,7 @@ from app.models.work_item import WorkItem
 from app.models.customer import Customer
 from app.models.air_conditioner import AirConditioner
 from app.models.schedule import Schedule
+from app.models.user import User
 from app import db
 from sqlalchemy import or_
 import os
@@ -510,6 +512,7 @@ def create():
 def view(id):
     """報告書詳細画面表示"""
     report = Report.query.get_or_404(id)
+    current_user = User.query.get(session["user_id"])
 
     # 作業時間の取得
     work_times = (
@@ -540,6 +543,7 @@ def view(id):
         work_times=work_times,
         work_details=work_details,
         photo_pairs=photo_pairs,
+        current_user=current_user,
     )
 
 
@@ -1393,6 +1397,11 @@ def edit_photo(report_id, photo_id):
 @view_permission_required
 def download_pdf(id):
     """報告書のPDFをダウンロード"""
+    # PDF出力権限チェック
+    if not current_user.can_export_pdf():
+        flash("PDF出力には管理者権限が必要です。", "danger")
+        return redirect(url_for("reports.view", id=id))
+
     report = Report.query.get_or_404(id)
 
     # 作業時間の取得

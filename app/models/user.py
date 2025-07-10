@@ -96,6 +96,24 @@ class User(UserMixin, db.Model):
         """作成権限を持つかチェック"""
         return self.role in [self.ROLE_ADMIN, self.ROLE_ALL_ACCESS]
 
+    def can_view_sensitive_info(self):
+        """機密情報（住所、電話番号等）を閲覧できるかチェック"""
+        return self.role in [
+            self.ROLE_ADMIN,
+            self.ROLE_ALL_ACCESS,
+            self.ROLE_EDITOR,
+            self.ROLE_VIEWER,
+        ]
+
+    def can_export_pdf(self):
+        """PDF出力権限を持つかチェック"""
+        return self.role in [
+            self.ROLE_ADMIN,
+            self.ROLE_ALL_ACCESS,
+            self.ROLE_EDITOR,
+            self.ROLE_VIEWER,
+        ]
+
     def get_role_display_name(self):
         """権限の表示名を取得"""
         return self.ROLES.get(self.role, self.role)
