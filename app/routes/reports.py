@@ -1398,6 +1398,7 @@ def edit_photo(report_id, photo_id):
 def download_pdf(id):
     """報告書のPDFをダウンロード"""
     # PDF出力権限チェック
+    current_user = User.query.get(session["user_id"])
     if not current_user.can_export_pdf():
         flash("PDF出力には管理者権限が必要です。", "danger")
         return redirect(url_for("reports.view", id=id))
