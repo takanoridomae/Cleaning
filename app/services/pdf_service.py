@@ -36,7 +36,7 @@ def sanitize_filename(filename):
 
 def fix_image_orientation(image_path):
     """
-    画像のEXIF情報を読み取り、正しい向きに回転させる
+    画像のEXIF情報を読み取り、正しい向きに回転させる（最適化版）
 
     Args:
         image_path (str): 画像ファイルのパス
@@ -47,6 +47,10 @@ def fix_image_orientation(image_path):
     try:
         # PILで画像を開く
         image = PILImage.open(image_path)
+
+        # 高速化のため、大きすぎる画像は事前に縮小
+        if image.size[0] > 2000 or image.size[1] > 2000:
+            image.thumbnail((2000, 2000), PILImage.Resampling.LANCZOS)
 
         # EXIF情報を取得
         exif = image._getexif()
@@ -87,7 +91,15 @@ def fix_image_orientation(image_path):
     except Exception as e:
         print(f"画像の向き修正エラー: {e}")
         # エラーの場合は元の画像をそのまま返す
-        return PILImage.open(image_path)
+        try:
+            image = PILImage.open(image_path)
+            # エラー時も縮小して負荷軽減
+            if image.size[0] > 2000 or image.size[1] > 2000:
+                image.thumbnail((2000, 2000), PILImage.Resampling.LANCZOS)
+            return image
+        except:
+            # 最悪の場合は空の画像を返す
+            return PILImage.new("RGB", (100, 100), color="white")
 
 
 class PDFService:
@@ -663,19 +675,28 @@ class PDFService:
                                 # 画像の向きを修正
                                 corrected_image = fix_image_orientation(image_path)
 
+                                # 画像をリサイズしてから一時ファイルに保存（パフォーマンス最適化）
+                                # まず画像をPDFに適したサイズにリサイズ
+                                corrected_image.thumbnail(
+                                    (480, 360), PILImage.Resampling.LANCZOS
+                                )
+
                                 # 一時ファイルに保存
                                 with tempfile.NamedTemporaryFile(
                                     suffix=".jpg", delete=False
                                 ) as temp_file:
                                     corrected_image.save(
-                                        temp_file.name, "JPEG", quality=95
+                                        temp_file.name,
+                                        "JPEG",
+                                        quality=85,
+                                        optimize=True,
                                     )
                                     temp_path = temp_file.name
                                     temp_files.append(
                                         temp_path
                                     )  # 一時ファイルリストに追加
 
-                                # 画像をリサイズして挿入（サイズを大きく調整）
+                                # 画像をPDFに挿入（サイズを調整）
                                 img = Image(
                                     temp_path,
                                     width=240,  # 幅を拡大（180→240）
@@ -737,19 +758,28 @@ class PDFService:
                                 # 画像の向きを修正
                                 corrected_image = fix_image_orientation(image_path)
 
+                                # 画像をリサイズしてから一時ファイルに保存（パフォーマンス最適化）
+                                # まず画像をPDFに適したサイズにリサイズ
+                                corrected_image.thumbnail(
+                                    (480, 360), PILImage.Resampling.LANCZOS
+                                )
+
                                 # 一時ファイルに保存
                                 with tempfile.NamedTemporaryFile(
                                     suffix=".jpg", delete=False
                                 ) as temp_file:
                                     corrected_image.save(
-                                        temp_file.name, "JPEG", quality=95
+                                        temp_file.name,
+                                        "JPEG",
+                                        quality=85,
+                                        optimize=True,
                                     )
                                     temp_path = temp_file.name
                                     temp_files.append(
                                         temp_path
                                     )  # 一時ファイルリストに追加
 
-                                # 画像をリサイズして挿入（サイズを大きく調整）
+                                # 画像をPDFに挿入（サイズを調整）
                                 img = Image(
                                     temp_path,
                                     width=240,  # 幅を拡大（180→240）
