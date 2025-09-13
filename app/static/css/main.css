@@ -730,4 +730,265 @@ footer {
   background-color: var(--success-color);
   border-color: var(--success-color);
   color: white;
+}
+
+/* 報告書詳細モバイル用カードスタイル */
+@media (max-width: 767.98px) {
+  .work-time-card,
+  .work-detail-card {
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .work-time-card:hover,
+  .work-detail-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .work-detail-card {
+    border-left-color: var(--success-color);
+  }
+  
+  .work-time-card .card-title {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+  
+  .work-detail-card .card-title {
+    color: var(--success-color);
+    font-weight: 600;
+  }
+  
+  .work-time-card .badge,
+  .work-detail-card .badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+  
+  /* カード内のテキストスタイル */
+  .work-time-card small.text-muted,
+  .work-detail-card small.text-muted {
+    font-weight: 500;
+    color: #6c757d !important;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .work-time-card strong,
+  .work-detail-card strong {
+    font-size: 1.1rem;
+    color: var(--dark-color);
+  }
+  
+  /* カード内の改行対応 */
+  .work-time-card .text-break,
+  .work-detail-card .text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* 案件一覧モバイル用カードスタイル */
+  .property-card {
+    border-left: 4px solid var(--warning-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .property-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .property-card .card-title {
+    color: var(--warning-color);
+    font-weight: 600;
+  }
+  
+  .property-card .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .property-card .btn-group {
+    gap: 0.25rem;
+  }
+  
+  .property-card .btn-group .btn {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.25rem;
+    text-align: center;
+  }
+  
+  /* カード内のテキストスタイル */
+  .property-card small.text-muted {
+    font-weight: 500;
+    color: #6c757d !important;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .property-card .text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* エアコン情報モバイル用カードスタイル */
+  .aircon-card {
+    border-left: 4px solid var(--info-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .aircon-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .aircon-card .card-title {
+    color: var(--info-color);
+    font-weight: 600;
+  }
+  
+  .aircon-card .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .aircon-card .btn {
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  /* カード内のテキストスタイル */
+  .aircon-card small.text-muted {
+    font-weight: 500;
+    color: #6c757d !important;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .aircon-card strong {
+    font-size: 1.1rem;
+    color: var(--dark-color);
+  }
+  
+  .aircon-card .text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* エアコン一覧モバイル用カードスタイル */
+  .aircon-list-card {
+    border-left: 4px solid var(--info-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .aircon-list-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .aircon-list-card .card-title {
+    color: var(--info-color);
+    font-weight: 600;
+  }
+  
+  .aircon-list-card .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .aircon-list-card .btn-group {
+    gap: 0.25rem;
+  }
+  
+  .aircon-list-card .btn-group .btn {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.25rem;
+    text-align: center;
+  }
+  
+  /* カード内のテキストスタイル */
+  .aircon-list-card small.text-muted {
+    font-weight: 500;
+    color: #6c757d !important;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .aircon-list-card strong {
+    font-size: 1.1rem;
+    color: var(--dark-color);
+  }
+  
+  .aircon-list-card .text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* 報告書一覧モバイル用カードスタイル */
+  .report-card {
+    border-left: 4px solid var(--danger-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .report-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .report-card .card-title {
+    color: var(--danger-color);
+    font-weight: 600;
+  }
+  
+  .report-card .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .report-card .btn-group {
+    gap: 0.25rem;
+  }
+  
+  .report-card .btn-group .btn {
+    flex: 1;
+    font-size: 0.7rem;
+    padding: 0.375rem 0.2rem;
+    text-align: center;
+  }
+  
+  /* カード内のテキストスタイル */
+  .report-card small.text-muted {
+    font-weight: 500;
+    color: #6c757d !important;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+  }
+  
+  .report-card strong {
+    font-size: 1.05rem;
+    color: var(--dark-color);
+  }
+  
+  .report-card .text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
 } 

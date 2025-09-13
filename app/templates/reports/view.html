@@ -127,7 +127,8 @@
         </div>
         <div class="card-body">
             {% if work_times %}
-                <div class="table-responsive">
+                <!-- PC/タブレット表示 -->
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-striped">
                         <thead>
                             <tr>
@@ -155,6 +156,49 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- モバイル表示（カード型） -->
+                <div class="d-md-none">
+                    {% for work_time in work_times %}
+                    <div class="card mb-3 work-time-card">
+                        <div class="card-body p-3">
+                            <div class="row">
+                                <div class="col-12 mb-2">
+                                    <h6 class="card-title mb-1">
+                                        <i class="bi bi-calendar3"></i> {{ work_time.work_date.strftime('%Y-%m-%d') }}
+                                    </h6>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">開始時間</small><br>
+                                    <strong>{{ work_time.start_time.strftime('%H:%M') }}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">終了時間</small><br>
+                                    <strong>{{ work_time.end_time.strftime('%H:%M') }}</strong>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <small class="text-muted">作業時間</small><br>
+                                    {% set hours = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) // 60 %}
+                                    {% set minutes = ((work_time.end_time.hour * 60 + work_time.end_time.minute) - (work_time.start_time.hour * 60 + work_time.start_time.minute)) % 60 %}
+                                    <span class="badge bg-primary">{{ hours }}時間{% if minutes > 0 %}{{ minutes }}分{% endif %}</span>
+                                </div>
+                            </div>
+                            {% if work_time.note %}
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <small class="text-muted">備考</small><br>
+                                    <div class="text-break">{{ work_time.note }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             {% else %}
                 <p>作業時間の記録がありません</p>
             {% endif %}
@@ -167,7 +211,8 @@
         </div>
         <div class="card-body">
             {% if work_details %}
-                <div class="table-responsive">
+                <!-- PC/タブレット表示 -->
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-striped">
                         <thead>
                             <tr>
@@ -204,6 +249,59 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- モバイル表示（カード型） -->
+                <div class="d-md-none">
+                    {% for work_detail in work_details %}
+                    <div class="card mb-3 work-detail-card">
+                        <div class="card-body p-3">
+                            <div class="row">
+                                <div class="col-12 mb-2">
+                                    <h6 class="card-title mb-1">
+                                        <i class="bi bi-tools"></i> {{ work_detail.work_item_name or '作業項目未指定' }}
+                                    </h6>
+                                    {% if work_detail.work_amount %}
+                                    <span class="badge bg-success">¥{{ "{:,}".format(work_detail.work_amount) }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if work_detail.air_conditioner %}
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <small class="text-muted">エアコン情報</small><br>
+                                    <strong>
+                                        {{ work_detail.air_conditioner.manufacturer or '不明' }} 
+                                        {{ work_detail.air_conditioner.model_number or '不明' }}
+                                    </strong>
+                                    {% if work_detail.air_conditioner.location %}
+                                    <br><small class="text-muted">設置場所: {{ work_detail.air_conditioner.location }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if work_detail.description %}
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <small class="text-muted">作業内容</small><br>
+                                    <div class="text-break">{{ work_detail.description|nl2br }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if work_detail.confirmation %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <small class="text-muted">作業確認</small><br>
+                                    <div class="text-break">{{ work_detail.confirmation }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             {% else %}
                 <p>作業内容の記録がありません</p>
