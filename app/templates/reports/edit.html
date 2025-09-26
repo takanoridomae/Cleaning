@@ -397,9 +397,13 @@
                                         <div class="card">
                                             <!-- filepathが存在する場合はそれを使用、そうでない場合は従来のパスを使用 -->
                                             {% if photo.filepath %}
-                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                                <img src="/uploads/{{ photo.filepath }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}" onerror="console.error('Before photo load failed:', this.src);">
+                                                <!-- デバッグ情報 -->
+                                                <small class="text-muted d-block">Debug Before: /uploads/{{ photo.filepath }}</small>
                                             {% else %}
-                                                <img src="/uploads/before/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}">
+                                                <img src="/uploads/before/{{ photo.filename }}" class="card-img-top img-thumbnail" alt="{{ photo.caption }}" onerror="console.error('Before photo load failed:', this.src);">
+                                                <!-- デバッグ情報 -->
+                                                <small class="text-muted d-block">Debug Before: /uploads/before/{{ photo.filename }}</small>
                                             {% endif %}
                                             <div class="card-body">
                                                 <p class="card-text">

@@ -144,8 +144,36 @@ def create_app(test_config=None):
     # アップロードされた写真を提供するルートを追加
     @app.route("/uploads/<path:filename>")
     def uploaded_file(filename):
-        upload_folder = os.path.join(os.path.dirname(app.root_path), "uploads")
-        return send_from_directory(upload_folder, filename)
+        # app.config['UPLOAD_FOLDER']を使用して、保存時と配信時のパスを一致させる
+        upload_folder = app.config['UPLOAD_FOLDER']
+        
+        # URL用のスラッシュをOS固有のパス区切り文字に変換
+        normalized_filename = filename.replace('/', os.sep)
+        full_path = os.path.join(upload_folder, normalized_filename)
+        
+        # デバッグ情報をコンソールに出力
+        print(f"DEBUG: Requested file: {filename}")
+        print(f"DEBUG: Normalized filename: {normalized_filename}")
+        print(f"DEBUG: Upload folder: {upload_folder}")
+        print(f"DEBUG: Full path: {full_path}")
+        print(f"DEBUG: File exists: {os.path.exists(full_path)}")
+        
+        # パスを分割してsend_from_directoryの引数を正しく設定
+        directory = os.path.dirname(full_path)
+        filename_only = os.path.basename(full_path)
+        
+        print(f"DEBUG: Send from directory: {directory}")
+        print(f"DEBUG: Send filename: {filename_only}")
+        
+        # ファイル配信時にキャッシュ制御ヘッダーを追加
+        response = send_from_directory(directory, filename_only)
+        
+        # キャッシュを無効にして、削除された画像が即座に反映されるようにする
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
 
     # 通知スケジューラーの初期化
     if not app.config.get("TESTING", False):

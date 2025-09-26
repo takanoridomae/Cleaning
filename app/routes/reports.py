@@ -27,6 +27,7 @@ from sqlalchemy import or_
 import os
 from datetime import datetime, time, date
 from werkzeug.utils import secure_filename
+import re
 from app.routes.auth import (
     login_required,
     view_permission_required,
@@ -34,6 +35,17 @@ from app.routes.auth import (
     create_permission_required,
     delete_permission_required,
 )
+
+
+def sanitize_folder_name(name):
+    """フォルダ名に使用できない文字を除去する（日本語は保持）"""
+    if not name:
+        return "unknown"
+    # Windowsのファイル名に使用できない文字を削除
+    invalid_chars = r'[\\/:*?"<>|]'
+    sanitized = re.sub(invalid_chars, "", str(name)).strip()
+    # 空文字列または空白のみの場合はunknownを返す
+    return sanitized if sanitized else "unknown"
 from app.services.pdf_service import PDFService
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -845,6 +857,11 @@ def edit(id):
 
             uploaded_photos = []  # アップロードした写真のリストを保持
 
+            # デバッグ情報の出力
+            print(f"DEBUG UPLOAD: air_conditioner_id = {air_conditioner_id} (type: {type(air_conditioner_id)})")
+            print(f"DEBUG UPLOAD: work_item_id = {work_item_id} (type: {type(work_item_id)})")
+            print(f"DEBUG UPLOAD: photo_type = {photo_type}")
+
             # 関連情報の取得
             report_property = Property.query.get(report.property_id)
             customer = None
@@ -853,12 +870,15 @@ def edit(id):
 
             if report_property:
                 customer = Customer.query.get(report_property.customer_id)
+                print(f"DEBUG UPLOAD: customer = {customer.name if customer else 'None'}")
 
             if air_conditioner_id:
                 air_conditioner = AirConditioner.query.get(air_conditioner_id)
+                print(f"DEBUG UPLOAD: air_conditioner = {air_conditioner.model_number if air_conditioner else 'None'} (ID: {air_conditioner.id if air_conditioner else 'None'})")
 
             if work_item_id:
                 work_item = WorkItem.query.get(work_item_id)
+                print(f"DEBUG UPLOAD: work_item = {work_item.name if work_item else 'None'} (ID: {work_item.id if work_item else 'None'})")
 
             for photo_file in photo_files:
                 if photo_file and photo_file.filename:
@@ -867,67 +887,10 @@ def edit(id):
                     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                     filename = f"{timestamp}_{filename}"
 
-                    # 新しいフォルダ構造の構築（顧客>物件>エアコン>作業項目>作業日）
-                    # ベースディレクトリは before または after から始まる
-                    base_folder = os.path.join(
-                        current_app.config["UPLOAD_FOLDER"], photo_type
-                    )
-
-                    # 顧客フォルダ
-                    customer_folder = "unknown_customer"
-                    if customer:
-                        customer_folder = secure_filename(customer.name)
-
-                    # 物件フォルダ
-                    property_folder = "unknown_property"
-                    if report_property:
-                        # 物件IDを追加して、同名物件でも区別できるようにする
-                        property_folder = secure_filename(
-                            f"{report_property.name}_{report_property.id}"
-                        )
-                        # 物件の住所も追加する（あれば）
-                        if report_property.address:
-                            # 住所が長すぎる場合は短縮する
-                            address_part = secure_filename(report_property.address[:30])
-                            property_folder = f"{property_folder}_{address_part}"
-
-                    # エアコンフォルダ
-                    air_conditioner_folder = "unknown_air_conditioner"
-                    if air_conditioner:
-                        # 製造元、型番、設置場所を組み合わせたフォルダ名
-                        air_conditioner_info = []
-                        if air_conditioner.manufacturer:
-                            air_conditioner_info.append(air_conditioner.manufacturer)
-                        if air_conditioner.model_number:
-                            air_conditioner_info.append(air_conditioner.model_number)
-                        if air_conditioner.location:
-                            air_conditioner_info.append(f"({air_conditioner.location})")
-
-                        if air_conditioner_info:
-                            air_conditioner_folder = secure_filename(
-                                "_".join(air_conditioner_info)
-                            )
-                        else:
-                            air_conditioner_folder = f"aircon_{air_conditioner.id}"
-
-                    # 作業項目フォルダ
-                    work_item_folder = "unknown_work_item"
-                    if work_item:
-                        work_item_folder = secure_filename(work_item.name)
-
-                    # 作業日フォルダ（報告書の日付を使用）
-                    work_date_folder = "unknown_date"
-                    if report.date:
-                        work_date_folder = report.date.strftime("%Y%m%d")
-
-                    # 完全なパスを構築
+                    # 単純なフォルダ構造（スマホ形式）- 報告書IDベース
+                    # before または after フォルダ直下に保存
                     upload_path = os.path.join(
-                        base_folder,
-                        customer_folder,
-                        property_folder,
-                        air_conditioner_folder,
-                        work_item_folder,
-                        work_date_folder,
+                        current_app.config["UPLOAD_FOLDER"], photo_type
                     )
 
                     # ディレクトリが存在しない場合は作成
@@ -939,16 +902,9 @@ def edit(id):
                     # ファイル保存
                     photo_file.save(filepath)
 
-                    # 相対パスを保存（uploads/before または uploads/after からの相対パス）
-                    relative_path = os.path.join(
-                        photo_type,
-                        customer_folder,
-                        property_folder,
-                        air_conditioner_folder,
-                        work_item_folder,
-                        work_date_folder,
-                        filename,
-                    )
+                    # 単純な相対パス（スマホ形式）
+                    # URL用にフォワードスラッシュを使用
+                    relative_path = f"{photo_type}/{filename}"
 
                     # データベースに写真情報を保存
                     photo = Photo(
@@ -1246,17 +1202,26 @@ def delete_report(id):
         photos = Photo.query.filter_by(report_id=id).all()
         for photo in photos:
             try:
-                # ファイルパスを取得
-                photo_path = os.path.join(
-                    current_app.config["UPLOAD_FOLDER"],
-                    "before" if photo.photo_type == "before" else "after",
-                    photo.filename,
-                )
+                # ファイルパスを取得（新しい階層化されたパスに対応）
+                if hasattr(photo, "filepath") and photo.filepath:
+                    # 新しい階層化されたパス形式を使用
+                    photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], photo.filepath)
+                    print(f"報告書削除: 階層化パスを使用: {photo_path}")
+                else:
+                    # 従来のパス形式を使用（後方互換性）
+                    photo_path = os.path.join(
+                        current_app.config["UPLOAD_FOLDER"],
+                        "before" if photo.photo_type == "before" else "after",
+                        photo.filename,
+                    )
+                    print(f"報告書削除: 従来パスを使用: {photo_path}")
 
                 # ファイルが存在する場合は削除
                 if os.path.exists(photo_path):
                     os.remove(photo_path)
-                    print(f"ファイル削除: {photo_path}")
+                    print(f"報告書削除: ファイル削除成功: {photo_path}")
+                else:
+                    print(f"報告書削除: ファイルが見つかりません: {photo_path}")
             except Exception as e:
                 print(f"写真ファイル削除エラー: {e}")
 
@@ -1322,8 +1287,11 @@ def api_property_air_conditioners(property_id):
 @delete_permission_required
 def delete_photo(report_id, photo_id):
     """報告書の写真を削除する"""
+    print(f"DEBUG DELETE: 削除要求 - 報告書ID: {report_id}, 写真ID: {photo_id}")
+    
     # 指定された写真を取得
     photo = Photo.query.get_or_404(photo_id)
+    print(f"DEBUG DELETE: 写真情報 - ファイル名: {photo.filename}, filepath: {photo.filepath}")
 
     # 写真が指定された報告書のものであることを確認
     if photo.report_id != report_id:
@@ -1331,21 +1299,31 @@ def delete_photo(report_id, photo_id):
         return redirect(url_for("reports.edit", id=report_id, active_tab="photos"))
 
     try:
-        # ファイルパスを取得
-        photo_path = os.path.join(
-            current_app.config["UPLOAD_FOLDER"],
-            "before" if photo.photo_type == "before" else "after",
-            photo.filename,
-        )
+        # ファイルパスを取得（新しい階層化されたパスに対応）
+        if hasattr(photo, "filepath") and photo.filepath:
+            # 新しい階層化されたパス形式を使用
+            photo_path = os.path.join(current_app.config["UPLOAD_FOLDER"], photo.filepath)
+            print(f"階層化パスを使用: {photo_path}")
+        else:
+            # 従来のパス形式を使用（後方互換性）
+            photo_path = os.path.join(
+                current_app.config["UPLOAD_FOLDER"],
+                "before" if photo.photo_type == "before" else "after",
+                photo.filename,
+            )
+            print(f"従来パスを使用: {photo_path}")
 
         # ファイルが存在する場合は削除
         if os.path.exists(photo_path):
             os.remove(photo_path)
-            print(f"ファイル削除: {photo_path}")
+            print(f"ファイル削除成功: {photo_path}")
+        else:
+            print(f"ファイルが見つかりません: {photo_path}")
 
         # 写真データをデータベースから削除
         db.session.delete(photo)
         db.session.commit()
+        print(f"DEBUG DELETE: データベースから削除完了 - 写真ID: {photo_id}")
 
         flash("写真が削除されました", "success")
     except Exception as e:
