@@ -1,36 +1,25 @@
 @echo off
-REM ========================================================================
-REM エアコンクリーニング報告書システム - ローカル起動スクリプト (Windows)
-REM ========================================================================
-REM 
-REM このスクリプトは、Windowsローカル環境でFlaskアプリケーションを起動します。
-REM 
-REM 必要な環境:
-REM   - Python 3.8以上がインストール済み
-REM   - venv仮想環境が作成済み (venv\)
-REM   - .envファイルが設定済み (NAS使用の場合)
-REM 
-REM ========================================================================
+chcp 65001 >nul
+cls
 
 echo.
 echo ========================================================================
-echo エアコンクリーニング報告書システム - ローカル起動
+echo Aircon Report System - Local Startup
 echo ========================================================================
 echo.
 
-REM カレントディレクトリをスクリプトのディレクトリに変更
 cd /d "%~dp0"
 
 REM ========================================================================
-REM 1. 仮想環境の確認とアクティベート
+REM 1. Check and activate virtual environment
 REM ========================================================================
-echo [1/5] 仮想環境の確認...
+echo [1/5] Checking virtual environment...
 echo.
 
 if not exist "venv\Scripts\activate.bat" (
-    echo ❌ エラー: 仮想環境が見つかりません。
+    echo ERROR: Virtual environment not found.
     echo.
-    echo 以下のコマンドで仮想環境を作成してください:
+    echo Please create virtual environment:
     echo   python -m venv venv
     echo   venv\Scripts\activate
     echo   pip install -r requirements.txt
@@ -39,105 +28,101 @@ if not exist "venv\Scripts\activate.bat" (
     exit /b 1
 )
 
-echo ✅ 仮想環境が見つかりました
-echo 仮想環境をアクティベートしています...
+echo OK: Virtual environment found
+echo Activating virtual environment...
 call venv\Scripts\activate.bat
-echo ✅ 仮想環境をアクティベートしました
+echo OK: Virtual environment activated
 echo.
 
 REM ========================================================================
-REM 2. データベースの確認
+REM 2. Check database
 REM ========================================================================
-echo [2/5] データベースの確認...
+echo [2/5] Checking database...
 echo.
 
 if not exist "instance\aircon_report.db" (
-    echo ⚠️  警告: データベースファイルが見つかりません。
-    echo 初回起動時にデータベースが作成されます。
+    echo WARNING: Database file not found.
+    echo Database will be created on first startup.
     echo.
 ) else (
-    echo ✅ データベースファイルを確認しました (instance\aircon_report.db)
+    echo OK: Database file found (instance\aircon_report.db)
     echo.
 )
 
 REM ========================================================================
-REM 3. 環境変数の確認
+REM 3. Check environment variables
 REM ========================================================================
-echo [3/5] 環境変数の確認...
+echo [3/5] Checking environment variables...
 echo.
 
 if not exist ".env" (
-    echo ⚠️  警告: .env ファイルが見つかりません。
+    echo WARNING: .env file not found.
     echo.
-    echo NAS写真保存機能を使用する場合は、.env ファイルを作成してください。
-    echo 詳細は ENV_SETUP_INSTRUCTIONS.md を参照してください。
+    echo If you want to use NAS storage, please create .env file.
+    echo See ENV_SETUP_INSTRUCTIONS.md for details.
     echo.
-    echo ローカルストレージのみで起動を続けます...
+    echo Continuing with local storage only...
     echo.
 ) else (
-    echo ✅ .env ファイルを確認しました
+    echo OK: .env file found
     echo.
 )
 
 REM ========================================================================
-REM 4. Tailscale VPN接続の確認（NAS使用の場合）
+REM 4. Check Tailscale VPN (for NAS)
 REM ========================================================================
-echo [4/5] Tailscale VPN接続の確認 (NAS使用の場合)...
+echo [4/5] Checking Tailscale VPN connection (for NAS)...
 echo.
 
-REM Tailscaleコマンドが利用可能か確認
 where tailscale >nul 2>&1
 if %errorlevel% equ 0 (
-    echo Tailscale接続状態:
+    echo Tailscale connection status:
     tailscale status | findstr "100.69.218.15" >nul 2>&1
     if %errorlevel% equ 0 (
-        echo ✅ Tailscale VPNが接続されています
-        echo ✅ NASにアクセス可能です (100.69.218.15)
+        echo OK: Tailscale VPN is connected
+        echo OK: NAS is accessible (100.69.218.15)
     ) else (
-        echo ⚠️  Tailscale VPNは起動していますが、NASが見つかりません
-        echo    NASを使用しない場合は、このまま続行できます
+        echo WARNING: NAS not found (100.69.218.15)
+        echo          You can continue with local storage
     )
     echo.
 ) else (
-    echo ℹ️  Tailscaleがインストールされていないか、パスが通っていません
-    echo    NASを使用する場合は、Tailscaleを起動してください
-    echo    ローカルストレージのみで起動を続けます...
+    echo INFO: Tailscale is not installed or not in PATH
+    echo       If you want to use NAS, please start Tailscale
+    echo       Continuing with local storage only...
     echo.
 )
 
 REM ========================================================================
-REM 5. Flaskアプリケーションの起動
+REM 5. Start Flask application
 REM ========================================================================
-echo [5/5] Flaskアプリケーションを起動しています...
+echo [5/5] Starting Flask application...
 echo.
 echo ========================================================================
-echo アプリケーション起動中...
+echo Application starting...
 echo ========================================================================
 echo.
-echo アクセスURL: http://localhost:5000
-echo または:      http://127.0.0.1:5000
+echo Access URL: http://localhost:5000
+echo         or: http://127.0.0.1:5000
 echo.
-echo 停止するには: Ctrl + C を押してください
+echo To stop: Press Ctrl + C
 echo.
 echo ========================================================================
 echo.
 
-REM Flaskアプリケーションを起動
 python run.py
 
-REM エラーが発生した場合
 if %errorlevel% neq 0 (
     echo.
-    echo ❌ エラー: アプリケーションの起動に失敗しました。
+    echo ERROR: Failed to start application.
     echo.
-    echo 以下を確認してください:
-    echo   1. 仮想環境が正しくアクティベートされているか
-    echo   2. 必要なパッケージがインストールされているか (pip install -r requirements.txt)
-    echo   3. ポート5000が他のアプリケーションで使用されていないか
+    echo Please check:
+    echo   1. Virtual environment is activated
+    echo   2. Required packages are installed (pip install -r requirements.txt)
+    echo   3. Port 5000 is not in use by another application
     echo.
     pause
     exit /b 1
 )
 
 pause
-
