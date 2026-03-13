@@ -1,0 +1,452 @@
+===========================================
+NAS写真保存システム プロンプト用資料
+===========================================
+
+【システム概要】
+UGREEN NASへWebDAV経由で写真を保存する3段階ハイブリッドシステム
+優先度: (1) NAS → (2) ローカル → (3) フォールバック
+
+【技術スタック】
+- WebDAV: webdavclient3 ライブラリ
+- VPN: Tailscale (暗号化通信)
+- 画像処理: Pillow (圧縮・リサイズ)
+- 認証: Basic認証 (VPNトンネル内)
+
+【環境変数】
+NAS_ENABLED=True
+NAS_WEBDAV_URL=http://100.69.218.15:5005
+NAS_USERNAME=Takanori
+NAS_PASSWORD=your-password
+NAS_BASE_PATH=/home/eacon_keep_pict
+
+【フォルダ構造】
+NAS: {base_path}/aircon_reports/{before|after}/{uuid}_{timestamp}.jpg
+ローカル: uploads/{before|after}/{uuid}_{timestamp}.jpg
+
+【画像圧縮仕様】
+- 最大解像度: 700x500px
+- 品質: JPEG 70%
+- 圧縮率: 80-90%削減
+- RGBA→RGB変換（透過対応）
+
+===========================================
+【実装1】WebDAVクライアント (nas_webdav.py)
+===========================================
+
+```python
+import os, io, logging
+from typing import Optional, Tuple
+from webdav3.client import Client
+from webdav3.exceptions import WebDavException
+
+class NASWebDAVClient:
+    def __init__(self):
+        self.enabled = os.environ.get('NAS_ENABLED', 'False').lower() == 'true'
+        if not self.enabled:
+            return
+        
+        self.webdav_url = os.environ.get('NAS_WEBDAV_URL', '')
+        self.username = os.environ.get('NAS_USERNAME', '')
+        self.password = os.environ.get('NAS_PASSWORD', '')
+        self.base_path = os.environ.get('NAS_BASE_PATH', '/home/eacon_keep_pict')
+        
+        self.options = {
+            'webdav_hostname': self.webdav_url,
+            'webdav_login': self.username,
+            'webdav_password': self.password,
+            'webdav_timeout': 30,
+        }
+        
+        if self._validate_config():
+            self.client = Client(self.options)
+    
+    def _validate_config(self) -> bool:
+        return all([self.webdav_url, self.username, self.password])
+    
+    def is_available(self) -> bool:
+        if not self.enabled or not self.client:
+            return False
+        try:
+            return self.client.check(self.base_path)
+        except:
+            return False
+    
+    def _ensure_directory(self, remote_path: str) -> bool:
+        try:
+            if not self.client.check(remote_path):
+                self.client.mkdir(remote_path)
+            return True
+        except:
+            return False
+    
+    def upload_file(self, file_data: bytes, remote_path: str) -> Tuple[bool, Optional[str]]:
+        if not self.is_available():
+            return False, "NASが利用できません"
+        
+        try:
+            full_path = f"{self.base_path}/{remote_path}".replace('//', '/')
+            directory = os.path.dirname(full_path)
+            
+            if not self._ensure_directory(directory):
+                return False, f"ディレクトリ作成失敗: {directory}"
+            
+            buffer = io.BytesIO(file_data)
+            self.client.upload_to(buffer, full_path)
+            return True, None
+        except WebDavException as e:
+            return False, f"WebDAVエラー: {e}"
+        except Exception as e:
+            return False, f"アップロードエラー: {e}"
+    
+    def download_file(self, remote_path: str) -> Tuple[Optional[bytes], Optional[str]]:
+        if not self.is_available():
+            return None, "NASが利用できません"
+        
+        try:
+            full_path = f"{self.base_path}/{remote_path}".replace('//', '/')
+            if not self.client.check(full_path):
+                return None, "ファイルが存在しません"
+            
+            buffer = io.BytesIO()
+            self.client.download_from(buffer, full_path)
+            return buffer.getvalue(), None
+        except Exception as e:
+            return None, f"ダウンロードエラー: {e}"
+    
+    def delete_file(self, remote_path: str) -> Tuple[bool, Optional[str]]:
+        if not self.is_available():
+            return False, "NASが利用できません"
+        
+        try:
+            full_path = f"{self.base_path}/{remote_path}".replace('//', '/')
+            if not self.client.check(full_path):
+                return True, None  # 既に存在しない
+            
+            self.client.clean(full_path)
+            return True, None
+        except Exception as e:
+            return False, f"削除エラー: {e}"
+
+# シングルトン
+_nas_client = None
+def get_nas_client() -> NASWebDAVClient:
+    global _nas_client
+    if _nas_client is None:
+        _nas_client = NASWebDAVClient()
+    return _nas_client
+```
+
+===========================================
+【実装2】ファイルハンドラー (file_handler.py)
+===========================================
+
+```python
+import os, uuid, io, logging
+from datetime import datetime
+from PIL import Image
+from flask import current_app
+
+def compress_image(image_data: bytes, max_width=700, max_height=500, quality=70) -> bytes:
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        
+        # RGBA→RGB変換
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            img = background
+        
+        # リサイズ
+        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        
+        # JPEG保存
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        return output.getvalue()
+    except Exception as e:
+        logging.error(f"画像圧縮エラー: {e}")
+        return image_data
+
+def save_photo(file, photo_type):
+    """
+    写真保存（NAS優先、フォールバック付き）
+    photo_type: 'before' または 'after'
+    """
+    if not file or not allowed_file(file.filename):
+        return None
+    
+    # ファイル名生成
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    timestamp = int(datetime.utcnow().timestamp())
+    new_filename = f"{uuid.uuid4().hex}_{timestamp}.{ext}"
+    
+    # ファイル読み込み＋圧縮
+    file.seek(0)
+    file_data = file.read()
+    compressed_data = compress_image(file_data)
+    
+    # NAS保存試行
+    nas_saved = False
+    try:
+        from app.utils.nas_webdav import get_nas_client
+        nas_client = get_nas_client()
+        
+        if nas_client.is_available():
+            remote_path = f"aircon_reports/{photo_type}/{new_filename}"
+            success, error = nas_client.upload_file(compressed_data, remote_path)
+            
+            if success:
+                logging.info(f"✅ NAS保存成功: {remote_path}")
+                nas_saved = True
+            else:
+                logging.warning(f"⚠️ NAS保存失敗: {error}")
+    except Exception as e:
+        logging.error(f"❌ NAS保存エラー: {e}")
+    
+    # ローカル保存（フォールバック or 併用）
+    is_render = os.environ.get('RENDER', 'False').lower() == 'true'
+    
+    if not is_render or not nas_saved:
+        folder = 'before' if photo_type == 'before' else 'after'
+        upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], folder)
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        file_path = os.path.join(upload_folder, new_filename)
+        try:
+            with open(file_path, 'wb') as f:
+                f.write(compressed_data)
+            logging.info(f"💾 ローカル保存成功: {file_path}")
+        except Exception as e:
+            logging.error(f"❌ ローカル保存エラー: {e}")
+            if not nas_saved:
+                return None
+    else:
+        logging.info("🚀 Render環境: NAS保存成功のためローカルスキップ")
+    
+    return new_filename
+
+def delete_photo(filename, photo_type):
+    """NASとローカルの両方から削除"""
+    try:
+        # NAS削除
+        from app.utils.nas_webdav import get_nas_client
+        nas_client = get_nas_client()
+        if nas_client.is_available():
+            remote_path = f"aircon_reports/{photo_type}/{filename}"
+            nas_client.delete_file(remote_path)
+        
+        # ローカル削除
+        folder = 'before' if photo_type == 'before' else 'after'
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], folder, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        return True
+    except Exception as e:
+        logging.error(f"削除エラー: {e}")
+        return False
+
+def get_photo_from_nas(filename: str, photo_type: str) -> Optional[bytes]:
+    """NASから写真取得"""
+    try:
+        from app.utils.nas_webdav import get_nas_client
+        nas_client = get_nas_client()
+        
+        if not nas_client.is_available():
+            return None
+        
+        remote_path = f"aircon_reports/{photo_type}/{filename}"
+        file_data, error = nas_client.download_file(remote_path)
+        
+        if file_data:
+            logging.info(f"✅ NASから取得: {remote_path}")
+        return file_data
+    except Exception as e:
+        logging.error(f"❌ NAS取得エラー: {e}")
+        return None
+
+def allowed_file(filename, allowed_extensions=None):
+    if allowed_extensions is None:
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+```
+
+===========================================
+【実装3】Flask ルート例
+===========================================
+
+```python
+from flask import request, send_file, abort
+from app.utils.file_handler import save_photo, delete_photo, get_photo_from_nas
+
+# アップロード
+@app.route('/upload', methods=['POST'])
+def upload():
+    photo = request.files.get('photo')
+    filename = save_photo(photo, 'before')
+    if filename:
+        # DBに保存
+        return {'success': True, 'filename': filename}
+    return {'success': False}, 400
+
+# 配信
+@app.route('/uploads/<photo_type>/<filename>')
+def serve(photo_type, filename):
+    # ローカル優先
+    local_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_type, filename)
+    if os.path.exists(local_path):
+        return send_file(local_path)
+    
+    # NASから取得
+    photo_data = get_photo_from_nas(filename, photo_type)
+    if photo_data:
+        return send_file(io.BytesIO(photo_data), mimetype='image/jpeg')
+    
+    abort(404)
+
+# 削除
+@app.route('/delete/<int:photo_id>', methods=['POST'])
+def delete(photo_id):
+    photo = Photo.query.get_or_404(photo_id)
+    if delete_photo(photo.filename, photo.photo_type):
+        db.session.delete(photo)
+        db.session.commit()
+        return {'success': True}
+    return {'success': False}, 500
+```
+
+===========================================
+【処理フロー】
+===========================================
+
+■ 保存フロー
+1. ファイルアップロード
+2. UUID + タイムスタンプでファイル名生成
+3. 画像を700x500px/JPEG70%に圧縮
+4. NASにアップロード試行
+   ├ 成功 → [本番環境?]
+   │         ├ Yes → ローカルスキップ
+   │         └ No  → ローカルにも保存
+   └ 失敗 → ローカル保存（フォールバック）
+5. ファイル名を返却
+
+■ 取得フロー
+1. ローカルストレージを確認
+   ├ 存在 → ローカルから配信
+   └ なし → NASから取得
+             ├ 成功 → 配信
+             └ 失敗 → 404
+
+■ 削除フロー
+1. NASから削除試行
+2. ローカルから削除
+3. DB削除
+
+===========================================
+【エラーハンドリング】
+===========================================
+
+■ ログメッセージ
+✅ NAS保存成功
+⚠️ NAS保存失敗
+❌ NAS保存エラー
+💾 ローカル保存成功
+🚀 Render環境: ローカル保存スキップ
+
+■ 例外処理パターン
+try:
+    # NAS操作
+    success, error = nas_client.upload_file(data, path)
+    if success:
+        nas_saved = True
+except Exception as e:
+    logging.error(f"NASエラー: {e}")
+
+# フォールバック
+if not nas_saved:
+    # ローカル保存
+
+===========================================
+【セキュリティ】
+===========================================
+
+1. Tailscale VPN: すべての通信を暗号化
+2. Basic認証: VPNトンネル内で送信
+3. 安全なファイル名: UUID + タイムスタンプ
+4. .envファイル: Gitにコミットしない
+5. 最小権限: NASユーザーに必要な権限のみ
+6. 定期バックアップ: NASデータを保護
+
+===========================================
+【トラブルシューティング】
+===========================================
+
+■ NAS接続失敗
+→ tailscale status で VPN確認
+→ ping 100.69.218.15 でNAS到達確認
+→ 環境変数の設定確認
+
+■ 401 Unauthorized
+→ ユーザー名/パスワード確認
+→ NASのユーザー権限確認
+
+■ ディレクトリ作成失敗
+→ NAS_BASE_PATH の存在確認
+→ 書き込み権限確認
+→ NAS容量確認
+
+■ 画像圧縮エラー
+→ pip install Pillow
+→ 画像ファイルの破損確認
+
+===========================================
+【パフォーマンス】
+===========================================
+
+圧縮率: 80-90%削減 (2-5MB → 100-500KB)
+NASアップロード: 1-3秒/枚
+ローカル保存: 0.1-0.5秒/枚
+NAS取得: 0.5-2秒/枚
+ローカル取得: 0.01-0.05秒/枚
+
+===========================================
+【チェックリスト】
+===========================================
+
+□ webdavclient3, Pillow インストール
+□ .env ファイル作成
+□ NAS_ENABLED=True 設定
+□ NAS_WEBDAV_URL, USERNAME, PASSWORD 設定
+□ Tailscale VPN 起動
+□ NAS WebDAVサービス有効化
+□ NASWebDAVClient クラス実装
+□ get_nas_client シングルトン実装
+□ compress_image 関数実装
+□ save_photo 関数実装
+□ delete_photo 関数実装
+□ get_photo_from_nas 関数実装
+□ アップロードルート実装
+□ 配信ルート実装
+□ 削除ルート実装
+□ エラーハンドリング実装
+□ ログ出力実装
+□ 接続テスト実施
+
+===========================================
+【参考資料】
+===========================================
+
+完全ガイド: docs/NAS_PHOTO_STORAGE_LOGIC.md
+クイックリファレンス: docs/NAS_PHOTO_STORAGE_QUICK_REFERENCE.md
+セットアップガイド: docs/NAS_SETUP_GUIDE.md
+
+実装ファイル:
+- app/utils/nas_webdav.py
+- app/utils/file_handler.py
+
+作成日: 2025-01-17
+対象: エアコンクリーニング報告書システム
+データベース: aircon_report.db
+

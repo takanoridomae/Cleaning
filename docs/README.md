@@ -15,6 +15,12 @@
 - `RENDER_SETUP_GUIDE.md` - Renderの初期セットアップ手順
 - `RENDER_SHELL_COMMANDS.md` - Renderで使用するシェルコマンド集
 
+### NAS写真保存システム
+- `NAS_SETUP_GUIDE.md` - NASのセットアップ手順
+- `NAS_PHOTO_STORAGE_LOGIC.md` - **写真保存ロジック完全ガイド（他システム実装用）**
+- `NAS_PHOTO_STORAGE_QUICK_REFERENCE.md` - **クイックリファレンス（要点まとめ）**
+- `NAS_PHOTO_STORAGE_PROMPT.txt` - **プロンプト用資料（コンパクト版）**
+
 ### 機能設定ガイド
 - `NOTIFICATION_SETUP.md` - 通知機能のセットアップ手順
 

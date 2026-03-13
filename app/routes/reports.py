@@ -27,6 +27,7 @@ from sqlalchemy import or_
 import os
 from datetime import datetime, time, date
 from werkzeug.utils import secure_filename
+import re
 from app.routes.auth import (
     login_required,
     view_permission_required,
@@ -34,6 +35,17 @@ from app.routes.auth import (
     create_permission_required,
     delete_permission_required,
 )
+
+
+def sanitize_folder_name(name):
+    """フォルダ名に使用できない文字を除去する（日本語は保持）"""
+    if not name:
+        return "unknown"
+    # Windowsのファイル名に使用できない文字を削除
+    invalid_chars = r'[\\/:*?"<>|]'
+    sanitized = re.sub(invalid_chars, "", str(name)).strip()
+    # 空文字列または空白のみの場合はunknownを返す
+    return sanitized if sanitized else "unknown"
 from app.services.pdf_service import PDFService
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -845,6 +857,11 @@ def edit(id):
 
             uploaded_photos = []  # アップロードした写真のリストを保持
 
+            # デバッグ情報の出力
+            print(f"DEBUG UPLOAD: air_conditioner_id = {air_conditioner_id} (type: {type(air_conditioner_id)})")
+            print(f"DEBUG UPLOAD: work_item_id = {work_item_id} (type: {type(work_item_id)})")
+            print(f"DEBUG UPLOAD: photo_type = {photo_type}")
+
             # 関連情報の取得
             report_property = Property.query.get(report.property_id)
             customer = None
@@ -853,119 +870,44 @@ def edit(id):
 
             if report_property:
                 customer = Customer.query.get(report_property.customer_id)
+                print(f"DEBUG UPLOAD: customer = {customer.name if customer else 'None'}")
 
             if air_conditioner_id:
                 air_conditioner = AirConditioner.query.get(air_conditioner_id)
+                print(f"DEBUG UPLOAD: air_conditioner = {air_conditioner.model_number if air_conditioner else 'None'} (ID: {air_conditioner.id if air_conditioner else 'None'})")
 
             if work_item_id:
                 work_item = WorkItem.query.get(work_item_id)
+                print(f"DEBUG UPLOAD: work_item = {work_item.name if work_item else 'None'} (ID: {work_item.id if work_item else 'None'})")
 
             for photo_file in photo_files:
                 if photo_file and photo_file.filename:
-                    filename = secure_filename(photo_file.filename)
-                    # タイムスタンプを付与してファイル名の重複を避ける
-                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                    filename = f"{timestamp}_{filename}"
+                    # NAS対応のsave_photo関数を使用
+                    from app.utils.file_handler import save_photo
+                    
+                    filename = save_photo(photo_file, photo_type)
+                    
+                    if filename:
+                        # 単純な相対パス（スマホ形式）
+                        # URL用にフォワードスラッシュを使用
+                        relative_path = f"{photo_type}/{filename}"
 
-                    # 新しいフォルダ構造の構築（顧客>物件>エアコン>作業項目>作業日）
-                    # ベースディレクトリは before または after から始まる
-                    base_folder = os.path.join(
-                        current_app.config["UPLOAD_FOLDER"], photo_type
-                    )
-
-                    # 顧客フォルダ
-                    customer_folder = "unknown_customer"
-                    if customer:
-                        customer_folder = secure_filename(customer.name)
-
-                    # 物件フォルダ
-                    property_folder = "unknown_property"
-                    if report_property:
-                        # 物件IDを追加して、同名物件でも区別できるようにする
-                        property_folder = secure_filename(
-                            f"{report_property.name}_{report_property.id}"
+                        # データベースに写真情報を保存
+                        photo = Photo(
+                            report_id=id,
+                            photo_type=photo_type,
+                            filename=filename,
+                            original_filename=photo_file.filename,
+                            caption=caption,
+                            room_name=room_name,
+                            air_conditioner_id=air_conditioner_id,
+                            work_item_id=work_item_id,
+                            filepath=relative_path,
                         )
-                        # 物件の住所も追加する（あれば）
-                        if report_property.address:
-                            # 住所が長すぎる場合は短縮する
-                            address_part = secure_filename(report_property.address[:30])
-                            property_folder = f"{property_folder}_{address_part}"
-
-                    # エアコンフォルダ
-                    air_conditioner_folder = "unknown_air_conditioner"
-                    if air_conditioner:
-                        # 製造元、型番、設置場所を組み合わせたフォルダ名
-                        air_conditioner_info = []
-                        if air_conditioner.manufacturer:
-                            air_conditioner_info.append(air_conditioner.manufacturer)
-                        if air_conditioner.model_number:
-                            air_conditioner_info.append(air_conditioner.model_number)
-                        if air_conditioner.location:
-                            air_conditioner_info.append(f"({air_conditioner.location})")
-
-                        if air_conditioner_info:
-                            air_conditioner_folder = secure_filename(
-                                "_".join(air_conditioner_info)
-                            )
-                        else:
-                            air_conditioner_folder = f"aircon_{air_conditioner.id}"
-
-                    # 作業項目フォルダ
-                    work_item_folder = "unknown_work_item"
-                    if work_item:
-                        work_item_folder = secure_filename(work_item.name)
-
-                    # 作業日フォルダ（報告書の日付を使用）
-                    work_date_folder = "unknown_date"
-                    if report.date:
-                        work_date_folder = report.date.strftime("%Y%m%d")
-
-                    # 完全なパスを構築
-                    upload_path = os.path.join(
-                        base_folder,
-                        customer_folder,
-                        property_folder,
-                        air_conditioner_folder,
-                        work_item_folder,
-                        work_date_folder,
-                    )
-
-                    # ディレクトリが存在しない場合は作成
-                    if not os.path.exists(upload_path):
-                        os.makedirs(upload_path)
-
-                    filepath = os.path.join(upload_path, filename)
-
-                    # ファイル保存
-                    photo_file.save(filepath)
-
-                    # 相対パスを保存（uploads/before または uploads/after からの相対パス）
-                    relative_path = os.path.join(
-                        photo_type,
-                        customer_folder,
-                        property_folder,
-                        air_conditioner_folder,
-                        work_item_folder,
-                        work_date_folder,
-                        filename,
-                    )
-
-                    # データベースに写真情報を保存
-                    photo = Photo(
-                        report_id=id,
-                        photo_type=photo_type,
-                        filename=filename,
-                        original_filename=photo_file.filename,
-                        caption=caption,
-                        room_name=room_name,
-                        air_conditioner_id=air_conditioner_id,
-                        work_item_id=work_item_id,
-                        # ファイルパスの保存用に新たなフィールドを使用（もし存在すれば）
-                        # このフィールドがない場合は、モデルに追加する必要があります
-                        filepath=relative_path,
-                    )
-                    db.session.add(photo)
-                    uploaded_photos.append(photo)
+                        db.session.add(photo)
+                        uploaded_photos.append(photo)
+                    else:
+                        print(f"⚠️ 写真保存失敗: {photo_file.filename}")
 
             db.session.commit()
 
@@ -1242,21 +1184,17 @@ def delete_report(id):
                 f"スケジュール #{schedule.id} のステータスを「キャンセル」に更新しました"
             )
 
-        # 関連する写真ファイルの削除
+        # 関連する写真ファイルの削除（NASとローカルの両方）
+        from app.utils.file_handler import delete_photo as delete_photo_file
+        
         photos = Photo.query.filter_by(report_id=id).all()
         for photo in photos:
             try:
-                # ファイルパスを取得
-                photo_path = os.path.join(
-                    current_app.config["UPLOAD_FOLDER"],
-                    "before" if photo.photo_type == "before" else "after",
-                    photo.filename,
-                )
-
-                # ファイルが存在する場合は削除
-                if os.path.exists(photo_path):
-                    os.remove(photo_path)
-                    print(f"ファイル削除: {photo_path}")
+                success = delete_photo_file(photo.filename, photo.photo_type)
+                if success:
+                    print(f"報告書削除: ✅ ファイル削除成功（NAS+ローカル）: {photo.filename}")
+                else:
+                    print(f"報告書削除: ⚠️ ファイル削除に問題が発生: {photo.filename}")
             except Exception as e:
                 print(f"写真ファイル削除エラー: {e}")
 
@@ -1322,8 +1260,11 @@ def api_property_air_conditioners(property_id):
 @delete_permission_required
 def delete_photo(report_id, photo_id):
     """報告書の写真を削除する"""
+    print(f"DEBUG DELETE: 削除要求 - 報告書ID: {report_id}, 写真ID: {photo_id}")
+    
     # 指定された写真を取得
     photo = Photo.query.get_or_404(photo_id)
+    print(f"DEBUG DELETE: 写真情報 - ファイル名: {photo.filename}, filepath: {photo.filepath}")
 
     # 写真が指定された報告書のものであることを確認
     if photo.report_id != report_id:
@@ -1331,21 +1272,21 @@ def delete_photo(report_id, photo_id):
         return redirect(url_for("reports.edit", id=report_id, active_tab="photos"))
 
     try:
-        # ファイルパスを取得
-        photo_path = os.path.join(
-            current_app.config["UPLOAD_FOLDER"],
-            "before" if photo.photo_type == "before" else "after",
-            photo.filename,
-        )
-
-        # ファイルが存在する場合は削除
-        if os.path.exists(photo_path):
-            os.remove(photo_path)
-            print(f"ファイル削除: {photo_path}")
+        # NAS対応のdelete_photo関数を使用（NASとローカルの両方から削除）
+        from app.utils.file_handler import delete_photo as delete_photo_file
+        
+        # ファイルを削除（NASとローカルの両方）
+        success = delete_photo_file(photo.filename, photo.photo_type)
+        
+        if success:
+            print(f"✅ ファイル削除成功（NAS+ローカル）: {photo.filename}")
+        else:
+            print(f"⚠️ ファイル削除に問題が発生しましたが、続行します: {photo.filename}")
 
         # 写真データをデータベースから削除
         db.session.delete(photo)
         db.session.commit()
+        print(f"DEBUG DELETE: データベースから削除完了 - 写真ID: {photo_id}")
 
         flash("写真が削除されました", "success")
     except Exception as e:

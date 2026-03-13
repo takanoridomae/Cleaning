@@ -8,6 +8,11 @@
 - **物件管理:** 物件情報の登録、編集、削除、一覧表示
 - **報告書管理:** 報告書の新規作成、編集、削除、一覧表示
 - **写真比較:** 施工前後の写真を比較表示する機能
+- **NAS写真保存:** UGREEN NASへのWebDAV経由での自動写真保存（3段階ハイブリッドストレージ）
+  - 優先: UGREEN NAS (Tailscale経由WebDAV、容量無制限)
+  - フォールバック: ローカルストレージ
+  - 自動画像圧縮 (最大700x500px, JPEG 70%品質)
+  - 詳細は `docs/NAS_PHOTO_STORAGE_DOCUMENTS_INDEX.md` を参照
 
 ## 技術スタック
 
@@ -97,6 +102,11 @@ eacon_report/
 │   ├── AIRCON_DATA_IMPORT_GUIDE.md
 │   ├── ALL_DATA_IMPORT_GUIDE.md
 │   ├── NOTIFICATION_SETUP.md
+│   ├── NAS_SETUP_GUIDE.md        # NASセットアップガイド
+│   ├── NAS_PHOTO_STORAGE_LOGIC.md          # NAS写真保存ロジック完全ガイド
+│   ├── NAS_PHOTO_STORAGE_QUICK_REFERENCE.md # クイックリファレンス
+│   ├── NAS_PHOTO_STORAGE_PROMPT.txt        # プロンプト用資料
+│   ├── NAS_PHOTO_STORAGE_DOCUMENTS_INDEX.md # ドキュメント索引
 │   ├── RENDER_DEPLOY.md
 │   ├── RENDER_EXECUTION_GUIDE.md
 │   ├── RENDER_FILE_UPLOAD_GUIDE.md

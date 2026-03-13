@@ -144,8 +144,65 @@ def create_app(test_config=None):
     # アップロードされた写真を提供するルートを追加
     @app.route("/uploads/<path:filename>")
     def uploaded_file(filename):
-        upload_folder = os.path.join(os.path.dirname(app.root_path), "uploads")
-        return send_from_directory(upload_folder, filename)
+        # app.config['UPLOAD_FOLDER']を使用して、保存時と配信時のパスを一致させる
+        upload_folder = app.config['UPLOAD_FOLDER']
+        
+        # URL用のスラッシュをOS固有のパス区切り文字に変換
+        normalized_filename = filename.replace('/', os.sep)
+        full_path = os.path.join(upload_folder, normalized_filename)
+        
+        # デバッグ情報をコンソールに出力
+        print(f"DEBUG: Requested file: {filename}")
+        print(f"DEBUG: Normalized filename: {normalized_filename}")
+        print(f"DEBUG: Upload folder: {upload_folder}")
+        print(f"DEBUG: Full path: {full_path}")
+        print(f"DEBUG: File exists: {os.path.exists(full_path)}")
+        
+        # ローカルにファイルが存在しない場合、NASから取得を試みる
+        if not os.path.exists(full_path):
+            print(f"DEBUG: ローカルにファイルがないため、NASから取得を試行")
+            try:
+                from app.utils.file_handler import get_photo_from_nas
+                from flask import Response
+                
+                # photo_typeとfilenameを抽出
+                path_parts = filename.split('/')
+                if len(path_parts) >= 2 and path_parts[0] in ['before', 'after']:
+                    photo_type = path_parts[0]
+                    filename_only = path_parts[-1]
+                    
+                    # NASから画像データを取得
+                    image_data = get_photo_from_nas(filename_only, photo_type)
+                    
+                    if image_data:
+                        print(f"DEBUG: NASから画像を取得しました: {filename}")
+                        # 画像データをレスポンスとして返す
+                        response = Response(image_data, mimetype='image/jpeg')
+                        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                        response.headers['Pragma'] = 'no-cache'
+                        response.headers['Expires'] = '0'
+                        return response
+                    else:
+                        print(f"DEBUG: NASからの取得に失敗しました")
+            except Exception as e:
+                print(f"DEBUG: NAS取得エラー: {e}")
+        
+        # パスを分割してsend_from_directoryの引数を正しく設定
+        directory = os.path.dirname(full_path)
+        filename_only = os.path.basename(full_path)
+        
+        print(f"DEBUG: Send from directory: {directory}")
+        print(f"DEBUG: Send filename: {filename_only}")
+        
+        # ファイル配信時にキャッシュ制御ヘッダーを追加
+        response = send_from_directory(directory, filename_only)
+        
+        # キャッシュを無効にして、削除された画像が即座に反映されるようにする
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
 
     # 通知スケジューラーの初期化
     if not app.config.get("TESTING", False):
