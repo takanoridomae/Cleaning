@@ -106,7 +106,8 @@ def save_photo(file, photo_type):
             if nas_client.is_available():
                 # NASパス: aircon_reports/{photo_type}/{filename}
                 remote_path = f"aircon_reports/{photo_type}/{new_filename}"
-                success, error = nas_client.upload_file(compressed_data, remote_path)
+                # is_available()は呼び出し済みなのでスキップ
+                success, error = nas_client.upload_file(compressed_data, remote_path, skip_availability_check=True)
                 
                 if success:
                     logger.info(f"✅ NAS保存成功: {remote_path}")
