@@ -696,11 +696,17 @@ class PDFService:
                                         temp_path
                                     )  # 一時ファイルリストに追加
 
-                                # 画像をPDFに挿入（サイズを調整）
+                                # 画像の実際のサイズを取得してアスペクト比を維持
+                                with PILImage.open(temp_path) as _check_img:
+                                    _actual_w, _actual_h = _check_img.size
+                                _max_w, _max_h = 240, 200
+                                _ratio = min(_max_w / _actual_w, _max_h / _actual_h)
+                                _display_w = _actual_w * _ratio
+                                _display_h = _actual_h * _ratio
                                 img = Image(
                                     temp_path,
-                                    width=240,  # 幅を拡大（180→240）
-                                    height=180,  # 高さを拡大（135→180）
+                                    width=_display_w,
+                                    height=_display_h,
                                 )
                                 photo_row.append(img)
 
@@ -779,11 +785,17 @@ class PDFService:
                                         temp_path
                                     )  # 一時ファイルリストに追加
 
-                                # 画像をPDFに挿入（サイズを調整）
+                                # 画像の実際のサイズを取得してアスペクト比を維持
+                                with PILImage.open(temp_path) as _check_img:
+                                    _actual_w, _actual_h = _check_img.size
+                                _max_w, _max_h = 240, 200
+                                _ratio = min(_max_w / _actual_w, _max_h / _actual_h)
+                                _display_w = _actual_w * _ratio
+                                _display_h = _actual_h * _ratio
                                 img = Image(
                                     temp_path,
-                                    width=240,  # 幅を拡大（180→240）
-                                    height=180,  # 高さを拡大（135→180）
+                                    width=_display_w,
+                                    height=_display_h,
                                 )
                                 photo_row.append(img)
 
