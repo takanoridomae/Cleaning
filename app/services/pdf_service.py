@@ -519,7 +519,9 @@ class PDFService:
         # 備考
         if report.note:
             elements.append(Paragraph("＜備考＞", styles["JapaneseHeading2"]))
-            elements.append(Paragraph(report.note, styles["JapaneseNormal"]))
+            # 改行を <br/> に変換して入力時のフォーマットを保持する
+            note_text = report.note.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\r\n", "<br/>").replace("\n", "<br/>")
+            elements.append(Paragraph(note_text, styles["JapaneseNormal"]))
             elements.append(Spacer(1, 12))
 
         # PDFドキュメントを生成（1ページ目、基本情報と作業内容）
